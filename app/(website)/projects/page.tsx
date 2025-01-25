@@ -5,7 +5,7 @@ import React from 'react'
 
 export default function page() {
   return (
-    <section className="mb-4">
+    <section className="mb-4 text-white">
       <h1 className="section_title">
         Project
       </h1>
