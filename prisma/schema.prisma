@@ -1,0 +1,48 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ContactForm {
+  id        Int      @id @default(autoincrement())
+  name      String
+  topic   String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false) 
+}
+
+model Rating {
+  id          Int      @id @default(autoincrement())
+  rating      Int     
+  feedback    String?
+  name        String?
+  createdAt   DateTime @default(now()) 
+  updatedAt   DateTime @updatedAt  
+}
+
+model Token {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model ServiceInquiry {
+  id          String   @id @default(cuid())
+  name        String
+  companyName String
+  service     String
+  email     String
+  phoneNumber String
+  createdAt   DateTime @default(now())
+  read      Boolean  @default(false) 
+}
