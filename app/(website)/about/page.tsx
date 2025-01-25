@@ -33,7 +33,7 @@ export default function page(){
 
           );
         })}
-        <Button className='w-32 bg-white-100'>
+        <Button className='w-32 bg-white-100 text-black'>
           <a  href="../assets/CV.pdf"  download>
             Download Cv
           </a>
