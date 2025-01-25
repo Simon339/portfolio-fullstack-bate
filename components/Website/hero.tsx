@@ -19,12 +19,12 @@ export default function Hero (){
       </div> */}
 
       <div
-        className="h-screen w-full bg-black-100  dark:bg-grid-white/[0.03] bg-grid-black-100/[0.2]
+        className="h-screen w-full bg-black-100  bg-grid-white/[0.03]
        absolute top-0 left-0 flex items-center justify-center"
       >
         
         <div
-          className="absolute pointer-events-none inset-0 flex items-center justify-center dark:bg-black-100
+          className="absolute pointer-events-none inset-0 flex items-center justify-center bg-black-100
         [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"
         />
       </div>
@@ -37,7 +37,7 @@ export default function Hero (){
           </p>
 
             <TextGenerateEffect
-                className="text-center text-[24px] md:text-lg lg:text-2xl sm:text-[15px]"
+                className="text-center text-[24px] md:text-lg lg:text-2xl sm:text-[15px] text-white"
                 words="Welcome to my Portfolio, Where Innovation Meets Execution."
             />
 
