@@ -7,7 +7,7 @@ import { educationData } from "@/data";
 
 export default function pages() {
     return (
-        <section>
+        <section className="text-white">
             <h2 className="section_title">Qualifications</h2>
             <span className="section_subtitle">My Personnal Journey</span>
 
