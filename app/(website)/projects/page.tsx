@@ -46,6 +46,11 @@ const testimonials = [
     name: "Founder of Thutokelesedi",
     title: "Thutokelesedi",
   },
+ {
+    quote: "Excellent service! The website creator was professional, responsive, and delivered a great website that met my needs. Highly recommended!",
+    name: "Mr. Vincent Magotlho Founder of Magotlho TN Solutions",
+    title: "Magotlho TN Solutions (PTY) LTD",
+  },
 ];
 
 
