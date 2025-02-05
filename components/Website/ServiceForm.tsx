@@ -127,7 +127,7 @@ const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
                             <FormItem>
                                 <FormLabel>Phone Number</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Enter your telephone or cellphone number (e.g. +27)" {...field} disabled={isSubmitting} />
+                                    <Input placeholder="(e.g. +27)" {...field} disabled={isSubmitting} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

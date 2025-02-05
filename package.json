@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:no-type-check": "next build --no-error-on-warn",
     "start": "next start",
     "lint": "next lint"
   },

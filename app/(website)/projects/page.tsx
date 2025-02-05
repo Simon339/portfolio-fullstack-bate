@@ -5,7 +5,7 @@ import React from 'react'
 
 export default function page() {
   return (
-    <section className="mb-4">
+    <section className="mb-4 text-white">
       <h1 className="section_title">
         Project
       </h1>
@@ -45,6 +45,11 @@ const testimonials = [
     quote: "It looks absolutely perfect! I plan to take more photos this week and will send them over for you to add. Thanks for your amazing work!",
     name: "Founder of Thutokelesedi",
     title: "Thutokelesedi",
+  },
+ {
+    quote: "Excellent service! The website creator was professional, responsive, and delivered a great website that met my needs. Highly recommended!",
+    name: "Mr. Vincent Magotlho Founder of Magotlho TN Solutions",
+    title: "Magotlho TN Solutions (PTY) LTD",
   },
 ];
 
