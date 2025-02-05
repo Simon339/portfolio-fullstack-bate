@@ -5,6 +5,9 @@ import { render } from "@react-email/render"
 import { ServiceInquiryConfirmationTemp } from "./emailtemps/serviceinquiryconfirmation";
 import { InvitationtokenTemplate } from "./emailtemps/invitetoreview";
 import { Contactconfirmation } from "./emailtemps/contactform"
+import { VerificationEmail } from "./emailtemps/verificationEmail";
+import { PasswordResetEmail } from "./emailtemps/passwordResetEmai";
+import { VerificationbyadminEmail } from "./emailtemps/VerificationbyadminEmail";
 // SMTP Transporter Setup
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -33,6 +36,29 @@ const sendEmail = async (to: string, subject: string, reactElement: React.ReactE
     console.error(`Error sending email to ${to}:`, error)
     throw new Error(`Failed to send email. Error: ${error}`)
   }
+}
+
+// Send verification email
+export const sendVerificationEmail = async (email: string, token: string) => {
+  if (!email || !token) throw new Error("Email and token are required.")
+  const verificationLink = `${domain}/verify?token=${token}`
+  await sendEmail(email, "Verify your email address", VerificationEmail({ verificationLink }) as React.ReactElement)
+}
+
+// Send verification email for add user that has been added by admin
+export const sendVerificationEmailForAddedUser = async (email: string, token: string, password: string) => {
+  if (!email || !token) throw new Error("Email and token are required.")
+  const verificationLink = `${domain}/verify?token=${token}`
+  await sendEmail(email, "Verify your email address", VerificationbyadminEmail({
+    verificationLink, password
+  }) as React.ReactElement)
+}
+
+// Send password reset email
+export const sendPasswordResetEmail = async (email: string, token: string) => {
+  if (!email || !token) throw new Error("Email and token are required.")
+  const resetLink = `${domain}/reset-password?token=${token}`
+  await sendEmail(email, "Reset your password", PasswordResetEmail({ resetLink }) as React.ReactElement)
 }
 
 // Send contact confirmation email

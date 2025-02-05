@@ -1,79 +1,90 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { jwtVerify } from "jose"
-import { authRoutes, publicRoutes, dashboardRoutes, DEFAULT_LOGIN_REDIRECT } from "@/routes"
+import authConfig from "./auth.config";
+import NextAuth from "next-auth";
+import { apiAuthPrefix, authRoutes, publicRoutes, DEFAULT_LOGIN_REDIRECT } from "./routes";
+import { NextResponse } from "next/server";
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "qf3gxhd/k0IE/d6SbUJAD9aUetvny0/AHqlkF31jt8k=")
+const { auth } = NextAuth(authConfig);
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+export default auth((req) => {
+    const { nextUrl } = req;
+    const isLoggedIn = !!req.auth;
+    const { pathname } = nextUrl;
 
-  if (pathname.startsWith("/api")) {
-    return NextResponse.next()
-  }
+    const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
+    const isPublicRoute = publicRoutes.includes(pathname);
+    const isAuthRoute = authRoutes.includes(pathname);
 
-  const authToken = request.cookies.get("authToken")?.value
-  let isLoggedIn = false
-  let userRole = null
-
-  if (authToken) {
-    try {
-      const { payload } = await jwtVerify(authToken, JWT_SECRET)
-      isLoggedIn = true
-      userRole = payload.role as string
-    } catch (error) {
-      console.error("Token verification failed:", error)
+    // Skip API auth routes
+    if (isApiAuthRoute) {
+        return null;
     }
-  }
 
-  if (authRoutes.includes(pathname)) {
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, request.url))
+        const userRole: 'ADMIN' | 'USER' | undefined = req.auth?.user?.role;
+
+        // Role-based route restriction
+        const restrictedRoutes = {
+            ADMIN: ['/onboarding'],
+            USER: ['/dashboard'],
+        }
+
+        const restrictedRoute = userRole ? restrictedRoutes[userRole] : undefined;
+        if (restrictedRoute?.includes(pathname)) {
+            nextUrl.pathname = DEFAULT_LOGIN_REDIRECT;
+            return NextResponse.redirect(nextUrl);  // Redirect to default route for the user's role
+        }
+    }; // Define restricted routes based on user role
+
+    // Handle authentication routes (login, registration, etc.)
+    if (isAuthRoute) {
+        if (isLoggedIn) {
+            const userRole = req.auth?.user?.role; // Assuming `role` is part of the user data
+            // Redirect to appropriate page based on the user's role
+            if (userRole === 'ADMIN') {
+                nextUrl.pathname = "/dashboard";
+            } else if (userRole === 'USER') {
+                nextUrl.pathname = "/onboarding";
+            }
+            return NextResponse.redirect(nextUrl);
+        }
+        return null; // Allow access to auth routes if not logged in
     }
-    return NextResponse.next()
-  }
 
-  const jsonEndpoints = [
-    "Login.json",
-    "Experience.json",
-    "Projects.json",
-    "Support.json",
-    "placeholder.png",
-    "Profile.jpg",
-    "CV.pdf",
-  ]
-  if (jsonEndpoints.some((endpoint) => pathname.endsWith(endpoint))) {
-    return NextResponse.next()
-  }
+    // Allow auth check for `json` files
+   if (pathname.endsWith('Login.json') || pathname.endsWith('Experience.json') || pathname.endsWith('Projects.json') || pathname.endsWith('Support.json') || pathname.endsWith('placeholder.png') || pathname.endsWith('Profile.jpg') || pathname.endsWith('CV.pdf')) {
+    return null;
+    }
 
-  if (
-    publicRoutes.some((route) => {
-      const dynamicRouteRegex = new RegExp(`^${route.replace(/\[id\]/, "\\d+")}$`)
-      return route === pathname || dynamicRouteRegex.test(pathname)
-    })
-  ) {
-    return NextResponse.next()
-  }
+    const url = req.nextUrl.pathname
 
-  if (!isLoggedIn && !publicRoutes.includes(pathname)) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("callbackUrl", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
+    // Check if the current URL matches any public route or the dynamic project page route
+    if (publicRoutes.some(route => new RegExp(`^${route.replace(/\[id\]/, '\\d+')}$`).test(url))) {
+        return NextResponse.next() // Allow the request to continue
+    }
 
-  if (isLoggedIn && dashboardRoutes.includes(pathname)) {
-    return NextResponse.next()
-  }
+    // Redirect to login if not logged in and not a public route
+    if (!isLoggedIn && !isPublicRoute) {
+        nextUrl.pathname = '/auth';
+        return NextResponse.redirect(nextUrl);
+    }
 
-  if (isLoggedIn && !dashboardRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, request.url))
-  }
+    if (publicRoutes.some(route => {
+        // Create a dynamic regex for the route, replacing `[id]` with a pattern that matches any non-slash string
+        const routePattern = new RegExp(`^${route.replace(/\[id\]/, '[^/]+')}$`);
+        return routePattern.test(url);
+    })) {
+        return NextResponse.next(); // Allow the request to continue
+    }
 
-  return NextResponse.next()
-}
+    return null; // Allow the request to proceed if it's a public route or the user is logged in and authorized
+});
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
-}
-
+    matcher: [
+        // Skip Next.js internals and static files, unless found in search params
+        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+        // Always run for API routes
+        '/(api|trpc)(.*)',
+    ],
+};

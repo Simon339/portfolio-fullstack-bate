@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from "../db";
+import { db } from "@/server/db";
 
 export async function getUnreadNotifications() {
   const unreadContactMessages = await db.contactForm.findMany({
