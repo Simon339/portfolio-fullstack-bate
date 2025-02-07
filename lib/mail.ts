@@ -41,7 +41,7 @@ const sendEmail = async (to: string, subject: string, reactElement: React.ReactE
 // Send verification email
 export const sendVerificationEmail = async (email: string, token: string) => {
   if (!email || !token) throw new Error("Email and token are required.")
-  const verificationLink = `${domain}/verify?token=${token}`
+  const verificationLink = `${domain}/verify-email?token=${token}`
   await sendEmail(email, "Verify your email address", VerificationEmail({ verificationLink }) as React.ReactElement)
 }
 

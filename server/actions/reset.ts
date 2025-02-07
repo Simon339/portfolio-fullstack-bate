@@ -2,7 +2,7 @@
 
 import bcrypt from 'bcryptjs'
 import * as z from "zod"
-import { ResetpasswordSchema, ResetSchema } from "@/types/vaildations/resetP"
+import { ResetPasswordSchema, ResetSchema } from "@/types/vaildations/resetP"
 import { getUserByEmail } from "@/server/data/user"
 import { generatePasswordResetToken } from "@/lib/token"
 import { sendPasswordResetEmail } from "@/lib/mail"
@@ -33,11 +33,11 @@ export const ResetPasswordAction = async (values: z.infer<typeof ResetSchema>) =
 }
 
 
-export const NewPasswordAction = async (values: z.infer<typeof ResetpasswordSchema>, token?: string | null) => {
+export const NewPasswordAction = async (values: z.infer<typeof ResetPasswordSchema>, token?: string | null) => {
     if (!token) {
         return {error: "Missing Token!"}
     }
-    const validatedFields = ResetpasswordSchema.safeParse(values);
+    const validatedFields = ResetPasswordSchema.safeParse(values);
     if (!validatedFields.success) {
         return { error: "Invalid Field!" };
     }

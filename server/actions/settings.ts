@@ -4,7 +4,7 @@ import { SettingsSchema } from "@/types";
 import * as z from "zod";
 import { getUserById } from "@/server/data/user";
 import { db } from "@/server/db";
-import { currentUser } from "@/lib/auth/auth";
+import { currentUser } from "@/lib/auth";
 
 
 export const Settings = async (

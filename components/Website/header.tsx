@@ -108,7 +108,7 @@ export default function Header() {
                         </div>
                     ) : (
                         
-                        <Link href='/login'>
+                        <Link href='/auth'>
                             <Button className='hover:bg-[#000B58] text-[#FFF4B7] font-bold bg-transparent rounded-md'>
 
                                 <CircleUserRound className="mr-2 h-16 text-[#FFF4B7] font-semibold hover:text-white" />
@@ -124,11 +124,3 @@ export default function Header() {
         </header>
     );
 }
-
-
-/*
-  https://www.youtube.com/watch?v=0QPXqRifh-c
-
-  https://github.com/hqasmei/youtube-tutorials/blob/main/collapsible-side-nav/src/app/header.tsx
-
-*/

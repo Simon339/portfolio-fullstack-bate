@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "../db";
+import { getUserByEmail } from "./user";
 
 export const getVerificationTokenByEmail = async (email: string) => {
     try {

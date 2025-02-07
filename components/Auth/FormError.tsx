@@ -1,4 +1,5 @@
-import { BsExclamationCircleFill } from "react-icons/bs";
+import { XCircle } from "lucide-react"
+import { motion } from "framer-motion"
 
 interface FormSuccessProps {
   message?: string;
@@ -7,9 +8,14 @@ interface FormSuccessProps {
 export const FormError = ({ message }: FormSuccessProps) => {
   if (!message) return null;
   return (
-    <div className="flex space-x-4 items-center p-2 rounded-lg text-red-500 bg-red-500/30">
-      <BsExclamationCircleFill className="w-4 h-4 " />
+    <motion.div
+      className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <XCircle className="h-4 w-4" />
       <p>{message}</p>
-    </div>
+    </motion.div>
   );
 };
