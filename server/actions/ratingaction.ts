@@ -78,11 +78,11 @@ export async function submitReview(formData: FormData) {
     const validToken = await db.select().from(tokens).where(
       and(
         eq(tokens.token, token),
-        eq(tokens.expires, new Date())
+        gt(tokens.expires, new Date()) // Check if the token's expiration time is greater than the current time
       )
     ).then((result) => result[0]);
 
-    if (!validToken || validToken.expires < new Date()) {
+    if (!validToken) {
       return { success: false, error: "Invalid or expired token" };
     }
 
