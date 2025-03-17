@@ -6,15 +6,13 @@ import * as z from "zod";
 import { generateReviewInvitationtoken } from "@/lib/token";
 import { sendReviewInvitationToken } from "@/lib/mail";
 import { auditLogs, ratings, tokens } from "../schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm"; // Import `gt` if needed
 import { headers } from "next/headers";
 
 export async function RatingAction(data: z.infer<typeof RatingSchema>) {
   try {
-    
     RatingSchema.parse(data);
 
-    
     const headersList = await headers();
     const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
     const userAgent = headersList.get('user-agent') || 'unknown';
@@ -24,7 +22,6 @@ export async function RatingAction(data: z.infer<typeof RatingSchema>) {
       rating: data.rating,
       feedback: data.feedback || null,
     }).returning();
-
 
     await db.insert(auditLogs).values({
       action: 'CREATE',
@@ -78,11 +75,11 @@ export async function submitReview(formData: FormData) {
     const validToken = await db.select().from(tokens).where(
       and(
         eq(tokens.token, token),
-        gt(tokens.expires, new Date()) // Check if the token's expiration time is greater than the current time
+        gt(tokens.expires, new Date()) // Ensure `gt` is imported
       )
     ).then((result) => result[0]);
 
-    if (!validToken) {
+    if (!validToken || validToken.expires < new Date()) {
       return { success: false, error: "Invalid or expired token" };
     }
 
@@ -107,7 +104,7 @@ export async function submitReview(formData: FormData) {
       action: 'CREATE',
       tableName: 'ratings',
       recordId: review[0].id,
-      userId:'unknown', // Replace with actual user ID if available
+      userId: 'unknown', // Replace with actual user ID if available
       details: JSON.stringify({ action: 'Review submitted', data: review[0] }),
       ipAddress: ipAddress, // Use dynamically collected IP address
       userAgent: userAgent,
