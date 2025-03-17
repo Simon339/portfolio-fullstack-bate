@@ -1,18 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, MailOpen } from 'lucide-react';
+import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, MailOpen, Trash2 } from 'lucide-react';
 import MessageCard from '@/components/Dashboard/MessageCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getAllContactMessages } from '@/server/actions/notification';
+import { getAllContactMessages, deleteRecords } from '@/server/actions/notification';
 import Link from 'next/link';
+import { Tooltip } from '@heroui/react';
+import DeleteMessage from './modals/DeleteMessage';
 
 const MessageTab = () => {
     const [selectAll, setSelectAll] = React.useState(false);
     const [pageSize, setPageSize] = React.useState(5);
     const [currentPage, setCurrentPage] = React.useState(1);
     const [allContactMessages, setAllContactMessages] = React.useState<Message[]>([]);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
     const totalPages = Math.ceil(allContactMessages.length / pageSize);
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
@@ -64,9 +69,22 @@ const MessageTab = () => {
         );
     };
 
+    const handleDeleteClick = () => {
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        setIsDeleting(true);
+        const selectedIds = allContactMessages.filter((message) => message.isSelected).map((message) => message.id);
+        await deleteRecords({ contactFormIds: selectedIds });
+        setIsDeleteDialogOpen(false);
+        setIsDeleting(false);
+        fetchNotifications(); // Refresh the list after deletion
+    };
+
     return (
         <div className='flex flex-col border-none'>
-            <div className="flex items-center justify-between p-2 border-b border-gray-200">
+            <div className="flex items-center justify-between p-2 border-b border-[#acc2ef]">
                 <div className="flex items-center gap-4">
                     <Checkbox
                         checked={selectAll}
@@ -76,22 +94,30 @@ const MessageTab = () => {
                     />
                     <h2 className="text-xl font-semibold text-gray-800">Messages</h2>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:bg-[#fff] hover:border-[#acc2ef]"
-                        onClick={handleMarkAsRead}
-                        disabled={selectedCount === 0}
-                    >
-                        <MailOpen className="h-4 w-4" />
-                    </Button>
+
+                <div className="relative flex items-center justify-items-end gap-2">
+                    <Tooltip color="danger" content="Delete Selected Message">
+                        <span className="text-sm text-danger cursor-pointer active:opacity-50" onClick={handleDeleteClick}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                        </span>
+                    </Tooltip>
+                    <Tooltip color="foreground" content="Mark as read">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-gray-600 hover:bg-[#fff] hover:border-[#acc2ef]"
+                            onClick={handleMarkAsRead}
+                            disabled={selectedCount === 0}
+                        >
+                            <MailOpen className="h-4 w-4" />
+                        </Button>
+                    </Tooltip>
                 </div>
             </div>
 
             <div className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full pr-4">
-                    <div className="flex-1 overflow-auto">
+                    <div className="flex-1 overflow-auto h-[400px]">
                         {currentMessages.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-[400px] text-gray-500">
                                 <p className="text-lg font-medium">No messages yet</p>
@@ -170,8 +196,16 @@ const MessageTab = () => {
                     </div>
                 </div>
             </footer>
+
+            {/* Delete Confirmation Dialog */}
+            <DeleteMessage
+                isOpen={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                onDelete={handleDeleteConfirm}
+                isDeleting={isDeleting}
+            />
         </div>
     )
 }
 
-export default MessageTab
+export default MessageTab;

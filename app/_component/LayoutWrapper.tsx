@@ -1,18 +1,20 @@
-'use server';
+"use server"
 
-import Providers from "@/components/Website/providers";
-import RatingModal from "@/components/Website/RatingModal";
-import SessionProvider from "@/components/Auth/SessionProvider";
-import { auth } from "@/server/auth";
+import type React from "react";
+import Providers from "@/components/Website/providers"
+import SessionProvider from "@/components/Auth/SessionProvider"
+import { auth } from "@/server/auth"
+import RatingModal from "@/components/Website/RatingModal"
 
 export default async function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await auth()
+
   return (
-      <SessionProvider session={session}>
-        <Providers>
-          {children}
-          <RatingModal />
-        </Providers>
-      </SessionProvider>
+    <SessionProvider session={session}>
+      <Providers>
+        {children}
+        <RatingModal />
+      </Providers>
+    </SessionProvider>
   )
 }

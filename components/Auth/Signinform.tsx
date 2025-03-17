@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -11,12 +10,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SignInForm, SignInSchema } from '@/types';
 import Link from 'next/link';
-import { login } from '@/server/actions/login';
+import { LoginAccount } from '@/server/actions/login';
 
 
 const Signinform = () => {
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+
   const [showPassword, setShowPassword] = useState(false)
 
   const form = useForm<SignInForm>({
@@ -30,10 +29,9 @@ const Signinform = () => {
   const onSubmit = async (data: SignInForm) => {
     try {
       setIsLoading(true)
-      const result = await login(data)
+      const result = await LoginAccount(data)
       if (result.success) {
         toast.success("Sign in successful")
-        router.push("/dashboard")
       } else {
         toast.error(result.error || "Sign in failed")
       }
@@ -99,8 +97,14 @@ const Signinform = () => {
       <div className="flex items-center justify-between">
         <Link href="/reset" className="text-sm text-gray-700 hover:text-blue-500">
           Forgot your password?
+        </Link><div className="flex items-end">
+        <Link href="/new-verification" className="text-sm text-gray-700 hover:text-blue-500">
+          Can&apos;t Login?
         </Link>
       </div>
+      </div>
+
+      
 
       <Button
         type="submit"

@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { NewPasswordAction } from "@/server/actions/reset"
 import { FormError } from "@/components/Auth/FormError"
 import { FormSuccess } from "@/components/Auth/FormSuccess"
@@ -24,6 +24,7 @@ const NewPassword: React.FC = () => {
     const [error, setError] = useState<string | undefined>("")
     const [success, setSuccess] = useState<string | undefined>("")
     const [isPending, startTransition] = useTransition()
+     const router = useRouter();
 
     const form = useForm<z.infer<typeof ResetPasswordSchema>>({
         resolver: zodResolver(ResetPasswordSchema),
@@ -40,6 +41,9 @@ const NewPassword: React.FC = () => {
             NewPasswordAction(values, token).then((data) => {
                 setError(data?.error)
                 setSuccess(data?.success)
+                if (data?.success) {
+                    router.push('/auth');
+                }
             })
         })
     }

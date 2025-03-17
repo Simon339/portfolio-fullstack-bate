@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState } from 'react'
+'use client'
+ 
+import { useState } from 'react'
 import Image from "next/image"
 import { Button } from '../ui/button';
 import Link from 'next/link';

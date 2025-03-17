@@ -1,59 +1,61 @@
-import React from "react";
-import { usePathname } from "next/navigation";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Button } from "../ui/button";
-import { Menu } from "lucide-react";
-import { ROUTES } from "@/data";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+"use client"
+
+import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Button } from "../ui/button"
+import { Menu } from "lucide-react"
+import { ROUTES } from "@/data"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 export default function MobNav() {
-    const pathname = usePathname();
-    const [open, setOpen] = React.useState(false);
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
-    const handleOpen = () => setOpen(!open);
-    React.useEffect(() => {
-        setOpen(false);
-    }, [pathname]);
+  useEffect(() => {
+    setMounted(true)
+    setOpen(false)
+  }, [pathname])
 
-    
-
+  // Prevent hydration errors
+  if (!mounted) {
     return (
-        <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild className="md:hidden" onClick={handleOpen}>
-                <Button className="bg-transparent border hover:text-[#FFF4B7] text-white font-bold border-full hover:bg-transparent ">
-                    <Menu className="text-white font-bold hover:text-[#FFF4B7]"/>
-                </Button>
-            </SheetTrigger>
+      <div className="md:hidden">
+        <Button className="bg-transparent border-none hover:bg-transparent p-1 h-8 w-8">
+          <div className="h-5 w-5" />
+        </Button>
+      </div>
+    )
+  }
 
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] bg-black-200 text-white backdrop-blur-md">
-                <div className="max-w-sm mx-auto w-full mb-3">
-                    <SheetHeader className="list-none  sm:space-y-2">
-                        <SheetTitle>
-                            <VisuallyHidden>Navigation Menu</VisuallyHidden> 
-                            </SheetTitle>
-                            <nav className="flex flex-col gap-4">
-                                {ROUTES.map((route) => {
-                            return (
-                                <li key={route.id} className="hover:text-[#bda873] font-bold">
-                                    <Link
-                                        href={route.path}
-                                        className={cn(
-                                            "hover:text-[#a2790d] ",
-                                             (pathname === route.path || pathname.startsWith(`${route.path}/`)) && "text-[#FFEAC6] font-bold"
-                                        )}
-                                    >
-                                        {route.name}
-                                    </Link>
-                                </li>
-                            );
-                        })}
-                            </nav>
-                        
-                    </SheetHeader>
-                </div>
-            </SheetContent>
-        </Sheet>
-    );
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild className="md:hidden">
+        <Button className="bg-transparent border-none hover:bg-transparent p-1 h-8 w-8">
+          <Menu className="text-white hover:text-[#FFF4B7]" />
+          <span className="sr-only">Menu</span>
+        </Button>
+      </SheetTrigger>
+
+      <SheetContent side="left" className="w-[250px] bg-black-200 text-white">
+        <nav className="flex flex-col gap-4 mt-8">
+          {ROUTES.map((route) => (
+            <Link
+              key={route.id}
+              href={route.path}
+              className={cn(
+                "text-sm hover:text-[#FFF4B7]",
+                (pathname === route.path || pathname.startsWith(`${route.path}/`)) && "text-[#FFEAC6] font-medium",
+              )}
+            >
+              {route.name}
+            </Link>
+          ))}
+        </nav>
+      </SheetContent>
+    </Sheet>
+  )
 }
+

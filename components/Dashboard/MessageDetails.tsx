@@ -6,6 +6,7 @@ import { MailPlus, MoreHorizontal, SquarePen, } from 'lucide-react';
 import { Dropdown, DropdownMenu, DropdownSection, DropdownItem, DropdownTrigger } from '@heroui/react';
 
 import { markContactFormAsRead } from '@/server/actions/notification';
+import React from "react";
 
 interface Message {
     id: string;

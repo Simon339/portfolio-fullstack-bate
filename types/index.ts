@@ -31,7 +31,7 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const AddNewUserSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   surname: z.string().min(2, { message: "Surname must be at least 2 characters." }),
-  role: z.enum(["USER", "ADMIN"], { message: "Role must be either USER or ADMIN" }),
+  role: z.enum(["USER", "ADMIN", "SUPER_ADMIN"], { message: "Role must be either USER or ADMIN" }),
   email: z.string().email({ message: "Invalid email address." }),
   image: z
     .instanceof(File)

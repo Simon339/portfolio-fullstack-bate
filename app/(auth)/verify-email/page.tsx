@@ -49,7 +49,7 @@ const Page: React.FC = () => {
   return (
     <section className="flex items-center justify-center bg-gradient-to-b from-indigo-100 to-white px-4 py-12 min-h-screen w-full">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card className="w-full shadow-2xl bg-white rounded-xl overflow-hidden">
+        <Card className="w-full shadow-2xl bg-white rounded-xl  min-h-screenoverflow-hidden">
           <CardContent className="p-2 w-full">
             <Header />
 

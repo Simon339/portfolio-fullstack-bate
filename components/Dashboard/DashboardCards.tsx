@@ -5,7 +5,7 @@ import { Users, MessageCircleMore, FolderGit2,  } from 'lucide-react'
 
 interface UserCardProps {
   type: string;
-  count: string;
+  count: number;
   icon: "users" | "message" | "projects" | "staff";
 }
 

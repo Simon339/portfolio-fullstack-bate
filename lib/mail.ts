@@ -47,12 +47,13 @@ export const sendVerificationEmail = async (email: string, token: string) => {
 
 // Send verification email for add user that has been added by admin
 export const sendVerificationEmailForAddedUser = async (email: string, token: string, password: string) => {
-  if (!email || !token) throw new Error("Email and token are required.")
-  const verificationLink = `${domain}/verify?token=${token}`
+  if (!email || !token) throw new Error("Email and token are required.");
+  console.log("Sending email to:", email); // Debugging log
+  const verificationLink = `${domain}/verify-email?token=${token}`;
   await sendEmail(email, "Verify your email address", VerificationbyadminEmail({
     verificationLink, password
-  }) as React.ReactElement)
-}
+  }) as React.ReactElement);
+};
 
 // Send password reset email
 export const sendPasswordResetEmail = async (email: string, token: string) => {

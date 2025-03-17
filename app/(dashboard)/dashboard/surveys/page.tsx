@@ -3,10 +3,10 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from 'lucide-react';
 import RatingsCard from '@/components/Dashboard/RatingsCard';
-import { fetchRating } from '@/server/actions/ratingaction';
+import { FetchRatings } from '@/server/actions/ratingaction';
 import ReviewModal from '@/components/Dashboard/ReviewModal';
 
 interface Rating {
@@ -26,16 +26,19 @@ const Ratings = () => {
   const endIndex = startIndex + pageSize;
   const currentRatings = ratings.slice(startIndex, endIndex);
 
-
   useEffect(() => {
-    fetchRatings();
+    // Fetch ratings and update state
+    const fetchData = async () => {
+      const result = await FetchRatings();
+      if (result.success && result.data) {
+        setRatings(result.data);
+      } else {
+        alert("Something happened while fetching data.");
+      }
+    };
+
+    fetchData();
   }, []);
-
-  const fetchRatings = async () => {
-    const ratings = await fetchRating();
-    setRatings(ratings);
-  };
-
 
   return (
     <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
@@ -127,4 +130,3 @@ const Ratings = () => {
 };
 
 export default Ratings;
-

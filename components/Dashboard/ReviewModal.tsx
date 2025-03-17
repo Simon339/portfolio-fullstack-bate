@@ -70,7 +70,7 @@ const ReviewModal = () => {
             <DialogTrigger asChild>
                 <Button
                     size="icon"
-                    className="text-gray-600 hover:bg-[#fff] rounded-full hover:border-[#acc2ef]"
+                    className="text-gray-600 hover:bg-[#fff] rounded-full hover:border-[#acc2ef] bg-[#fff] border-[#acc2ef]"
                 >
                     <Plus className="h-4 w-4" />
                 </Button>

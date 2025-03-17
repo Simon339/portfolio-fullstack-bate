@@ -1,21 +1,20 @@
-"use client";
+"use client"
 
-import { ThemeProvider, useTheme } from "next-themes";
-import { Toaster } from "sonner";
-import { useState, useEffect } from "react";
+import type React from "react"
+
+import { ThemeProvider } from "next-themes"
+import { useState, useEffect } from "react"
+import { useSessionTimeout } from "@/hooks/useTimeout"
+import { ToastProvider } from "@/hooks/use-toast"
 
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false)
+  useSessionTimeout()
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  
-  if (!mounted) {
-    return null;
-  }
+    setMounted(true)
+  }, [])
 
   return (
     <ThemeProvider
@@ -23,20 +22,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       defaultTheme="dark"
       enableSystem
       disableTransitionOnChange
+      storageKey="theme-preference"
     >
       {children}
-      <ToasterProvider />
+      {mounted && <ToastProvider />}
     </ThemeProvider>
-  );
+  )
 }
 
-function ToasterProvider() {
-  const { resolvedTheme } = useTheme();
-
-  return (
-    <Toaster
-      position="top-right"
-      theme={resolvedTheme === "dark" ? "dark" : "light"}
-    />
-  );
-}

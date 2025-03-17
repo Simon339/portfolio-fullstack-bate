@@ -1,70 +1,60 @@
-import NextAuth from "next-auth"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import authConfig from "@/auth.config"
-import { db } from "./db"
-import { getUserById } from "./data/user"
-import { UserRole } from "@prisma/client"
+import NextAuth from "next-auth";
+import bcrypt from 'bcryptjs';
+import Credentials from "next-auth/providers/credentials";
+import { LoginSchema } from "@/types/vaildations/login";
+import { getUserByEmail } from "./data/user";
 
-
-
-export const  {
-  handlers: { GET, POST }, signIn, signOut, auth
-} = NextAuth({
-  callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider !== "credentials") {
-        return true;
-      }
-
-      const existingUser = await getUserById(user.id ?? "");
-
-      if (!existingUser?.emailVerified) {
-        return false;
-      }
-
-      return true
-    },
-    async session({ token, session }) {
-      // console.log("token in session", token);
-      // console.log("session in session", session);
-      if (token.sub && session.user) {
-        session.user.id = token.sub;
-      }
-
-      if (token.surname && session.user) {
-        session.user.surname = token.surname as string;
-      }
-
-      if (token.role && session.user) {
-        session.user.role = token.role as UserRole;
-      }
-
-      if (token.cellphone && session.user) {
-        session.user.phone = token.phone as string;
-      }
-
-      return session;
-    },
-    async jwt({ token }) {
-
-      if (!token.sub) return token;
-      const existingUser = await getUserById(token.sub);
-
-      if (!existingUser) return token;
-      token.name = existingUser.name;
-      token.email = existingUser.email;
-      token.role = existingUser.role;
-      token.surname = existingUser.surname;
-      token.phone = existingUser.phone;
-
-      return token;
-    },
-  },
-  adapter: PrismaAdapter(db),
+export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60,  // Session expiration (in seconds)
-    updateAge: 60,  // Session cookie update frequency 
+    maxAge: 60 * 60,
   },
-  ...authConfig,
-})
+  providers: [
+    Credentials({
+      async authorize(credentials) {
+        const validatedFields = LoginSchema.safeParse(credentials);
+        if (validatedFields.success) {
+          const { email, password } = validatedFields.data;
+          const user = await getUserByEmail(email);
+          if (!user) return null;
+          if (!user.password) return null;
+          if (!user.emailVerified) {
+            throw new Error("EMAIL_NOT_VERIFIED");
+          }
+          const passwordsMatch = await bcrypt.compare(password, user.password);
+
+          if (passwordsMatch) return user;
+        }
+        return null;
+      },
+    }),
+  ],
+  pages: {
+    signIn: "/auth",
+    signOut: "/signout",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.role = user.role;
+        token.surname = user.surname;
+        token.phone = user.phone;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.surname = token.surname as string;
+        session.user.role = token.role as string;
+        session.user.phone = token.phone as string;
+        session.user.status = token.status as string;
+      }
+      return session;
+    },
+  },
+});

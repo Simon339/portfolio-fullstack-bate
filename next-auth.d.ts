@@ -2,7 +2,7 @@
 import NextAuth, { type DefaultSession } from "next-auth"
 
 export type ExtendedUser = DefaultSession['user'] & {
-  role: "ADMIN" | "USER" 
+  role: "ADMIN" | "USER" | "SUPER_USER"
 }
 
 export type SAID = {
@@ -19,5 +19,13 @@ export type ExtendedUserWithSAID = ExtendedUser & SAID & CellPhone
 declare module "next-auth" {
   interface Session {
     user: ExtendedUserWithSAID; 
+  }
+}
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string
+    role: string
+    status: string
+    emailVerified: Date | null
   }
 }

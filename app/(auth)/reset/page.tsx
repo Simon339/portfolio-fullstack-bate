@@ -87,9 +87,9 @@ const PasswordRest: React.FC = () => {
                             <FormError message={error} />
                             <FormSuccess message={success} />
 
-                            <div className="flex items-center justify-between">
-                                <Link href="/reset" className="text-sm text-gray-700 hover:text-blue-500">
-                                    Forgot your password?
+                            <div className="flex pr-3 items-center justify-between">
+                                <Link href="/auth" className="text-sm text-gray-700 hover:text-blue-500">
+                                Remember your password?
                                 </Link>
                             </div>
 
