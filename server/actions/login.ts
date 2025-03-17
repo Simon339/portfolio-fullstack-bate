@@ -5,6 +5,7 @@ import { LoginSchema } from "@/types/vaildations/login"
 import { signIn } from "@/server/auth";
 import { AuthError } from "next-auth";
 import { getUserByEmail } from "../data/user";
+import bcrypt from "bcryptjs";
 
 export const LoginAccount = async (data: z.infer<typeof LoginSchema>) => {
   // Validate input fields
@@ -15,13 +16,13 @@ export const LoginAccount = async (data: z.infer<typeof LoginSchema>) => {
 
   const { email, password } = validatedFields.data;
 
-  // Check if the user exists
+  // Fetch user data
   const userExists = await getUserByEmail(email);
   if (!userExists || !userExists.email || !userExists.password) {
     return { error: "User does not exist" };
   }
 
-  // Check if the user has requested account deletion
+  // Check for account deletion requested
   if (userExists.deletionRequestedAt) {
     return {
       error:
@@ -33,6 +34,12 @@ export const LoginAccount = async (data: z.infer<typeof LoginSchema>) => {
   // Check if the user's email is verified
   if (!userExists.emailVerified) {
     return { error: "Please verify your email before logging in", verificationRequired: true };
+  }
+
+  // Compare the plain text password with the hashed password
+  const isPasswordValid = await bcrypt.compare(password, userExists.password);
+  if (!isPasswordValid) {
+    return { error: "Invalid credentials" };
   }
 
   try {
