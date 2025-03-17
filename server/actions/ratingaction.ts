@@ -75,7 +75,7 @@ export async function submitReview(formData: FormData) {
     const validToken = await db.select().from(tokens).where(
       and(
         eq(tokens.token, token),
-        gt(tokens.expires, new Date()) // Ensure `gt` is imported
+        gt(tokens.expires, new Date())
       )
     ).then((result) => result[0]);
 
@@ -104,9 +104,9 @@ export async function submitReview(formData: FormData) {
       action: 'CREATE',
       tableName: 'ratings',
       recordId: review[0].id,
-      userId: 'unknown', // Replace with actual user ID if available
+      userId: null, // Set userId to null if not available
       details: JSON.stringify({ action: 'Review submitted', data: review[0] }),
-      ipAddress: ipAddress, // Use dynamically collected IP address
+      ipAddress: ipAddress,
       userAgent: userAgent,
     });
 
