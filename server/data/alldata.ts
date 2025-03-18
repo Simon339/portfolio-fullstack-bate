@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { generateVerificationToken } from "@/lib/token";
 import { sendVerificationEmail, sendVerificationEmailForAddedUser } from "@/lib/mail";
 import { users, auditLogs, deletedUsers, contactForms, serviceInquiries, projects } from "../schema"; 
-import { eq, desc, and, gte, lt, count } from "drizzle-orm";
+import { eq, desc, and, gte, lt, count, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "../auth";
 
@@ -426,7 +426,7 @@ export async function getUserAuditLogs(userId: string): Promise<AuditLog[]> {
 export async function getTotalUsers() {
   try {
     const totalUsers = await db.select().from(users);
-    revalidatePath("/dashboard"); // Revalidate the dashboard page
+    revalidatePath("/dashboard");
     return totalUsers.length;
   } catch (error) {
     console.error("Failed to fetch total users:", error);
@@ -439,7 +439,7 @@ export async function getStaffCount() {
     const staff = await db
       .select()
       .from(users)
-      .where(eq(users.role, ["ADMIN", "SUPER_ADMIN"]));
+      .where(inArray(users.role, ["ADMIN", "SUPER_ADMIN"])); 
 
     return staff.length;
   } catch (error) {

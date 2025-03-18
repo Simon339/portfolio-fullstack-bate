@@ -1,26 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-'use client'
+"use client"
 
-import React, { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import type React from "react"
+import { useState } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Plus } from 'lucide-react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { TechstackSchema } from '@/types/vaildations/project'
-import { toast } from 'sonner'
+import { Plus } from "lucide-react"
+import { useForm } from "react-hook-form"
+import type { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { TechstackSchema } from "@/types/vaildations/project"
+import { toast } from "sonner"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from '@/components/ui/input'
-import { createTechstack } from '@/server/data/projectactions'
-
+import { Input } from "@/components/ui/input"
+import { createTechstack } from "@/server/data/projectactions"
 
 const TechstackModal = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -30,25 +24,36 @@ const TechstackModal = () => {
   const form = useForm<z.infer<typeof TechstackSchema>>({
     resolver: zodResolver(TechstackSchema),
     defaultValues: {
-      name: '',
+      name: "",
       image: [],
     },
   })
+
+  const resetForm = () => {
+    form.reset({
+      name: "",
+      image: [],
+    })
+    setImages([])
+  }
 
   const onSubmit = async (data: z.infer<typeof TechstackSchema>) => {
     setIsSubmitting(true)
     try {
       const formData = new FormData()
-      formData.append('name', data.name)
+      formData.append("name", data.name)
       image.forEach((image) => {
-        formData.append('image', image)
+        formData.append("image", image)
       })
 
       const result = await createTechstack(formData)
-      
-      toast.success('Techstack Created successfully!', {
+
+      toast.success("Techstack Created successfully!", {
         duration: 3000,
       })
+
+      // Reset form after successful submission
+      resetForm()
 
       setTimeout(() => {
         setIsOpen(false)
@@ -56,7 +61,7 @@ const TechstackModal = () => {
 
       console.log(result)
     } catch (error) {
-      toast.error('Failed to create Techstack', {
+      toast.error("Failed to create Techstack", {
         duration: 3000,
       })
     } finally {
@@ -67,21 +72,28 @@ const TechstackModal = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newImages = Array.from(e.target.files)
-      form.setValue('image', [...form.getValues('image'), ...newImages])
+      form.setValue("image", [...form.getValues("image"), ...newImages])
       setImages([...image, ...newImages])
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open)
+        if (!open) resetForm()
+      }}
+    >
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className='rounded-full border-[#acc2ef] hover:bg-[#cccbc8] text-gray-700'>
+        <Button variant="ghost" size="icon" className="rounded-full border-[#acc2ef] hover:bg-[#cccbc8] text-gray-700">
           <Plus className="h-2 w-2" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[458px] bg-[#0F1C2E] text-[#acc2ef]">
         <DialogHeader>
-          <DialogTitle className="flex flex-col gap-1 justify-center items-center align-middle text-lg font-bold">Create New Techstack
+          <DialogTitle className="flex flex-col gap-1 justify-center items-center align-middle text-lg font-bold">
+            Create New Techstack
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
@@ -94,7 +106,7 @@ const TechstackModal = () => {
                   <FormItem>
                     <FormLabel>Name:</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter Techstack Name" {...field} className='w-full' />
+                      <Input placeholder="Enter Techstack Name" {...field} className="w-full" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -109,22 +121,19 @@ const TechstackModal = () => {
                   <FormItem>
                     <FormLabel>Image:</FormLabel>
                     <FormControl>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageChange}
-                      />
+                      <Input type="file" accept="image/*" multiple onChange={handleImageChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 </div>
               )}
             />
-            <Button type="submit" disabled={isSubmitting}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
               className="w-full disabled:opacity-50 bg-white text-black hover:bg-[#685189] font-bold"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit'}
+              {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
           </form>
         </Form>
@@ -134,3 +143,4 @@ const TechstackModal = () => {
 }
 
 export default TechstackModal
+

@@ -6,7 +6,7 @@ import * as z from "zod";
 import { generateReviewInvitationtoken } from "@/lib/token";
 import { sendReviewInvitationToken } from "@/lib/mail";
 import { auditLogs, ratings, tokens } from "../schema";
-import { eq, and, gt } from "drizzle-orm"; // Import `gt` if needed
+import { eq, and, gt } from "drizzle-orm";
 import { headers } from "next/headers";
 
 export async function RatingAction(data: z.infer<typeof RatingSchema>) {
@@ -17,7 +17,7 @@ export async function RatingAction(data: z.infer<typeof RatingSchema>) {
     const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
     const userAgent = headersList.get('user-agent') || 'unknown';
 
-    console.log("Inserting rating into database..."); // Debugging line
+    console.log("Inserting rating into database...");
     const newRating = await db.insert(ratings).values({
       rating: data.rating,
       feedback: data.feedback || null,
@@ -104,7 +104,7 @@ export async function submitReview(formData: FormData) {
       action: 'CREATE',
       tableName: 'ratings',
       recordId: review[0].id,
-      userId: null, // Set userId to null if not available
+      userId: null, 
       details: JSON.stringify({ action: 'Review submitted', data: review[0] }),
       ipAddress: ipAddress,
       userAgent: userAgent,

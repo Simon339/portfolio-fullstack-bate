@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input"
 import { SignInForm, SignInSchema } from '@/types';
 import Link from 'next/link';
 import { LoginAccount } from '@/server/actions/login';
+import { useRouter } from 'next/navigation';
 
 
 const Signinform = () => {
   const [isLoading, setIsLoading] = useState(false)
-
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false)
 
   const form = useForm<SignInForm>({
@@ -28,20 +29,34 @@ const Signinform = () => {
 
   const onSubmit = async (data: SignInForm) => {
     try {
-      setIsLoading(true)
-      const result = await LoginAccount(data)
+      setIsLoading(true);
+      const result = await LoginAccount(data);
+
       if (result.success) {
-        toast.success("Sign in successful")
-      } else {
-        toast.error(result.error || "Sign in failed")
+        toast.success("Sign in successful");
+        if (result.redirectTo) {
+          router.push(result.redirectTo);
+        } else {
+          router.push("/dashboard");
+        }
+      } else if (result.error) {
+        if (result.verificationRequired) {
+          toast.error("Please verify your email before logging in.");
+        } else if (result.accountDeletionRequested) {
+          toast.error(
+            "This account has been scheduled for deletion. Please contact support if you wish to cancel the deletion request."
+          );
+        } else {
+          toast.error(result.error || "Sign in failed");
+        }
       }
     } catch (error) {
-      console.error("Sign in error:", error)
-      toast.error("An unexpected error occurred. Please try again later.")
+      console.error("Sign in error:", error);
+      toast.error("An unexpected error occurred. Please try again later.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Form {...form}>

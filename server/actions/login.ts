@@ -47,7 +47,7 @@ export const LoginAccount = async (data: z.infer<typeof LoginSchema>) => {
     await signIn("credentials", {
       email: userExists.email,
       password: password,
-      redirect: false, // Prevent automatic redirection
+      redirect: false,
     });
 
     // Determine the redirect path based on user status and role

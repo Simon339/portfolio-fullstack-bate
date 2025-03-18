@@ -421,7 +421,7 @@ export const projectsNav = [
       name: 'design',
     },
 ];
-
+//fix color schema , and dashboard card and notification , as well as inquirest details, make project table to have small row and fix feautes colum , Tech Stack and Category form must reset and data must load on realtime
 export const educationData = [
     {
         id: 1,

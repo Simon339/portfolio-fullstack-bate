@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight, MoreHorizontal, UserCheck, UserX, Bell } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Notification {
   id: string;
@@ -36,6 +37,7 @@ interface PendingUser {
 }
 
 const Notificationdashcard = () => {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [activeTab, setActiveTab] = useState("all");
@@ -47,9 +49,14 @@ const Notificationdashcard = () => {
       try {
         const [notificationsData, pendingUsersData] = await Promise.all([getAllNotifications(), getPendingUsers()]);
         setNotifications(notificationsData);
-        setPendingUsers(pendingUsersData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
+        setPendingUsers(
+          pendingUsersData.map((user) => ({
+            ...user,
+            image: user.image || `https://api.dicebear.com/6.x/initials/svg?seed=${user.name}`,
+          }))
+        );
+      } catch {
+        throw new Error("Failed to load notifications. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -80,10 +87,12 @@ const Notificationdashcard = () => {
     );
   };
 
+  // Calculate unread count (only unread notifications + pending users)
   const unreadCount = notifications.filter((n) => !n.read).length + pendingUsers.length;
 
+  // Combine notifications and pending users for the "All" tab
   const allItems = [
-    ...notifications.filter((n) => !n.archived),
+    ...notifications.filter((n) => !n.read && !n.archived), // Only include unread and non-archived notifications
     ...pendingUsers.map((user) => ({
       id: user.id,
       type: "access" as const,
@@ -141,9 +150,9 @@ const Notificationdashcard = () => {
                     <div key={item.id} className="flex items-start gap-3 pb-4 last:pb-0">
                       {item.type === "access" ? (
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={image || `https://api.dicebear.com/6.x/initials/svg?seed=${name}`} alt="Avatar" />
+                          <AvatarImage src={item.image} alt="Avatar" />
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {item.name.charAt(0) || `https://api.dicebear.com/6.x/initials/svg?seed=${name}`}
+                            {item.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                       ) : (
@@ -210,13 +219,13 @@ const Notificationdashcard = () => {
               <TabsContent value="unread" className="m-0 space-y-4">
                 {loading ? (
                   <div className="flex justify-center items-center h-[200px]">
-                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-                </div>
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
                 ) : notifications.filter((n) => !n.read && !n.archived).length > 0 ? (
                   notifications
                     .filter((n) => !n.read && !n.archived)
                     .map((notification) => (
-                      <div key={notification.id} className="flex items-start gap-3 pb-4 last:pb-0">
+                      <div key={notification.id} className="flex items-start gap-3 pb-4 last:pb-0" onClick={() => router.push(`/dashboard/mails`)}>
                         <span className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
                         <div className="flex-1 space-y-1">
                           <p className="text-sm font-medium leading-none">{notification.name}</p>
@@ -257,11 +266,11 @@ const Notificationdashcard = () => {
               <TabsContent value="access" className="m-0 space-y-4">
                 {loading ? (
                   <div className="flex justify-center items-center h-[200px]">
-                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-                </div>
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
                 ) : pendingUsers.length > 0 ? (
                   pendingUsers.map((user) => (
-                    <div key={user.id} className="flex items-start gap-3 pb-4 last:pb-0">
+                    <div key={user.id} className="flex items-start gap-3 pb-4 last:pb-0" onClick={() => router.push(`/dashboard/users/${user.id}`)}>
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-primary/10 text-primary text-xs">
                           {`${user.name.charAt(0)}`}
@@ -307,7 +316,7 @@ const Notificationdashcard = () => {
         </Tabs>
       </CardContent>
       <CardFooter className="border-t bg-gray-50/50 py-3">
-        <Button variant="ghost" size="sm" className="w-full justify-between" onClick={() => { /* Handle click */ }}>
+        <Button variant="ghost" size="sm" className="w-full justify-between" onClick={() => router.push("/dashboard/mails")}>
           View all notifications
           <ChevronRight className="h-4 w-4" />
         </Button>

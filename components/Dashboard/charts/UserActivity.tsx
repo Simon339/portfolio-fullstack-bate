@@ -91,7 +91,7 @@ export default function UserActivity() {
       </CardContent>
 
       <CardFooter className="border-t bg-gray-50/50 py-3">
-        <Button variant="ghost" size="sm" className="w-full justify-between">
+        <Button variant="ghost" size="sm" className="w-full justify-between" onClick={() => window.location.href = "/dashboard/reports"}>
           View all activity
           <ChevronRight className="h-4 w-4" />
         </Button>

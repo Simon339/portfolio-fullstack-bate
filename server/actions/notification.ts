@@ -18,13 +18,33 @@ export async function getUnreadNotifications() {
 }
 
 export async function countUnreadNotifications() {
+  // Count unread contact messages
   const unreadContactMessagesCount = await db
     .select({ count: sql<number>`count(*)` })
     .from(contactForms)
     .where(eq(contactForms.read, false));
 
-  return unreadContactMessagesCount[0].count;
+  // Count unread service inquiries
+  const unreadServiceInquiriesCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(serviceInquiries)
+    .where(eq(serviceInquiries.read, false));
+
+  // Count pending users
+  const pendingUsersCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(users)
+    .where(eq(users.status, "PENDING"));
+
+  // Ensure all counts are numbers and sum them
+  const totalUnreadNotifications =
+    Number(unreadContactMessagesCount[0].count) +
+    Number(unreadServiceInquiriesCount[0].count) +
+    Number(pendingUsersCount[0].count);
+
+  return totalUnreadNotifications;
 }
+
 
 export async function markContactFormAsRead(id: string) {
   const headersList  = await headers();
@@ -44,7 +64,7 @@ export async function markContactFormAsRead(id: string) {
       tableName: 'contact_forms',
       recordId: id,
       details: JSON.stringify({ action: 'Marked contact form as read', data: updatedMessage[0] }),
-      ipAddress: ipAddress, // Use dynamically collected IP address
+      ipAddress: ipAddress, 
       userAgent: userAgent,
     });
   }

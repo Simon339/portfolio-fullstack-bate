@@ -15,7 +15,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import { ArrowUpDown, ChevronLeft, ChevronRight, Edit, Eye, Plus, Search, Trash2 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -23,7 +22,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "sonner"
 import { deleteProject, fetchProject } from "@/server/data/projectactions"
-import ProjectModal from "./modals/Project"
 import DeleteConfirmationModal from "./modals/DeleteProjectModal"
 import Link from "next/link"
 
@@ -39,9 +37,9 @@ export type Project = {
 }
 
 interface FetchProjectResponse {
-  success: boolean;
-  data?: Project[];
-  error?: string;
+  success: boolean
+  data?: Project[]
+  error?: string
 }
 
 const ProjectTable = () => {
@@ -170,15 +168,29 @@ const ProjectTable = () => {
     {
       accessorKey: "image",
       header: "Image",
-      cell: ({ row }) => (
-        <div className="flex items-center justify-center">
-          <img
-            src={row.getValue("image") || "/placeholder.svg?height=48&width=48"}
-            alt={`${row.getValue("name")} thumbnail`}
-            className="size-10 rounded-md object-cover"
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const imageValue = row.getValue("image") as string
+        return (
+          <div className="flex items-center justify-center">
+            <div className="h-10 w-10 overflow-hidden rounded-md border bg-muted">
+              {imageValue ? (
+                <img
+                  src={imageValue || "/placeholder.svg"}
+                  alt={`${row.getValue("name")} thumbnail`}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.svg?height=40&width=40"
+                  }}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+                  <span className="sr-only">No image</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      },
     },
     {
       accessorKey: "name",
@@ -214,7 +226,7 @@ const ProjectTable = () => {
         const category = row.getValue("category") as { id: string; name: string }
         return (
           <div className="capitalize">
-            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
               {category?.name || "Uncategorized"}
             </span>
           </div>
@@ -222,22 +234,69 @@ const ProjectTable = () => {
       },
     },
     {
-      accessorKey: "techstack",
+      accessorKey: "techstacks",
       header: "Tech Stack",
       cell: ({ row }) => {
-        const techStack = (row.getValue("techstack") as string) || ""
-        const techs = techStack.split(",").map((tech) => tech.trim())
+        const techStacks = row.original.techstacks || []
+
+        if (techStacks.length === 0) {
+          return <span className="text-muted-foreground text-xs">No technologies</span>
+        }
+
+        // Limit to first 3 tech stacks
+        const displayTechs = techStacks.slice(0, 3)
+        const remainingCount = techStacks.length - 3
 
         return (
           <div className="flex flex-wrap gap-1">
-            {techs.map((tech, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium"
-              >
-                {tech}
-              </span>
+            {displayTechs.map((tech, index) => (
+              <TooltipProvider key={index}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm overflow-hidden border">
+                      {tech.image ? (
+                        <img
+                          src={tech.image || "/placeholder.svg"}
+                          alt={tech.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg?height=32&width=32"
+                          }}
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-muted text-xs font-bold">
+                          {tech.name.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{tech.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ))}
+
+            {remainingCount > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold shadow-sm">
+                      +{remainingCount}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-[200px]">
+                      {techStacks.slice(3).map((tech, i) => (
+                        <div key={i} className="text-sm">
+                          {tech.name}
+                        </div>
+                      ))}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         )
       },
@@ -248,8 +307,8 @@ const ProjectTable = () => {
       cell: ({ row }) => {
         const description = row.getValue("description") as string
         return (
-          <div className="max-w-[200px] truncate" title={description}>
-            {description}
+          <div className="max-w-[200px] truncate text-sm" title={description}>
+            {description || <span className="text-muted-foreground text-xs">No description</span>}
           </div>
         )
       },
@@ -259,16 +318,27 @@ const ProjectTable = () => {
       header: "Features",
       cell: ({ row }) => {
         const features = row.getValue("features") as Array<{ name: string; description: string }>
+
+        if (!features || features.length === 0) {
+          return <span className="text-muted-foreground text-xs">No features</span>
+        }
+
+        // Only show the first 3 features
+        const displayFeatures = features.slice(0, 2)
+        const remainingCount = features.length - 3
+
         return (
-          <div className="flex flex-wrap gap-1">
-            {features.map((feature, index) => (
+          <div className="flex flex-col gap-1 max-w-[200px]">
+            {displayFeatures.map((feature, index) => (
               <span
                 key={index}
-                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                className="inline-flex items-center rounded-full bg-muted/60 px-1.5 py-0.5 text-xs font-medium truncate"
+                title={feature.name}
               >
                 {feature.name}
               </span>
             ))}
+            {remainingCount > 0 && <span className="text-xs text-muted-foreground">+{remainingCount} more</span>}
           </div>
         )
       },
@@ -360,7 +430,7 @@ const ProjectTable = () => {
     onRowSelectionChange: setRowSelection,
     onPaginationChange: (updater) => {
       if (typeof updater === "function") {
-        setPageIndex(updater({ pageIndex, pageSize: rowsPerPage }).pageIndex);
+        setPageIndex(updater({ pageIndex, pageSize: rowsPerPage }).pageIndex)
       }
     },
   })
@@ -374,7 +444,7 @@ const ProjectTable = () => {
             placeholder="Search projects..."
             value={(columnFilters.find((filter) => filter.id === "name")?.value as string) || ""}
             onChange={(e) => setColumnFilters([{ id: "name", value: e.target.value }])}
-            className="pl-8 text-gray-600 bg-white hover:border-[#acc2ef]"
+            className="pl-8 text-gray-600 bg-white border-[#acc2ef] hover:border-primary focus-visible:ring-1 focus-visible:ring-primary"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -383,13 +453,13 @@ const ProjectTable = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-white border-[#acc2ef] bg-transparent hover:bg-destructive/10 hover:text-destructive"
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-[#acc2ef] bg-white hover:bg-destructive/10 hover:text-destructive"
                     onClick={handleBulkDeleteClick}
                   >
-                    <Trash2 className="size-4" />
-                    <span className="sr-only">Delete selected</span>
+                    <Trash2 className="size-4 mr-1" />
+                    Delete Selected
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -399,25 +469,22 @@ const ProjectTable = () => {
             </TooltipProvider>
           )}
           <Link href="/dashboard/projects/add">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full border-[#acc2ef] hover:bg-[#cccbc8] text-gray-700"
-            >
-              <Plus className="h-2 w-2" />
+            <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Project
             </Button>
           </Link>
         </div>
       </div>
 
-      <div className="rounded-md border border-[#acc2ef] flex-1 flex flex-col overflow-hidden">
+      <div className="rounded-md border border-[#acc2ef] flex-1 flex flex-col overflow-hidden shadow-sm bg-white">
         <div className="flex-1 overflow-auto">
           <Table className="w-full h-full">
-            <TableHeader className="bg-white sticky top-0 z-10">
+            <TableHeader className="bg-muted/5 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-b border-[#acc2ef] hover:bg-gray-50">
+                <TableRow key={headerGroup.id} className="border-b border-[#acc2ef] hover:bg-transparent">
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className="text-gray-800 font-semibold">
+                    <TableHead key={header.id} className="text-gray-800 font-medium py-3 text-sm">
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   ))}
@@ -442,16 +509,48 @@ const ProjectTable = () => {
                     className="border-b border-[#acc2ef] hover:bg-gray-50"
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                      <TableCell key={cell.id} className="py-2">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-96 w-full text-center">
-                    <div className="text-center">No projects found.</div>
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 10 }).map((_, index) => (
+                  <TableRow key={index} className="border-b border-[#acc2ef] hover:bg-gray-50">
+                    {columns.map((column, cellIndex) => (
+                      <TableCell key={cellIndex} className="py-2">
+                        {column.id === "select" ? (
+                          <Checkbox disabled />
+                        ) : column.id === "image" ? (
+                          <div className="flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-md bg-muted/40"></div>
+                          </div>
+                        ) : column.id === "techstacks" ? (
+                          <div className="flex gap-1">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                              <div key={i} className="h-8 w-8 rounded-full bg-muted/40"></div>
+                            ))}
+                          </div>
+                        ) : column.id === "actions" ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="icon" className="size-8" disabled>
+                              <Eye className="size-4 text-muted-foreground/40" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="size-8" disabled>
+                              <Edit className="size-4 text-muted-foreground/40" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="size-8" disabled>
+                              <Trash2 className="size-4 text-muted-foreground/40" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="h-4 w-24 animate-pulse rounded bg-muted/40"></div>
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -466,26 +565,26 @@ const ProjectTable = () => {
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
-            className="hover:text-white hover:bg-gray-800 border-[#acc2ef] bg-transparent"
+            className="border-[#acc2ef] bg-white hover:bg-muted/10"
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            <ChevronLeft className="size-4" />
-            <span className="sr-only">Previous page</span>
+            <ChevronLeft className="size-4 mr-1" />
+            Previous
           </Button>
-          <div className="text-sm font-medium">
+          <div className="text-sm font-medium bg-muted/10 px-3 py-1 rounded-md">
             Page {pageIndex + 1} of {Math.max(1, Math.ceil(projects.length / rowsPerPage))}
           </div>
           <Button
             variant="outline"
-            className="hover:text-white hover:bg-gray-800 border-[#acc2ef] bg-transparent"
+            className="border-[#acc2ef] bg-white hover:bg-muted/10"
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            <ChevronRight className="size-4" />
-            <span className="sr-only">Next page</span>
+            Next
+            <ChevronRight className="size-4 ml-1" />
           </Button>
         </div>
       </div>
@@ -511,3 +610,5 @@ const ProjectTable = () => {
 }
 
 export default ProjectTable
+
+
