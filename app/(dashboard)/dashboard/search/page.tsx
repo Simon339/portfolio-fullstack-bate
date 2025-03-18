@@ -61,7 +61,7 @@ export default function SearchPage() {
     { id: "all", label: "All Results" },
     { id: "projects", label: "Projects" },
     { id: "technologies", label: "Technologies" },
-    { id: "inquiries", label: "Inquiries" },
+    { id: "mails", label: "Inquiries" },
     { id: "user", label: "Users" },
   ]
 

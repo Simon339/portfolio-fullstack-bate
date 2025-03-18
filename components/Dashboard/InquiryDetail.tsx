@@ -26,7 +26,7 @@ const InquiryDetail = ({ inquiry }: ServiceInquiryDetailProps) => {
   })
 
   return (
-    <Card className="w-full bg-slate-50 border-[#acc2ef] overflow-hidden shadow-sm">
+    <Card className="w-full bg-slate-50 border-[#acc2ef] h-full w-full overflow-hidden shadow-sm">
       <div className="relative h-32 bg-gradient-to-r from-[#1E56A0] to-[#4D7AB9]">
         <div className="absolute inset-0 bg-black opacity-10"></div>
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
