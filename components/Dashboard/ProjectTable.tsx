@@ -243,28 +243,28 @@ const ProjectTable = () => {
           return <span className="text-muted-foreground text-xs">No technologies</span>
         }
 
-        // Limit to first 3 tech stacks
-        const displayTechs = techStacks.slice(0, 3)
-        const remainingCount = techStacks.length - 3
+        // Limit to first 4 tech stacks
+        const displayTechs = techStacks.slice(0, 2)
+        const remainingCount = techStacks.length - 2
 
         return (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex -space-x-2">
             {displayTechs.map((tech, index) => (
               <TooltipProvider key={index}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm overflow-hidden border">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-gray-800 shadow-sm overflow-hidden border border-[#acc2ef]">
                       {tech.image ? (
                         <img
                           src={tech.image || "/placeholder.svg"}
                           alt={tech.name}
-                          className="h-full w-full object-cover"
+                          className="h-5 w-5 object-contain"
                           onError={(e) => {
-                            e.currentTarget.src = "/placeholder.svg?height=32&width=32"
+                            e.currentTarget.src = "/placeholder.svg?height=20&width=20"
                           }}
                         />
                       ) : (
-                        <div className="h-full w-full flex items-center justify-center bg-muted text-xs font-bold">
+                        <div className="h-full w-full flex items-center justify-center text-gray-800 text-xs font-bold">
                           {tech.name.substring(0, 2).toUpperCase()}
                         </div>
                       )}
@@ -281,13 +281,13 @@ const ProjectTable = () => {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold shadow-sm">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-gray-800 text-xs font-bold shadow-sm border border-[#acc2ef]">
                       +{remainingCount}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="max-w-[200px]">
-                      {techStacks.slice(3).map((tech, i) => (
+                      {techStacks.slice(4).map((tech, i) => (
                         <div key={i} className="text-sm">
                           {tech.name}
                         </div>
@@ -610,5 +610,4 @@ const ProjectTable = () => {
 }
 
 export default ProjectTable
-
 
