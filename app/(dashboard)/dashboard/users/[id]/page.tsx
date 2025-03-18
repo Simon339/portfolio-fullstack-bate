@@ -58,7 +58,7 @@ const Page = () => {
   if (loading) {
     return (
       <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
-        <div className="flex items-center justify-between p-2 mb-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-2 mb-4 border-b border-[#acc2ef]">
           <div className="flex items-center gap-4">
             <Button onClick={handleBack} variant="ghost" size="icon">
               <ChevronLeft className="h-4 w-4" />
@@ -73,7 +73,7 @@ const Page = () => {
   if (error) {
     return (
       <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
-        <div className="flex items-center justify-between p-2 mb-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-2 mb-4 border-b border-[#acc2ef]">
           <div className="flex items-center gap-4">
             <Button onClick={handleBack} variant="ghost" size="icon">
               <ChevronLeft className="h-4 w-4" />
@@ -93,7 +93,7 @@ const Page = () => {
   if (!user) {
     return (
       <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
-        <div className="flex items-center justify-between p-2 mb-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-2 mb-4 border-b border-[#acc2ef]">
           <div className="flex items-center gap-4">
             <Button onClick={handleBack} variant="ghost" size="icon">
               <ChevronLeft className="h-4 w-4" />
@@ -112,8 +112,8 @@ const Page = () => {
   }
 
   return (
-    <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
-      <div className="flex items-center justify-between p-2 mb-4 border-b border-gray-200">
+    <section className="rounded-xl bg-gray-50 shadow-md overflow-hidden min-h-screen flex flex-col">
+      <div className="flex items-center justify-between p-2 mb-4 border-b border-[#acc2ef]">
         <div className="flex items-center gap-4">
           <Button onClick={handleBack} variant="ghost" size="icon">
             <ChevronLeft className="h-4 w-4" />

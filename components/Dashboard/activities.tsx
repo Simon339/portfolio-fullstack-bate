@@ -1,7 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { format, formatDistanceToNow } from "date-fns"
-import { Clock, UserCog, Mail, ShieldAlert, CheckCircle, XCircle, AlertCircle, User } from "lucide-react"
+import {
+  Clock,
+  UserCog,
+  Mail,
+  ShieldAlert,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  User,
+  Calendar,
+  Clock3,
+} from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 type AuditLog = {
   id: string
@@ -82,28 +95,46 @@ const getActionDescription = (log: AuditLog): string => {
 
 const Activities = ({ auditLogs }: ActivitiesProps) => {
   if (!auditLogs || auditLogs.length === 0) {
-    return <div className="text-sm text-gray-500 py-4 text-center">No activity records found</div>
+    return (
+      <div className="text-sm text-gray-500 py-6 text-center rounded-md bg-gray-50 border border-[#acc2ef]">
+        No activity records found
+      </div>
+    )
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full text-gray-900">
       <div className="space-y-3">
         {auditLogs.map((log) => (
-          <div key={log.id} className="flex items-start gap-3 py-2 border-b  border-[#acc2ef] last:border-0">
-            <div className="mt-0.5">{getActionIcon(log.action, log.tableName)}</div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{getActionDescription(log)}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs text-gray-500">{format(new Date(log.timestamp), "MMM d, yyyy")}</p>
-                <span className="text-xs text-gray-400">•</span>
-                <p className="text-xs text-gray-500">{format(new Date(log.timestamp), "h:mm a")}</p>
-                <span className="text-xs text-gray-400">•</span>
-                <p className="text-xs text-gray-500">
-                  {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                </p>
+          <Card key={log.id} className="overflow-hidden border-[#acc2ef] shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 bg-gray-100 p-2 rounded-full">{getActionIcon(log.action, log.tableName)}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{getActionDescription(log)}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-gray-50 text-xs text-gray-800 font-normal border-[#acc2ef] px-2 py-0 flex items-center gap-1"
+                    >
+                      <Calendar className="h-3 w-3 text-gray-500" />
+                      {format(new Date(log.timestamp), "MMM d, yyyy")}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="bg-gray-50 text-xs text-gray-800 font-normal border-[#acc2ef] px-2 py-0 flex items-center gap-1"
+                    >
+                      <Clock3 className="h-3 w-3 text-gray-500" />
+                      {format(new Date(log.timestamp), "h:mm a")}
+                    </Badge>
+                    <Badge variant="outline" className="bg-gray-50 text-xs font-normal text-gray-800 border-[#acc2ef] px-2 py-0">
+                      {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                    </Badge>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

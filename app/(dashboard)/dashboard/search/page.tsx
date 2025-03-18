@@ -66,7 +66,7 @@ export default function SearchPage() {
   ]
 
   return (
-    <div className="w-full h-full bg-slate-50 border-[#acc2ef] p-4 space-y-4">
+    <div className="w-full h-full bg-gray-50 border-[#acc2ef] p-4 space-y-4">
       <div className="flex items-center justify-between mb-2">
         
         <h1 className="text-xl font-medium text-center flex-1">Search</h1>

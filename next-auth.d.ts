@@ -9,11 +9,16 @@ export type SAID = {
   surname: string;
 }
 
+export type ApprovalStatus = {
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  approval: "PENDING" | "APPROVED" | "REJECTED";
+}
+
 export type CellPhone = {
   phone: string;
 }
 
-export type ExtendedUserWithSAID = ExtendedUser & SAID & CellPhone
+export type ExtendedUserWithSAID = ExtendedUser & SAID & CellPhone & ApprovalStatus
 
 
 declare module "next-auth" {

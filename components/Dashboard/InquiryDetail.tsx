@@ -26,7 +26,7 @@ const InquiryDetail = ({ inquiry }: ServiceInquiryDetailProps) => {
   })
 
   return (
-    <Card className="w-full bg-slate-50 border-[#acc2ef] h-full w-full overflow-hidden shadow-sm">
+    <Card className="border-none mt-2 h-full w-full overflow-hidden shadow-sm">
       <div className="relative h-32 bg-gradient-to-r from-[#1E56A0] to-[#4D7AB9]">
         <div className="absolute inset-0 bg-black opacity-10"></div>
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
@@ -34,7 +34,7 @@ const InquiryDetail = ({ inquiry }: ServiceInquiryDetailProps) => {
           <p className="text-lg opacity-90">{inquiry.companyName}</p>
         </div>
       </div>
-      <CardContent className="p-6">
+      <CardContent className="p-6 h-full">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <Badge variant="outline" className="text-sm mb-2 md:mb-0 bg-white border-[#acc2ef] text-gray-800">
             Inquiry ID: {inquiry.id.substring(0, 8)}...
@@ -44,7 +44,7 @@ const InquiryDetail = ({ inquiry }: ServiceInquiryDetailProps) => {
             {formattedDate}
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 h-full">
           <InfoItem icon={<Mail className="h-5 w-5" />} label="Email" value={inquiry.email} />
           <InfoItem icon={<Phone className="h-5 w-5" />} label="Phone" value={inquiry.phoneNumber} />
           <InfoItem icon={<Wrench className="h-5 w-5" />} label="Service" value={inquiry.service} />
