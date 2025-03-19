@@ -48,7 +48,7 @@ const ProjectTable = () => {
   const [projects, setProjects] = useState<Project[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
-  const rowsPerPage = 6
+  const rowsPerPage = 10
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -482,7 +482,11 @@ const ProjectTable = () => {
             </TooltipProvider>
           )}
           <Link href="/dashboard/projects/add">
-            <Button variant="ghost" size="icon" className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border-[#acc2ef]">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border-[#acc2ef]"
+            >
               <Plus className="h-4 w-4 mr-1" />
             </Button>
           </Link>
@@ -622,3 +626,4 @@ const ProjectTable = () => {
 }
 
 export default ProjectTable
+
