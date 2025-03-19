@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { SignUpSchema } from "@/types/vaildations/register";
 import { register } from "@/server/actions/register";
+import { PasswordStrengthIndicator } from "./PasswordStrengthIndicator";
 
 const countries = [
     { code: "US", dialCode: "+1", flag: "🇺🇸" },
@@ -157,6 +158,7 @@ const Signupform = () => {
                                 </button>
                             </div>
                         </FormControl>
+                        <PasswordStrengthIndicator password={field.value} />
                         <FormMessage className="form-message mt-2" />
                     </div>
                 )} />
