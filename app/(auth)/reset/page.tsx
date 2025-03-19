@@ -23,8 +23,6 @@ import { FormSuccess } from '@/components/Auth/FormSuccess';
 import { ResetSchema } from '@/types/vaildations/resetP';
 
 
-
-
 const PasswordRest: React.FC = () => {
     const currentYear = new Date().getFullYear()
     const [error, setError] = useState<string | undefined>("");

@@ -3,7 +3,7 @@
 import type React from "react"
 
 import Link from "next/link"
-import { Loader2, FacebookIcon, GithubIcon, InstagramIcon, LinkedinIcon, Eye, EyeOff } from "lucide-react"
+import { Loader2, FacebookIcon, GithubIcon, InstagramIcon, LinkedinIcon, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState, useTransition } from "react"
 import type { z } from "zod"
@@ -59,6 +59,16 @@ const NewPassword: React.FC = () => {
     <section className="flex items-center justify-center min-h-screen w-full bg-gradient-to-b from-gray-100 to-white px-4 py-12">
       <Card className="w-full max-w-md shadow-2xl bg-white rounded-xl">
         <CardContent className="p-2">
+          <div className="mb-4 mt-2">
+            <Link
+              href="/auth"
+              className="inline-flex items-center text-sm text-gray-600 hover:text-[#000B58] transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to login
+            </Link>
+          </div>
+
           <Header />
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -120,11 +130,6 @@ const NewPassword: React.FC = () => {
                   </FormItem>
                 )}
               />
-              <div className="flex items-center justify-between">
-                <Link href="/auth" className="text-sm text-gray-700 hover:text-blue-500">
-                  Login
-                </Link>
-              </div>
 
               <FormError message={error} />
               <FormSuccess message={success} />
