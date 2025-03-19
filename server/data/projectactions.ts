@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -11,6 +12,8 @@ import { auditLogs, categories, projects, techstacks, projectTechstacks } from "
 import { eq, inArray } from "drizzle-orm"
 import { headers } from "next/headers"
 import { auth } from "@/server/auth" 
+import jsPDF from "jspdf"
+import "jspdf-autotable"
 
 const TechstackSchema = z.object({
   name: z.string().min(1, "Techstack name is required"),
@@ -528,8 +531,6 @@ export async function editProject(id: string, formData: FormData) {
   }
 }
 
-
-
 export async function fetchProject() {
   try {
     const projectsData = await db
@@ -709,3 +710,243 @@ export async function deleteProject(id: string) {
     return { success: false, error: "Failed to delete project" };
   }
 }
+
+
+// Type definition for the Project object
+type Project = {
+  id: string
+  name: string
+  image?: string
+  category: { id: string; name: string }
+  techstacks: Array<{ id: string; name: string; image?: string }>
+  description: string
+  features: Array<{ name: string; description: string }>
+  demo?: string
+}
+
+/**
+ * Server action to export projects in different formats
+ */
+export async function exportProjects(projects: Project[], format: "csv" | "json" | "pdf") {
+  const session = await auth()
+  const userId = session?.user?.id
+
+  if (!userId) {
+    return {
+      success: false,
+      error: "User not authenticated",
+    }
+  }
+
+  try {
+    // Log the export action
+    const headersList = await headers()
+    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
+    const userAgent = headersList.get("user-agent") || "unknown"
+
+    // Create a timestamp for the filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+    let data: string
+    let contentType: string
+    let filename: string
+
+    // Determine if this is a selected export or all projects
+    const exportType = projects.length === 1 ? "single" : projects.length < 10 ? "selected" : "all"
+
+    switch (format) {
+      case "csv":
+        data = generateCSV(projects)
+        contentType = "text/csv"
+        filename =
+          exportType === "single"
+            ? `project-${projects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.csv`
+            : `projects-${exportType}-${timestamp}.csv`
+        break
+      case "json":
+        data = generateJSON(projects)
+        contentType = "application/json"
+        filename =
+          exportType === "single"
+            ? `project-${projects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.json`
+            : `projects-${exportType}-${timestamp}.json`
+        break
+      case "pdf":
+        // For PDF, we'll return the formatted data that the client will use to generate the PDF
+        data = generatePDFData(projects)
+        contentType = "application/json"
+        filename =
+          exportType === "single"
+            ? `project-${projects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.pdf`
+            : `projects-${exportType}-${timestamp}.pdf`
+        break
+      default:
+        throw new Error("Unsupported export format")
+    }
+
+    // Log the export action
+    await db.insert(auditLogs).values({
+      action: "EXPORT",
+      tableName: "projects",
+      recordId: "multiple",
+      userId,
+      details: JSON.stringify({
+        action: `Projects exported as ${format}`,
+        count: projects.length,
+        format,
+        exportType,
+      }),
+      ipAddress,
+      userAgent,
+    })
+
+    revalidatePath("/dashboard/projects")
+
+    return {
+      success: true,
+      data,
+      contentType,
+      filename,
+      format,
+    }
+  } catch (error) {
+    console.error(`Error exporting projects as ${format}:`, error)
+    return {
+      success: false,
+      error: `Failed to export projects as ${format}`,
+    }
+  }
+}
+
+/**
+ * Generate CSV data from projects with improved formatting
+ */
+function generateCSV(projects: Project[]): string {
+  // Define CSV headers with more detailed information
+  const headers = [
+    "ID",
+    "Project Name",
+    "Category",
+    "Description",
+    "Technologies",
+    "Feature Names",
+    "Feature Details",
+    "Demo URL",
+    "Created At",
+  ]
+
+  // Get current date for export timestamp
+  const exportDate = new Date().toISOString().split("T")[0]
+
+  // Add metadata as comments at the top of the CSV
+  const metadata = [
+    `# Projects Export`,
+    `# Generated: ${new Date().toLocaleString()}`,
+    `# Total Projects: ${projects.length}`,
+    `#`,
+  ]
+
+  // Convert projects to CSV rows with more detailed information
+  const rows = projects.map((project) => {
+    const techStacks = project.techstacks.map((tech) => tech.name).join("; ")
+    const featureNames = project.features.map((feature) => feature.name).join("; ")
+    const featureDetails = project.features
+      .map((feature) => `${feature.name}: ${feature.description || "No description"}`)
+      .join(" | ")
+
+    return [
+      project.id,
+      project.name,
+      project.category?.name || "Uncategorized",
+      project.description,
+      techStacks,
+      featureNames,
+      featureDetails,
+      project.demo || "",
+      exportDate, // Use current date as a placeholder for created date
+    ]
+  })
+
+  // Combine metadata, headers and rows
+  const csvContent = [
+    ...metadata,
+    headers.join(","),
+    ...rows.map((row) =>
+      row
+        .map((cell) =>
+          // Escape quotes and wrap in quotes if contains comma, semicolon, or quotes
+          typeof cell === "string" &&
+          (cell.includes(",") || cell.includes(";") || cell.includes('"') || cell.includes("\n"))
+            ? `"${cell.replace(/"/g, '""')}"`
+            : cell,
+        )
+        .join(","),
+    ),
+  ].join("\n")
+
+  return csvContent
+}
+
+/**
+ * Generate JSON data from projects
+ */
+function generateJSON(projects: Project[]): string {
+  // Format projects for export with more detailed information
+  const formattedProjects = projects.map((project) => ({
+    id: project.id,
+    name: project.name,
+    category: project.category?.name || "Uncategorized",
+    description: project.description,
+    technologies: project.techstacks.map((tech) => ({
+      name: tech.name,
+      id: tech.id,
+    })),
+    features: project.features.map((feature) => ({
+      name: feature.name,
+      description: feature.description || "",
+    })),
+    demoUrl: project.demo || null,
+    exportDate: new Date().toISOString(),
+  }))
+
+  // Add metadata to the JSON
+  const jsonData = {
+    metadata: {
+      title: "Projects Export",
+      generated: new Date().toISOString(),
+      count: projects.length,
+      type: projects.length === 1 ? "single" : projects.length < 10 ? "selected" : "all",
+    },
+    projects: formattedProjects,
+  }
+
+  return JSON.stringify(jsonData, null, 2)
+}
+
+/**
+ * Generate data for PDF creation on the client
+ */
+function generatePDFData(projects: Project[]): string {
+  // Format projects for PDF generation on the client
+  const formattedProjects = projects.map((project) => ({
+    id: project.id,
+    name: project.name,
+    category: project.category?.name || "Uncategorized",
+    description: project.description,
+    techStacks: project.techstacks.map((tech) => tech.name),
+    features: project.features.map((feature) => ({
+      name: feature.name,
+      description: feature.description || "",
+    })),
+    demoUrl: project.demo || null,
+    image: project.image || null,
+  }))
+
+  return JSON.stringify({
+    title: "Projects Export",
+    timestamp: new Date().toISOString(),
+    count: projects.length,
+    exportType: projects.length === 1 ? "single" : projects.length < 10 ? "selected" : "all",
+    projects: formattedProjects,
+  })
+}
+

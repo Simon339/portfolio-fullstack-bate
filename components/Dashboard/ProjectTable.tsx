@@ -24,6 +24,7 @@ import { toast } from "sonner"
 import { deleteProject, fetchProject } from "@/server/data/projectactions"
 import DeleteConfirmationModal from "./modals/DeleteProjectModal"
 import Link from "next/link"
+import ExportButton from "./export-button"
 
 export type Project = {
   id: string
@@ -143,6 +144,12 @@ const ProjectTable = () => {
     } finally {
       setBulkDeleteModalOpen(false)
     }
+  }
+
+  // Get selected projects for export
+  const getSelectedProjects = () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    return selectedRows.map((row) => row.original as Project)
   }
 
   const columns: ColumnDef<Project>[] = [
@@ -448,6 +455,12 @@ const ProjectTable = () => {
           />
         </div>
         <div className="flex items-center gap-2">
+          {/* Export Button */}
+          <ExportButton
+            projects={projects}
+            selectedProjects={table.getFilteredSelectedRowModel().rows.length > 0 ? getSelectedProjects() : undefined}
+          />
+
           {table.getFilteredSelectedRowModel().rows.length > 0 && (
             <TooltipProvider>
               <Tooltip>
@@ -469,9 +482,8 @@ const ProjectTable = () => {
             </TooltipProvider>
           )}
           <Link href="/dashboard/projects/add">
-            <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90">
+            <Button variant="ghost" size="icon" className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border-[#acc2ef]">
               <Plus className="h-4 w-4 mr-1" />
-              Add Project
             </Button>
           </Link>
         </div>
@@ -610,4 +622,3 @@ const ProjectTable = () => {
 }
 
 export default ProjectTable
-

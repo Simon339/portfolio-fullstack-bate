@@ -49,6 +49,7 @@
     "framer-motion": "^11.18.1",
     "json2csv": "^6.0.0-alpha.2",
     "jspdf": "^1.4.0",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.473.0",
     "mini-svg-data-uri": "^1.4.4",
     "next": "^15.2.3",
