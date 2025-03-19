@@ -53,7 +53,7 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 md:p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     )
@@ -88,8 +88,8 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-50  md:p-6">
+      <div className=" mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Button
             variant="ghost"
@@ -119,7 +119,7 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
           </div>
         </div>
 
-        <Card className="border border-[#acc2ef] bg-white shadow-sm rounded-xl overflow-hidden">
+        <Card className="border h-full w-full border-[#acc2ef] bg-white shadow-sm rounded-xl overflow-hidden">
           <CardContent className="p-6 md:p-8">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
               <div>
