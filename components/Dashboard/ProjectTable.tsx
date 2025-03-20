@@ -423,11 +423,11 @@ const ProjectTable = () => {
       rowSelection,
       pagination: {
         pageIndex, // Current page index
-        pageSize: rowsPerPage, // Rows per page (6)
+        pageSize: 6, // Ensure this is set to 6
       },
     },
     manualPagination: false, // Let the table handle pagination
-    pageCount: Math.ceil(projects.length / rowsPerPage), // Total number of pages
+    pageCount: Math.ceil(projects.length / 6), // Total number of pages
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -437,7 +437,7 @@ const ProjectTable = () => {
     onRowSelectionChange: setRowSelection,
     onPaginationChange: (updater) => {
       if (typeof updater === "function") {
-        setPageIndex(updater({ pageIndex, pageSize: rowsPerPage }).pageIndex);
+        setPageIndex(updater({ pageIndex, pageSize: 6 }).pageIndex);
       }
     },
   });
