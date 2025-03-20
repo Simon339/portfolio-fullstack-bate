@@ -42,11 +42,11 @@ export const profile = [
 
  // Company logos - replace these with actual company logos you've worked with
  export const companies = [
-    { id: 1, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 1" },
-    { id: 2, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 2" },
-    { id: 3, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 3" },
-    { id: 4, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 4" },
-    { id: 5, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 5" },
+    { id: 1, logo: "/assets/company/BB.png", name: "BB FINANCIAL ACQUAINTANCE" },
+    { id: 2, logo: "/assets/company/ME.png", name: "Mixed Emotions" },
+    { id: 3, logo: "/assets/company/mictsate.png", name: "MICTSETA" },
+    { id: 4, logo: "/assets/company/TN-logo.png", name: "Magotlho TN Solutions (PTY) LTD" },
+    { id: 5, logo: "/assets/company/Thutokelesedi.png", name: "Thuto ke Lesedi Kasie Tutorial" },
   ]
 
 export const aboutcards = [
