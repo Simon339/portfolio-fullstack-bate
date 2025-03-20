@@ -48,7 +48,7 @@ const ProjectTable = () => {
   const [projects, setProjects] = useState<Project[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
-  const rowsPerPage = 10
+  const rowsPerPage = 6
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -626,4 +626,5 @@ const ProjectTable = () => {
 }
 
 export default ProjectTable
+
 
