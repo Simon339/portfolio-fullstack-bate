@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 
 const SESSION_TIMEOUT = 60 * 60 * 1000; // 30 minutes in milliseconds
-const WARNING_TIME = 15* 60 * 1000; // 15 minutes in milliseconds
+const WARNING_TIME = 1* 60 * 1000; // 15 minutes in milliseconds
 
 export const useSessionTimeout = () => {
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
@@ -26,7 +26,7 @@ export const useSessionTimeout = () => {
 
     // Show a warning 15 minutes before session expires
     setTimeout(() => {
-      toast.warning("You have 15 minutes left before your session expires due to inactivity.");
+      toast.warning("You have 1 minute left before your session expires due to inactivity.");
     }, WARNING_TIME);
   };
 
