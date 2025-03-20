@@ -531,7 +531,7 @@ export async function editProject(id: string, formData: FormData) {
   }
 }
 
-export async function fetchProject() {
+export async function fetchProject(pageIndex: number, rowsPerPage: number) {
   try {
     const projectsData = await db
       .select({
@@ -549,12 +549,14 @@ export async function fetchProject() {
           name: techstacks.name,
           image: techstacks.image,
         },
-        features: projects.features, // Add this line
+        features: projects.features,
       })
       .from(projects)
       .leftJoin(categories, eq(projects.categoryId, categories.id))
       .leftJoin(projectTechstacks, eq(projects.id, projectTechstacks.projectId))
-      .leftJoin(techstacks, eq(projectTechstacks.techstackId, techstacks.id));
+      .leftJoin(techstacks, eq(projectTechstacks.techstackId, techstacks.id))
+      .limit(rowsPerPage) // Limit the number of rows
+      .offset(pageIndex * rowsPerPage); // Offset based on the page index
 
     // Group techstacks by project
     const groupedProjects = projectsData.reduce((acc, project) => {
@@ -568,10 +570,10 @@ export async function fetchProject() {
           ...project,
           techstacks: project.techstacks && project.techstacks.id ? [project.techstacks] : [],
           features: project.features
-          ? typeof project.features === "string"
-            ? JSON.parse(project.features)
-            : project.features
-          : [],
+            ? typeof project.features === "string"
+              ? JSON.parse(project.features)
+              : project.features
+            : [],
         });
       }
       return acc;

@@ -59,30 +59,30 @@ const ProjectTable = () => {
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false)
 
   useEffect(() => {
-    fetchProjects()
-  }, [])
+    fetchProjects(pageIndex, rowsPerPage);
+  }, [pageIndex, rowsPerPage]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (pageIndex: number, rowsPerPage: number) => {
     try {
-      setLoading(true)
-      const result: FetchProjectResponse = await fetchProject()
+      setLoading(true);
+      const result: FetchProjectResponse = await fetchProject(pageIndex, rowsPerPage);
       if (result.success && result.data) {
         const formattedProjects = result.data.map((project) => ({
           ...project,
           techstack: project.techstacks.map((tech) => tech.name).join(", ") || "",
-        }))
-        setProjects(formattedProjects)
+        }));
+        setProjects(formattedProjects);
       } else {
-        setError(result.error || "Failed to fetch projects. Please try again later.")
-        toast.error("Failed to fetch projects")
+        setError(result.error || "Failed to fetch projects. Please try again later.");
+        toast.error("Failed to fetch projects");
       }
     } catch (err) {
-      setError("Failed to fetch projects. Please try again later.")
-      toast.error("Failed to fetch projects")
+      setError("Failed to fetch projects. Please try again later.");
+      toast.error("Failed to fetch projects");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDeleteClick = (project: Project) => {
     setProjectToDelete(project)
@@ -414,7 +414,7 @@ const ProjectTable = () => {
   ]
 
   const table = useReactTable({
-    data: projects,
+    data: projects, // Your full dataset
     columns,
     state: {
       sorting,
@@ -422,12 +422,12 @@ const ProjectTable = () => {
       columnVisibility,
       rowSelection,
       pagination: {
-        pageIndex,
-        pageSize: rowsPerPage,
+        pageIndex, // Current page index
+        pageSize: rowsPerPage, // Rows per page (6)
       },
     },
-    manualPagination: false,
-    pageCount: Math.ceil(projects.length / rowsPerPage),
+    manualPagination: false, // Let the table handle pagination
+    pageCount: Math.ceil(projects.length / rowsPerPage), // Total number of pages
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -437,10 +437,10 @@ const ProjectTable = () => {
     onRowSelectionChange: setRowSelection,
     onPaginationChange: (updater) => {
       if (typeof updater === "function") {
-        setPageIndex(updater({ pageIndex, pageSize: rowsPerPage }).pageIndex)
+        setPageIndex(updater({ pageIndex, pageSize: rowsPerPage }).pageIndex);
       }
     },
-  })
+  });
 
   return (
     <div className="flex flex-col h-full w-full">
@@ -579,29 +579,29 @@ const ProjectTable = () => {
           selected.
         </div>
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            className="border-[#acc2ef] bg-white hover:bg-muted/10"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronLeft className="size-4 mr-1" />
-            Previous
-          </Button>
-          <div className="text-sm font-medium bg-muted/10 px-3 py-1 rounded-md">
-            Page {pageIndex + 1} of {Math.max(1, Math.ceil(projects.length / rowsPerPage))}
-          </div>
-          <Button
-            variant="outline"
-            className="border-[#acc2ef] bg-white hover:bg-muted/10"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-            <ChevronRight className="size-4 ml-1" />
-          </Button>
+        <Button
+  variant="outline"
+  className="border-[#acc2ef] bg-white hover:bg-muted/10"
+  size="sm"
+  onClick={() => table.previousPage()}
+  disabled={!table.getCanPreviousPage()}
+>
+  <ChevronLeft className="size-4 mr-1" />
+  Previous
+</Button>
+<div className="text-sm font-medium bg-muted/10 px-3 py-1 rounded-md">
+  Page {pageIndex + 1} of {Math.max(1, Math.ceil(projects.length / rowsPerPage))}
+</div>
+<Button
+  variant="outline"
+  className="border-[#acc2ef] bg-white hover:bg-muted/10"
+  size="sm"
+  onClick={() => table.nextPage()}
+  disabled={!table.getCanNextPage()}
+>
+  Next
+  <ChevronRight className="size-4 ml-1" />
+</Button>
         </div>
       </div>
 
