@@ -5,17 +5,25 @@ import React from 'react'
 
 export default function page() {
   return (
-    <section className="mb-4 text-white">
-      <h1 className="section_title">
+    <section className="py-12 mb-14 text-white">
+            <div className="flex flex-col items-center mb-12">
+      <h1 className="text-3xl text-center font-bold text-white">
         Project
       </h1>
-      <span className="section_subtitle">
+      <div className="w-12 h-1 items-center justify-center bg-white/20 mx-auto mb-3"></div>
+      <span className="text-muted-foreground text-center max-w-md">
         A small Selection of {' '}Recent Projects
       </span>
+      </div>
+      
       <Pagination />
-      <section className='mb-1'>
-        <h2 className="section_title text-gray-300">My clients Says</h2>
-        <span className="section_subtitle text-gray-400">Testimonial</span>
+      <section className='mb-2'>
+      <div className="flex flex-col items-center mb-2">
+      <h2 className="text-3xl font-bold text-white">My clients Says</h2>
+        <div className="w-12 h-1 bg-white/20 mx-auto mb-3"></div>
+      <span className="text-muted-foreground text-center max-w-md">Testimonial</span>
+      </div>
+        
         <div className="testimonial_container">
           <InfiniteMovingCards
             items={testimonials}

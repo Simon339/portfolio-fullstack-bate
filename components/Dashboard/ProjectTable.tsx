@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -11,10 +11,22 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronLeft, ChevronRight, Edit, Eye, Plus, Search, Trash2 } from "lucide-react"
+import {
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Edit,
+  Eye,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -25,6 +37,7 @@ import { deleteProject, fetchProject } from "@/server/data/projectactions"
 import DeleteConfirmationModal from "./modals/DeleteProjectModal"
 import Link from "next/link"
 import ExportButton from "./export-button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export type Project = {
   id: string
@@ -47,42 +60,45 @@ const ProjectTable = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [projects, setProjects] = useState<Project[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [pageIndex, setPageIndex] = useState(0)
-  const rowsPerPage = 6
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 6,
+  })
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false)
 
   useEffect(() => {
-    fetchProjects(pageIndex, rowsPerPage);
-  }, [pageIndex, rowsPerPage]);
+    fetchProjects()
+  }, [])
 
-  const fetchProjects = async (pageIndex: number, rowsPerPage: number) => {
+  const fetchProjects = async () => {
     try {
-      setLoading(true);
-      const result: FetchProjectResponse = await fetchProject(pageIndex, rowsPerPage);
+      setLoading(true)
+      // Fetch all projects - we'll handle pagination client-side
+      const result: FetchProjectResponse = await fetchProject(0, 100)
       if (result.success && result.data) {
         const formattedProjects = result.data.map((project) => ({
           ...project,
           techstack: project.techstacks.map((tech) => tech.name).join(", ") || "",
-        }));
-        setProjects(formattedProjects);
+        }))
+        setProjects(formattedProjects)
       } else {
-        setError(result.error || "Failed to fetch projects. Please try again later.");
-        toast.error("Failed to fetch projects");
+        setError(result.error || "Failed to fetch projects. Please try again later.")
+        toast.error("Failed to fetch projects")
       }
     } catch (err) {
-      setError("Failed to fetch projects. Please try again later.");
-      toast.error("Failed to fetch projects");
+      setError("Failed to fetch projects. Please try again later.")
+      toast.error("Failed to fetch projects")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleDeleteClick = (project: Project) => {
     setProjectToDelete(project)
@@ -414,33 +430,25 @@ const ProjectTable = () => {
   ]
 
   const table = useReactTable({
-    data: projects, // Your full dataset
+    data: projects,
     columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
-      pagination: {
-        pageIndex, // Current page index
-        pageSize: 6, // Ensure this is set to 6
-      },
+      pagination,
     },
-    manualPagination: false, // Let the table handle pagination
-    pageCount: Math.ceil(projects.length / 6), // Total number of pages
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        setPageIndex(updater({ pageIndex, pageSize: 6 }).pageIndex);
-      }
-    },
-  });
+  })
 
   return (
     <div className="flex flex-col h-full w-full">
@@ -532,76 +540,85 @@ const ProjectTable = () => {
                   </TableRow>
                 ))
               ) : (
-                Array.from({ length: 10 }).map((_, index) => (
-                  <TableRow key={index} className="border-b border-[#acc2ef] hover:bg-gray-50">
-                    {columns.map((column, cellIndex) => (
-                      <TableCell key={cellIndex} className="py-2">
-                        {column.id === "select" ? (
-                          <Checkbox disabled />
-                        ) : column.id === "image" ? (
-                          <div className="flex items-center justify-center">
-                            <div className="h-10 w-10 rounded-md bg-muted/40"></div>
-                          </div>
-                        ) : column.id === "techstacks" ? (
-                          <div className="flex gap-1">
-                            {Array.from({ length: 3 }).map((_, i) => (
-                              <div key={i} className="h-8 w-8 rounded-full bg-muted/40"></div>
-                            ))}
-                          </div>
-                        ) : column.id === "actions" ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" className="size-8" disabled>
-                              <Eye className="size-4 text-muted-foreground/40" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="size-8" disabled>
-                              <Edit className="size-4 text-muted-foreground/40" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="size-8" disabled>
-                              <Trash2 className="size-4 text-muted-foreground/40" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="h-4 w-24 animate-pulse rounded bg-muted/40"></div>
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No results.
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-4">
-        <div className="text-sm text-muted-foreground">
+      {/* Data Table Pagination Component */}
+      <div className="flex items-center justify-between px-2 mt-4">
+        <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
           selected.
         </div>
-        <div className="flex items-center space-x-2">
-        <Button
-  variant="outline"
-  className="border-[#acc2ef] bg-white hover:bg-muted/10"
-  size="sm"
-  onClick={() => table.previousPage()}
-  disabled={!table.getCanPreviousPage()}
->
-  <ChevronLeft className="size-4 mr-1" />
-  Previous
-</Button>
-<div className="text-sm font-medium bg-muted/10 px-3 py-1 rounded-md">
-  Page {pageIndex + 1} of {Math.max(1, Math.ceil(projects.length / rowsPerPage))}
-</div>
-<Button
-  variant="outline"
-  className="border-[#acc2ef] bg-white hover:bg-muted/10"
-  size="sm"
-  onClick={() => table.nextPage()}
-  disabled={!table.getCanNextPage()}
->
-  Next
-  <ChevronRight className="size-4 ml-1" />
-</Button>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value))
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px] bg-gray-50 border-[#acc2ef] text-gray-600">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[6, 12, 24, 36, 48].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex bg-gray-50 border-[#acc2ef] text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <span className="sr-only">Go to first page</span>
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0 bg-gray-50 border-[#acc2ef] text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <span className="sr-only">Go to previous page</span>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0 bg-gray-50 border-[#acc2ef] text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              <span className="sr-only">Go to next page</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex bg-gray-50 border-[#acc2ef] text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+            >
+              <span className="sr-only">Go to last page</span>
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -626,5 +643,4 @@ const ProjectTable = () => {
 }
 
 export default ProjectTable
-
 

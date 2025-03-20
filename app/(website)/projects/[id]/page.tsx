@@ -1,73 +1,131 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect } from "react";
-import { ChevronLeft } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { projectsData } from "@/data"; // Assuming projectsData is a static import
-import ProjectDetails from "@/components/Website/ProjectDetails";
+import { useState, useEffect } from "react"
+import { ChevronLeft, Loader2 } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { fetchProjectById } from "@/server/data/projectactions"
+import ProjectDetails from "@/components/Website/ProjectDetails"
 
-interface Project {
-  id: number;
-  title: string;
-  description: string;
-  category: string;
-  iconLists: string[];
-  link: string;
-  img: string;
-  iconlists?: undefined;
-  features: string[];
-  Features?: undefined;
+
+// Define the project type based on the server response
+type ProjectFeature = {
+  name: string
+  description: string
 }
 
-const Page = () => {
-  const params = useParams();
-  const router = useRouter();
-  const [project, setProject] = useState<Project | null>(null);
+type Project = {
+  id: string
+  name: string
+  description: string
+  demo: string
+  image: string | null
+  category: {
+    id: string
+    name: string
+  } | null
+  techstacks: Array<{
+    id: string
+    name: string
+    image: string | null
+  }>
+  features: ProjectFeature[]
+}
+
+const ProjectPage = () => {
+  const params = useParams()
+  const router = useRouter()
+  const [project, setProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const projectId = Number(params.id);
-    const foundProject = projectsData.find((item) => item.id === projectId);
-    setProject(foundProject || null);
-  }, [params.id]);
+    const getProject = async () => {
+      try {
+        setLoading(true)
+        const projectId = params.id as string
+
+        if (!projectId) {
+          setError("Project ID is missing")
+          return
+        }
+
+        const response = await fetchProjectById(projectId)
+
+        if (response.success && response.data) {
+          setProject(response.data)
+        } else {
+          setError(response.error || "Failed to load project")
+        }
+      } catch (err) {
+        setError("An error occurred while fetching the project")
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getProject()
+  }, [params.id])
 
   const handleBack = () => {
-    router.back();
-  };
+    router.back()
+  }
 
-  if (!project) {
+  if (loading) {
     return (
-      <section className="rounded-xl text-white shadow-md mt-4 px-4 overflow-hidden min-h-screen flex flex-col">
-        <div className="flex items-center justify-between p-2 border-b border-gray-200">
+      <section className="bg-[#000319] rounded-xl text-white shadow-md mt-4 px-4 overflow-hidden min-h-screen flex flex-col">
+        <div className="flex items-center justify-between p-2 border-b border-gray-800">
           <div className="flex items-center gap-4">
-            <Button onClick={handleBack} variant="ghost" size="icon">
+            <Button onClick={handleBack} variant="ghost" size="icon" className="text-gray-400 hover:text-white">
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <div className="items-center mb-10">
+        <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center">
-            <h2 className="text-xl text-center">Project not found</h2>
+            <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
+            <p className="mt-4 text-lg">Loading project...</p>
           </div>
         </div>
       </section>
-    );
+    )
+  }
+
+  if (error || !project) {
+    return (
+      <section className="bg-[#000319] rounded-xl text-white shadow-md mt-4 px-4 overflow-hidden min-h-screen flex flex-col">
+        <div className="flex items-center justify-between p-2 border-b border-gray-800">
+          <div className="flex items-center gap-4">
+            <Button onClick={handleBack} variant="ghost" size="icon" className="text-gray-400 hover:text-white">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center text-center">
+            <h2 className="text-2xl font-bold mb-4">Project Not Found</h2>
+            <p className="text-gray-400 mb-6">{error || "The project you're looking for doesn't exist"}</p>
+            <Button onClick={() => router.push("/projects")} className="bg-indigo-600 hover:bg-indigo-700">
+              Back to Projects
+            </Button>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   return (
-    <section className="rounded-xl text-white shadow-md mt-4 px-4 overflow-hidden min-h-screen flex flex-col">
-      <div className="flex items-center justify-between p-2 mt-7 border-b border-slate-800">
-        <div className="flex items-center gap-4">
-          <Button onClick={handleBack} variant="ghost" size="icon">
-            <ChevronLeft className="h-4 w-4 text-slate-400" />
-          </Button>
-        </div>
+    <section className="bg-[#000319] rounded-xl text-white shadow-md mt-4 px-4 overflow-hidden min-h-screen flex flex-col">
+      
+      <div className="flex-1">
+        <ProjectDetails projectId={project.id} />
       </div>
-
-        <ProjectDetails project={project} />
     </section>
-  );
-};
+  )
+}
 
-export default Page;
+export default ProjectPage
+

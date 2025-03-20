@@ -1,180 +1,156 @@
-'use client';
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { SubmitHandler } from "react-hook-form";
-import { toast } from "sonner";  
-import { useForm } from 'react-hook-form';
-import { useState } from 'react'; 
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "../ui/button";
-import { ContactFormSchema } from "@/lib/vaildationschema";
-import { ContactFormAction } from "@/server/actions/contactform";
-import { Form, FormControl, FormField, FormLabel, FormMessage } from "../ui/form";
-import { FormError } from "@/components/Auth/FormError";
-import { FormSuccess } from "@/components/Auth/FormSuccess";
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
+"use client"
+import type { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { SubmitHandler } from "react-hook-form"
+import { toast } from "sonner"
+import { useForm } from "react-hook-form"
+import { useState } from "react"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "../ui/button"
+import { ContactFormSchema } from "@/lib/vaildationschema"
+import { ContactFormAction } from "@/server/actions/contactform"
+import { Form, FormControl, FormField, FormMessage } from "../ui/form"
+import { FormError } from "@/components/Auth/FormError"
+import { FormSuccess } from "@/components/Auth/FormSuccess"
+import { Send } from "lucide-react"
 
 export default function ContactForm() {
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | undefined>("")
+  const [success, setSuccess] = useState<string | undefined>("")
 
   const form = useForm<z.infer<typeof ContactFormSchema>>({
     resolver: zodResolver(ContactFormSchema),
     defaultValues: {
-      name: '',
-      email: '',
-      message: '',
-      topic: ''
+      name: "",
+      email: "",
+      message: "",
+      topic: "",
     },
-  });
+  })
 
   const onSubmit: SubmitHandler<z.infer<typeof ContactFormSchema>> = async (data) => {
-    setIsLoading(true);
-  
+    setIsLoading(true)
+
     try {
-      const response = await ContactFormAction(data);
-  
+      const response = await ContactFormAction(data)
+
       if (response?.error) {
-        setError(response.error); 
-        toast.error(response.error); 
+        setError(response.error)
+        toast.error(response.error)
       } else if (response?.success) {
-        setSuccess(response.success);
-        toast.success(response.success);
-        
-        
-        form.reset();  
+        setSuccess(response.success)
+        toast.success(response.success)
+        form.reset()
       }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      setError("An unexpected error occurred. Please try again later.");
-      toast.error("An unexpected error occurred. Please try again later.");
+      setError("An unexpected error occurred. Please try again later.")
+      toast.error("An unexpected error occurred. Please try again later.")
     } finally {
-      setIsLoading(false); 
+      setIsLoading(false)
     }
-  };
-  
+  }
 
   return (
-    <div className="contact_content">
-      <h3 className="contact_title">Write to me</h3>
+    <div className="backdrop-blur-md w-full h-full bg-white/5 border border-white/10 rounded-lg p-6">
+      <h3 className="text-lg font-medium mb-5 text-white">Write to me</h3>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="contact_form">
-
-          {/* Name field */}
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <div className="form-item">
-                <FormLabel className="text-white font-semibold mb-1">Full Name:</FormLabel>
-                <FormControl>
-                  <div className="contact_form-div">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <div>
+                  <FormControl>
                     <Input
-                      placeholder="Enter your Full Name"
+                      placeholder="Name"
                       disabled={isLoading}
-                      className="contact_form-input"
+                      className="bg-transparent border border-white/10 rounded-md p-2 text-sm text-white w-full focus:border-white/30 focus:ring-0 transition-all"
                       type="text"
                       {...field}
                     />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </div>
-            )}
-          />
+                  </FormControl>
+                  <FormMessage className="text-xs mt-1 text-red-400" />
+                </div>
+              )}
+            />
 
-          {/* Subject field */}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <div>
+                  <FormControl>
+                    <Input
+                      disabled={isLoading}
+                      placeholder="Email"
+                      className="bg-transparent border border-white/10 rounded-md p-2 text-sm text-white w-full focus:border-white/30 focus:ring-0 transition-all"
+                      type="email"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs mt-1 text-red-400" />
+                </div>
+              )}
+            />
+          </div>
+
           <FormField
             control={form.control}
             name="topic"
             render={({ field }) => (
-              <div className="form-item">
-                <FormLabel className="text-white font-semibold mb-1">Subject:</FormLabel>
+              <div>
                 <FormControl>
-                  <div className="contact_form-div">
-                    <Input
-                      placeholder="Enter the subject"
-                      disabled={isLoading}
-                      className="contact_form-input"
-                      type="text"
-                      {...field}
-                    />
-                  </div>
+                  <Input
+                    placeholder="Subject"
+                    disabled={isLoading}
+                    className="bg-transparent border border-white/10 rounded-md p-2 text-sm text-white w-full focus:border-white/30 focus:ring-0 transition-all"
+                    type="text"
+                    {...field}
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-xs mt-1 text-red-400" />
               </div>
             )}
           />
 
-          {/* Email field */}
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <div className="form-item">
-                <FormLabel className="text-white font-semibold mb-1">Email:</FormLabel>
-                <FormControl>
-                  <div className="contact_form-div">
-                    <Input
-                      disabled={isLoading}
-                      placeholder="Enter your email"
-                      className="contact_form-input"
-                      type="email"
-                      {...field}
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </div>
-            )}
-          />
-
-          {/* Message field */}
           <FormField
             control={form.control}
             name="message"
             render={({ field }) => (
-              <div className="form-item">
-                <FormLabel className="text-white font-semibold mb-1">Message:</FormLabel>
+              <div>
                 <FormControl>
-                  <div className="contact_form-area-div contact_form-area">
-                    <Textarea
-                      id="message"
-                      rows={6}
-                      disabled={isLoading}
-                      {...field}
-                      placeholder="Write your message"
-                      className="contact_form-area-input"
-                    />
-                  </div>
+                  <Textarea
+                    rows={4}
+                    disabled={isLoading}
+                    {...field}
+                    placeholder="Your message"
+                    className="bg-transparent border border-white/10 rounded-md p-2 text-sm text-white w-full resize-none focus:border-white/30 focus:ring-0 transition-all"
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-xs mt-1 text-red-400" />
               </div>
             )}
           />
 
-            
-          {/* Optional error and success messages */}
-          <FormError message={error} />
-          <FormSuccess message={success} />
-          
+          {error && <FormError message={error} />}
+          {success && <FormSuccess message={success} />}
 
-          <div className="mt-3">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full disabled:opacity-50 bg-white-100 text-black hover:bg-[#685189] font-bold"
-            >
-              {isLoading ? 'Submitting...' : 'Contact Me'}
-            </Button>
-          </div>
-
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-white/10 hover:bg-white/20 text-white rounded-md py-2 text-sm font-medium flex items-center justify-center gap-2 transition-all border border-white/10"
+          >
+            {isLoading ? "Sending..." : "Send Message"}
+            {!isLoading && <Send className="w-3 h-3" />}
+          </Button>
         </form>
       </Form>
     </div>
-  );
+  )
 }
+

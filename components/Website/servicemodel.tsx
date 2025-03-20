@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ServiceForm from './ServiceForm'
 
 interface ServiceModelProps {
@@ -13,14 +13,9 @@ export function ServiceModel({ service, isOpen, setIsOpen }: ServiceModelProps) 
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px] bg-black-100">
-        <DialogHeader>
-          <DialogTitle className='text-center font-semibold '>{service}</DialogTitle>
-          <DialogDescription className='text-center font-semibold'>
-            Thank you for your interest in {service}!
-            We&apos;re excited to share more details and explore how we can assist you.
-            Please fill out the form below, and we&apos;ll get back to you as soon as possible!
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[425px] bg-black-100 border border-[#685189]/20 p-5 rounded-none">
+        <DialogHeader className="mb-4">
+          <DialogTitle className="text-sm font-normal text-white">{service}</DialogTitle>
         </DialogHeader>
         <ServiceForm service={service} setIsOpen={setIsOpen} />
       </DialogContent>

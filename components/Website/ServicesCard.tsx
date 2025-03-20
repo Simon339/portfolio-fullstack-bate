@@ -1,21 +1,18 @@
-import { MdOutlineAppShortcut, MdOutlineDeveloperMode } from "react-icons/md";
-import { HoverEffect } from "../ui/card-hover-effect";
-import { Paintbrush } from "lucide-react";
-import { VscCodeOss } from "react-icons/vsc";
+import { MdOutlineAppShortcut, MdOutlineDeveloperMode } from "react-icons/md"
+import { HoverEffect } from "../ui/card-hover-effect"
+import { Paintbrush } from "lucide-react"
+import { VscCodeOss } from "react-icons/vsc"
 
 export function ServicesCard() {
   return (
-    <section className="h-fit">
-      <div className="max-w-5xl mx-auto px-7">
-      <HoverEffect
-        items={servicesData}
-        className=""
-      />
-    </div> 
+    <section className="py-4">
+      <div className="max-w-3xl mx-auto px-4">
+        <HoverEffect items={servicesData} />
+      </div>
     </section>
-    
-  );
+  )
 }
+
 
 export const servicesData = [
   {

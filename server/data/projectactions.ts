@@ -555,9 +555,8 @@ export async function fetchProject(pageIndex: number, rowsPerPage: number) {
       .leftJoin(categories, eq(projects.categoryId, categories.id))
       .leftJoin(projectTechstacks, eq(projects.id, projectTechstacks.projectId))
       .leftJoin(techstacks, eq(projectTechstacks.techstackId, techstacks.id))
-      .limit(rowsPerPage) // Limit the number of rows
-      .offset(pageIndex * rowsPerPage); // Offset based on the page index
-
+      .limit(rowsPerPage) 
+      .offset(pageIndex * rowsPerPage);
     // Group techstacks by project
     const groupedProjects = projectsData.reduce((acc, project) => {
       const existingProject = acc.find((p) => p.id === project.id);
@@ -581,7 +580,6 @@ export async function fetchProject(pageIndex: number, rowsPerPage: number) {
 
     return { success: true, data: groupedProjects };
   } catch (error) {
-    console.error("Failed to fetch projects:", error);
     return { success: false, error: "Failed to fetch projects" };
   }
 }

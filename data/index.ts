@@ -40,6 +40,15 @@ export const profile = [
     }
 ];
 
+ // Company logos - replace these with actual company logos you've worked with
+ export const companies = [
+    { id: 1, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 1" },
+    { id: 2, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 2" },
+    { id: 3, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 3" },
+    { id: 4, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 4" },
+    { id: 5, logo: "/assets/icons/techstack/bootstrap.png", name: "Company 5" },
+  ]
+
 export const aboutcards = [
     {
         id: 1,
