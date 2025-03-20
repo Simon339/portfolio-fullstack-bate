@@ -19,7 +19,7 @@ const FileSchema = z.instanceof(File)
   export const ProjectSchema = z.object({
     name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
-  demo: z.string().url("Invalid URL"),
+  demo: z.string().url("Invalid URL").optional(),
   features: z.array(
     z.object({
       name: z.string().min(1, "Feature name is required"),

@@ -177,7 +177,9 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
         const data = new FormData();
         data.append("name", values.name);
         data.append("description", values.description);
-        data.append("demo", values.demo);
+        if (values.demo) {
+          data.append("demo", values.demo);
+        }
   
         // Add image if available (use the File object)
         if (imageFile) {
