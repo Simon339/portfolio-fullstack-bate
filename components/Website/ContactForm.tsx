@@ -143,7 +143,7 @@ export default function ContactForm() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-white/10 hover:bg-white/20 text-white rounded-md py-2 text-sm font-medium flex items-center justify-center gap-2 transition-all border border-white/10"
+            className="w-full bg-white/10 hover:bg-white/20 mt-10 text-white rounded-md py-2 text-sm font-medium flex items-center justify-center gap-2 transition-all border border-white/10"
           >
             {isLoading ? "Sending..." : "Send Message"}
             {!isLoading && <Send className="w-3 h-3" />}

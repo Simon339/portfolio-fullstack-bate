@@ -1,5 +1,5 @@
 import ContactForm from "@/components/Website/ContactForm"
-import { ChevronRight, Linkedin, MailCheck, Phone } from "lucide-react"
+import { ChevronRight, Instagram, Linkedin, MailCheck, Phone } from "lucide-react"
 
 export default function ContactPage() {
   return (
@@ -57,6 +57,24 @@ export default function ContactPage() {
 
               <a
                 href="https://www.linkedin.com/in/Simon-Malesela"
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </a>
+            </div>
+
+            <div className="backdrop-blur-md bg-white/5 border border-white/10 rounded-lg p-4 transition-all hover:border-white/20 flex items-center">
+              <div className="p-2 rounded-full bg-white/10 mr-4">
+                <Instagram className="w-4 h-4 text-white" />
+              </div>
+
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-white">Instagram</h3>
+                <span className="text-white/70 text-xs">M S Portfolio</span>
+              </div>
+
+              <a
+                href="https://www.instagram.com/tshepohotmail00/"
                 className="text-white/80 hover:text-white transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />

@@ -53,7 +53,7 @@ export default function About() {
                 {companies.map((company) => (
                   <div
                     key={company.id}
-                    className="w-10 h-10 rounded-full border-[#685189] flex items-center justify-center transition-all hover:scale-110"
+                    className="w-10 h-10 rounded-full border-[#685189] bg-primary/5 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110"
                     title={company.name}
                   >
                     <Image
@@ -61,7 +61,7 @@ export default function About() {
                       alt={company.name}
                       width={24}
                       height={24}
-                      className="opacity-70 hover:opacity-100"
+                      className="object-fill w-6 h-6 rounded-full opacity-70 hover:opacity-100"
                     />
                   </div>
                 ))}
