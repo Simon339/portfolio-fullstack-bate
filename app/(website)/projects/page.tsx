@@ -6,24 +6,24 @@ import React from 'react'
 export default function page() {
   return (
     <section className="py-12 mb-14 text-white">
-            <div className="flex flex-col items-center mb-12">
-      <h1 className="text-3xl text-center font-bold text-white">
-        Project
-      </h1>
-      <div className="w-12 h-1 items-center justify-center bg-white/20 mx-auto mb-3"></div>
-      <span className="text-muted-foreground text-center max-w-md">
-        A small Selection of {' '}Recent Projects
-      </span>
+      <div className="flex flex-col items-center mb-12">
+        <h1 className="text-3xl text-center font-bold text-white">
+          Project
+        </h1>
+        <div className="w-12 h-1 items-center justify-center bg-white/20 mx-auto mb-3"></div>
+        <span className="text-muted-foreground text-center max-w-md">
+          A small Selection of {' '}Recent Projects
+        </span>
       </div>
-      
+
       <Pagination />
       <section className='mb-2'>
-      <div className="flex flex-col items-center mb-2">
-      <h2 className="text-3xl font-bold text-white">My clients Says</h2>
-        <div className="w-12 h-1 bg-white/20 mx-auto mb-3"></div>
-      <span className="text-muted-foreground text-center max-w-md">Testimonial</span>
-      </div>
-        
+        <div className="flex flex-col items-center mb-2">
+          <h2 className="text-3xl font-bold text-white">My clients Says</h2>
+          <div className="w-12 h-1 bg-white/20 mx-auto mb-3"></div>
+          <span className="text-muted-foreground text-center max-w-md">Testimonial</span>
+        </div>
+
         <div className="testimonial_container">
           <InfiniteMovingCards
             items={testimonials}
@@ -54,7 +54,7 @@ const testimonials = [
     name: "Founder of Thutokelesedi",
     title: "Thutokelesedi",
   },
- {
+  {
     quote: "Excellent service! The website creator was professional, responsive, and delivered a great website that met my needs. Highly recommended!",
     name: "Mr. Vincent Magotlho Founder of Magotlho TN Solutions",
     title: "Magotlho TN Solutions (PTY) LTD",

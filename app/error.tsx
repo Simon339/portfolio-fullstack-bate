@@ -14,14 +14,17 @@ export default function Error({
 }) {
   const router = useRouter()
   const [countdown, setCountdown] = useState(5)
+  const [isProd, setIsProd] = useState(false)
 
   useEffect(() => {
+    setIsProd(process.env.NODE_ENV === 'production')
+    
     const timer = setTimeout(() => {
       router.refresh()
     }, 5000)
 
     const interval = setInterval(() => {
-      setCountdown((prevCountdown) => prevCountdown - 1)
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
 
     return () => {
@@ -29,6 +32,14 @@ export default function Error({
       clearInterval(interval)
     }
   }, [router])
+
+  if (!error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>An unknown error occurred</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-950">
@@ -51,17 +62,24 @@ export default function Error({
           <p className="mt-1 text-gray-500 dark:text-gray-400 text-sm">The page will refresh in {countdown}</p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="py-3 px-4 bg-gray-50 dark:bg-gray-900 rounded-lg text-left"
-        >
-          <p className="text-sm font-mono text-gray-700 dark:text-gray-300 break-words">{error.message}</p>
-          {error.digest && (
-            <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-2 break-words">ID: {error.digest}</p>
-          )}
-        </motion.div>
+        {!isProd && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="py-3 px-4 bg-gray-50 dark:bg-gray-900 rounded-lg text-left"
+          >
+            <p className="text-sm font-mono text-gray-700 dark:text-gray-300 break-words">
+              {error.message}
+            </p>
+            {error.digest && (
+              <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-2 break-words">
+                Error ID: {error.digest}
+              </p>
+            )}
+          </motion.div>
+        )}
+
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -117,16 +135,27 @@ export default function Error({
 
           <motion.button
             onClick={reset}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="px-4 py-2 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium flex items-center gap-2 transition-colors hover:bg-gray-800 dark:hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 dark:focus:ring-gray-100"
+            disabled={countdown > 0}
+            whileHover={countdown === 0 ? { scale: 1.05 } : {}}
+            whileTap={countdown === 0 ? { scale: 0.98 } : {}}
+            animate={countdown === 0 ? { 
+              boxShadow: ["0 0 0 0 rgba(59, 130, 246, 0.7)", "0 0 0 10px rgba(59, 130, 246, 0)"],
+              transition: { 
+                repeat: Infinity,
+                duration: 1.5
+              }
+            } : {}}
+            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              countdown > 0
+                ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 dark:bg-blue-400 text-white dark:text-gray-900 hover:bg-blue-700 dark:hover:bg-blue-300 focus:ring-blue-500'
+            }`}
           >
             <RefreshCw className="h-4 w-4" />
-            Try again
+            {countdown > 0 ? `Try again (${countdown})` : 'Try again'}
           </motion.button>
         </motion.div>
       </motion.div>
     </div>
   )
 }
-

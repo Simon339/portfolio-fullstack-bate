@@ -8,14 +8,14 @@ import { eq } from "drizzle-orm"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "AuthPage",
-  description: "Let's Sign up or Login",
+  title: "Sign In | Sign Up",
+  description: "Sign in to your account or create a new one",
 }
 
 function LoadingIndicator() {
   return (
     <div className="flex items-center justify-center h-screen">
-      <div className="w-5 h-5 border-t border-gray-200 rounded-full animate-spin"></div>
+      <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
     </div>
   )
 }
@@ -31,15 +31,15 @@ async function AuthContent({ children }: { children: React.ReactNode }) {
         redirect("/account-deletion-requested")
       }
 
-      const userStatus = user.status;
-      const userRole = user.role;
+      const userStatus = user[0].status
+      const userRole = user[0].role
 
       if (userStatus !== "APPROVED") {
-        redirect("/onboarding/current");
+        redirect("/onboarding/current")
       } else if (userRole === "USER") {
-        redirect("/onboarding/current");
+        redirect("/onboarding/current")
       } else if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-        redirect("/dashboard");
+        redirect("/dashboard")
       }
     }
   }
@@ -58,6 +58,3 @@ export default function Layout({
     </Suspense>
   )
 }
-
-
-

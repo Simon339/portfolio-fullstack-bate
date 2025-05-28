@@ -47,6 +47,7 @@ export const profile = [
     { id: 3, logo: "/assets/company/mictsate.png", name: "MICTSETA" },
     { id: 4, logo: "/assets/company/TN-logo.png", name: "Magotlho TN Solutions (PTY) LTD" },
     { id: 5, logo: "/assets/company/Thutokelesedi.png", name: "Thuto ke Lesedi Kasie Tutorial" },
+    {id: 6, logo: "/assets/company/VersityFinds.png", name: "Versity Finds"}
   ]
 
 export const aboutcards = [

@@ -100,16 +100,18 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-800 bg-gray-900/20">
             {project.image ? (
               <Image
-                src={project.image || "/placeholder.svg"}
+                src={project.image}
                 alt={project.name}
                 fill
-                className="object-cover"
-                priority
+                className="object-cover transition-transform duration-500 hover:scale-105"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
-                <span className="text-gray-500">No image available</span>
-              </div>
+              <Image
+                src="/coming-soonplaceholder.png"
+                alt={project.name}
+                fill
+                className="object-cover transition-transform duration-500 hover:scale-105"
+              />
             )}
           </div>
 

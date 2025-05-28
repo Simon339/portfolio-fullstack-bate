@@ -279,17 +279,16 @@ const ProjectTable = () => {
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-gray-800 shadow-sm overflow-hidden border border-[#acc2ef]">
                       {tech.image ? (
                         <img
-                          src={tech.image || "/placeholder.svg"}
+                          src={tech.image}
                           alt={tech.name}
                           className="h-5 w-5 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder.svg?height=20&width=20"
-                          }}
                         />
                       ) : (
-                        <div className="h-full w-full flex items-center justify-center text-gray-800 text-xs font-bold">
-                          {tech.name.substring(0, 2).toUpperCase()}
-                        </div>
+                        <img
+                          src="/coming-soonplaceholder.png"
+                          alt={tech.name}
+                          className="h-5 w-5 object-contain"
+                        />
                       )}
                     </div>
                   </TooltipTrigger>

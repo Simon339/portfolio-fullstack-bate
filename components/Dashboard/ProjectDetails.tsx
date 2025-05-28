@@ -153,7 +153,7 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
               <div className="space-y-6">
                 <div className="rounded-lg overflow-hidden border border-[#acc2ef]/30 bg-white">
                   <Image
-                    src={project.image || "/placeholder.svg?height=280&width=280"}
+                    src={project.image || "/coming-soonplaceholder.png"}
                     alt={project.name || "Project Image"}
                     width={280}
                     height={280}

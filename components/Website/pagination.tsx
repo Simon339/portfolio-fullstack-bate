@@ -222,17 +222,18 @@ const Pagination = () => {
               <div className="relative h-48 overflow-hidden">
                 {project.image ? (
                   <Image
-                    src={project.image || "/placeholder.svg"}
+                    src={project.image}
                     alt={project.name}
                     fill
                     className="object-cover transition-transform duration-500 hover:scale-105"
                   />
                 ) : (
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/20 to-purple-900/20 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-indigo-300">
-                      {project.name.substring(0, 2).toUpperCase()}
-                    </span>
-                  </div>
+                  <Image
+                    src="/coming-soonplaceholder.png"
+                    alt={project.name}
+                    fill
+                    className="object-cover transition-transform duration-500 hover:scale-105"
+                  />
                 )}
 
                 {/* Category badge */}
