@@ -36,7 +36,7 @@ export const profile = [
     {
         id: 1,
         description: "Hello, I'm Malesela Simon Malapane, a technology enthusiast with experise in Web Developer, Flutter, Cybersecurity, Data Science and React. As a student, I've gained hands-on experience through various projects, delivering results that exceed client expectations. I'm excited to bring my skills and passion to new opprtunities.",
-        img: "/assets/Profile.jpg",
+        img: "/assets/Profile.jg",//jpg
     }
 ];
 
