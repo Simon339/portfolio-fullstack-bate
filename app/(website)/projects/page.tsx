@@ -1,5 +1,5 @@
 "use client";
-import Pagination from '@/components/Website/pagination'
+// import Pagination from '@/components/Website/pagination'
 import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards';
 import React from 'react'
 import { motion } from 'framer-motion';
