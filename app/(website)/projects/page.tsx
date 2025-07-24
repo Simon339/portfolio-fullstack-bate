@@ -2,6 +2,7 @@
 import Pagination from '@/components/Website/pagination'
 import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards';
 import React from 'react'
+import { motion } from 'framer-motion';
 
 export default function page() {
   return (
