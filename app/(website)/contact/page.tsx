@@ -22,7 +22,7 @@ export default function ContactPage() {
 
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-white">Email</h3>
-                <span className="text-white/70 text-xs">simonmalapane018@gmail.com</span>
+                <span className="text-white/70 text-xs">simonmalapane018@protonmail.com</span>
               </div>
 
               <a href="mailto:simonmalapane018@gmail.com" className="text-white/80 hover:text-white transition-colors">
@@ -37,7 +37,7 @@ export default function ContactPage() {
 
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-white">Phone</h3>
-                <span className="text-white/70 text-xs">0813124016</span>
+                <span className="text-white/70 text-xs">081 897 4649</span>
               </div>
 
               <a href="tel:0813124016" className="text-white/80 hover:text-white transition-colors">
