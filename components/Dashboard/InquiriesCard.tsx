@@ -20,44 +20,44 @@ interface ServiceInquiry {
 
 const InquiriesCard = ({ id, name, companyName, service, createdAt, isSelected,  onSelect, }: ServiceInquiry) => {
     function formatDate(createdAt: Date) {
-        const now = new Date();
-        const timeDiff = now.getTime() - createdAt.getTime();
-        const secondsInMinute = 60;
-        const secondsInHour = 60 * secondsInMinute;
-        const secondsInDay = 24 * secondsInHour;
-        const secondsInYear = 365 * secondsInDay;
-
-
-        if (timeDiff < secondsInMinute * 1000) {
-            return 'Just now';
-        }
-
-        if (timeDiff < secondsInHour * 1000) {
-            const minutesAgo = Math.floor(timeDiff / 1000 / secondsInMinute);
-            return `${minutesAgo} min${minutesAgo > 1 ? 's' : ''} ago`;
-        }
-
-        if (timeDiff < secondsInDay * 1000) {
-            const hoursAgo = Math.floor(timeDiff / 1000 / secondsInHour);
-            return `${hoursAgo} hr${hoursAgo > 1 ? 's' : ''} ago`;
-        }
-
-        const currentYear = now.getFullYear();
-        const dateObj = new Date(createdAt);
-        const dateYear = dateObj.getFullYear();
-
-        if (dateYear === currentYear) {
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            return `${day}/${month}`;
-        }
-
-
-        const day = String(dateObj.getDate()).padStart(2, '0');
-        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const year = String(dateObj.getFullYear()).slice(2);
-        return `${day}/${month}/${year}`;
-    }
+          if (!createdAt) return '';
+          const now = new Date();
+          const timeDiff = now.getTime() - createdAt.getTime();
+          const secondsInMinute = 60;
+          const secondsInHour = 60 * secondsInMinute;
+          const secondsInDay = 24 * secondsInHour;
+  
+  
+          if (timeDiff < secondsInMinute * 1000) {
+              return 'Just now';
+          }
+  
+          if (timeDiff < secondsInHour * 1000) {
+              const minutesAgo = Math.floor(timeDiff / 1000 / secondsInMinute);
+              return `${minutesAgo} min${minutesAgo > 1 ? 's' : ''} ago`;
+          }
+  
+          if (timeDiff < secondsInDay * 1000) {
+              const hoursAgo = Math.floor(timeDiff / 1000 / secondsInHour);
+              return `${hoursAgo} hr${hoursAgo > 1 ? 's' : ''} ago`;
+          }
+  
+          const currentYear = now.getFullYear();
+          const dateObj = new Date(createdAt);
+          const dateYear = dateObj.getFullYear();
+  
+          if (dateYear === currentYear) {
+              const day = String(dateObj.getDate()).padStart(2, '0');
+              const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+              return `${day}/${month}`;
+          }
+  
+  
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const year = String(dateObj.getFullYear()).slice(2);
+          return `${day}/${month}/${year}`;
+      }
 
     const handleSelectChange = (checked: boolean) => {
         onSelect(id, checked);

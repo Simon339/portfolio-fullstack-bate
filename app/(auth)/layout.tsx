@@ -1,11 +1,10 @@
+
+
 import type React from "react"
-import { auth } from "@/server/auth"
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
-import { db } from "@/server/db"
-import { users } from "@/server/schema"
-import { eq } from "drizzle-orm"
 import { Suspense } from "react"
+import AuthContent from "../_component/AuthContect"
+
 
 export const metadata: Metadata = {
   title: "Sign In | Sign Up",
@@ -20,34 +19,8 @@ function LoadingIndicator() {
   )
 }
 
-async function AuthContent({ children }: { children: React.ReactNode }) {
-  const session = await auth()
 
-  if (session) {
-    const user = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1)
-
-    if (user[0]) {
-      if (user[0].deletionRequestedAt) {
-        redirect("/account-deletion-requested")
-      }
-
-      const userStatus = user[0].status
-      const userRole = user[0].role
-
-      if (userStatus !== "APPROVED") {
-        redirect("/onboarding/current")
-      } else if (userRole === "USER") {
-        redirect("/onboarding/current")
-      } else if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-        redirect("/dashboard")
-      }
-    }
-  }
-
-  return <main className="flex items-center justify-center min-h-screen bg-white">{children}</main>
-}
-
-export default function Layout({
+export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode
@@ -56,5 +29,5 @@ export default function Layout({
     <Suspense fallback={<LoadingIndicator />}>
       <AuthContent>{children}</AuthContent>
     </Suspense>
-  )
+  );
 }

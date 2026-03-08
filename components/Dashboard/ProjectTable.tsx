@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from "react"
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -336,35 +336,70 @@ const ProjectTable = () => {
       },
     },
     {
-      accessorKey: "features",
-      header: "Features",
-      cell: ({ row }) => {
-        const features = row.getValue("features") as Array<{ name: string; description: string }>
-
-        if (!features || features.length === 0) {
-          return <span className="text-muted-foreground text-xs">No features</span>
+  accessorKey: "features",
+  header: "Features",
+  cell: ({ row }) => {
+    const featuresValue = row.getValue("features")
+    
+    let features = []
+    
+    try {
+      if (typeof featuresValue === 'string') {
+        // Try to parse as JSON first
+        if (featuresValue.startsWith('[') && featuresValue.endsWith(']')) {
+          features = JSON.parse(featuresValue)
+        } else if (featuresValue.includes(',')) {
+          // If it's a comma-separated string, split it
+          features = featuresValue.split(',').map(item => ({
+            name: item.trim(),
+            description: ''
+          }))
+        } else if (featuresValue.trim() !== '') {
+          // Single feature string
+          features = [{ name: featuresValue.trim(), description: '' }]
         }
+      } else if (Array.isArray(featuresValue)) {
+        // Already an array
+        features = featuresValue
+      }
+    } catch (error) {
+      console.error('Error parsing features:', error)
+    }
+    
+    if (!features || features.length === 0) {
+      return <span className="text-muted-foreground text-xs">No features</span>
+    }
 
-        // Only show the first 3 features
-        const displayFeatures = features.slice(0, 2)
-        const remainingCount = features.length - 3
+    // Ensure each feature has the expected structure
+    const safeFeatures = features.map((feature: any) => {
+      if (typeof feature === 'string') {
+        return { name: feature, description: '' }
+      }
+      return {
+        name: feature?.name || 'Feature',
+        description: feature?.description || ''
+      }
+    })
 
-        return (
-          <div className="flex flex-col gap-1 max-w-[200px]">
-            {displayFeatures.map((feature, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center rounded-full bg-muted/60 px-1.5 py-0.5 text-xs font-medium truncate"
-                title={feature.name}
-              >
-                {feature.name}
-              </span>
-            ))}
-            {remainingCount > 0 && <span className="text-xs text-muted-foreground">+{remainingCount} more</span>}
-          </div>
-        )
-      },
-    },
+    const displayFeatures = safeFeatures.slice(0, 3)
+    const remainingCount = Math.max(0, safeFeatures.length - 3)
+
+    return (
+      <div className="flex flex-col gap-1 max-w-[200px]">
+        {displayFeatures.map((feature: { name: any }, index: Key | null | undefined) => (
+          <span
+            key={index}
+            className="inline-flex items-center rounded-full bg-muted/60 px-1.5 py-0.5 text-xs font-medium truncate"
+            title={feature.name}
+          >
+            {feature.name}
+          </span>
+        ))}
+        {remainingCount > 0 && <span className="text-xs text-muted-foreground">+{remainingCount} more</span>}
+      </div>
+    )
+  },
+},
     {
       id: "actions",
       header: "Actions",

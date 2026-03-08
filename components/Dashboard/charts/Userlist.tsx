@@ -23,11 +23,9 @@ const roleColor = {
   }
 
 
-const Userlist = ({ image, name, surname, role, email, createdAt, status, color, id }: RecentUsersProps) => {
+const Userlist = ({ image, name, email, createdAt, status, color, id }: RecentUsersProps) => {
     const chipColor = status === 'Verified' ? 'success' : 'warning';
-    const getRoleColor = (role: "USER" | "SUPER_USER" | "ADMIN") => {
-        return roleColor[role] || roleColor.default;
-    };
+   
 
     return (
         <div className="space-y-4 p-2 max-h-[250px] w-full">
@@ -39,12 +37,12 @@ const Userlist = ({ image, name, surname, role, email, createdAt, status, color,
                     </Avatar>
                 </Badge>
                 <div className="ml-4 space-y-1">
-                    <p className="text-sm font-thin leading-none">{name} {surname}</p>
+                    <p className="text-sm font-thin leading-none">{name}</p>
                     <p className="text-sm text-muted-foreground">{email}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Chip  size="sm" variant="flat" color={getRoleColor(role)} className="text-xs">
-                            {role}
-                        </Chip>
+                        <Chip className="capitalize" color={chipColor} size="sm" variant="flat">
+                        {status}
+                    </Chip>
                         <span>·</span>
                         <span>{format(new Date(createdAt), 'MMM d, yyyy')}</span>
                         

@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+"use client"
+
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, MailOpen, Trash2 } from 'lucide-react';
@@ -9,6 +11,17 @@ import { getAllContactMessages, deleteRecords } from '@/server/actions/notificat
 import Link from 'next/link';
 import { Tooltip } from '@heroui/react';
 import DeleteMessage from './modals/DeleteMessage';
+
+interface Message {
+    id: string;
+    name: string;
+    email: string;
+    topic: string;
+    message: string;
+    createdAt: Date;
+    isSelected?: boolean;
+    isRead?: boolean;
+}
 
 const MessageTab = () => {
     const [selectAll, setSelectAll] = React.useState(false);
@@ -79,7 +92,7 @@ const MessageTab = () => {
         await deleteRecords({ contactFormIds: selectedIds });
         setIsDeleteDialogOpen(false);
         setIsDeleting(false);
-        fetchNotifications(); // Refresh the list after deletion
+        fetchNotifications();
     };
 
     return (
@@ -126,7 +139,7 @@ const MessageTab = () => {
                         ) : (
                             currentMessages.map((message) => (
                                 <div key={message.id}>
-                                    <Link href={`/dashboard/mails/${message.id}`}>
+                                    <Link href={`/dashboard/mails/messages/${message.id}`}>
                                         <MessageCard
                                             key={message.id}
                                             id={message.id}

@@ -52,13 +52,56 @@ export const RatingSchema = z.object({
   feedback: z.string().optional()
 });
 
-export const ServiceSchema= z.object({
+export const ServiceSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email({ message: "Invalid email address." }),
   companyName: z.string().min(2, 'Company name must be at least 2 characters'),
   service: z.string().min(1, 'Service is required'),
   phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number'),
+  address: z.object({
+    unit: z.string().nullable().optional(),
+    street: z.string().min(1, 'Street address is required'),
+    subdivision: z.string().nullable().optional(),
+    city: z.string().min(1, 'City is required'),
+    province: z.string().min(1, 'Province is required'),
+    postalCode: z.string().min(1, 'Postal code is required')
+  })
 });
+
+// Schema for creating a new quotation (CREATE ONLY)
+export const CreateQuotationSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  companyName: z.string().optional(),
+  address: z.object({
+    unit: z.string().optional(),
+    street: z.string().optional(),
+    subdivision: z.string().optional(),
+    city: z.string().optional(),
+    province: z.string().optional(),
+    postalCode: z.string().optional(),
+  }).optional(),
+
+  // Quotation details
+  service: z.string().min(1, "Service description is required"),
+  notes: z.string().optional(),
+  terms: z.string().optional(),
+
+  // Items
+  items: z.array(z.object({
+    description: z.string().min(1, "Item description is required"),
+    quantity: z.number().positive("Quantity must be positive"),
+    unit: z.string().min(1, "Unit is required"),
+    unitPrice: z.string().min(1, "Unit price is required"),
+    total: z.string().min(1, "Total is required"),
+  })).min(1, "At least one item is required"),
+
+  // Financials
+  subtotal: z.string().min(1, "Subtotal is required"),
+  taxRate: z.string().min(1, "Tax rate is required"),
+  total: z.string().min(1, "Total is required"),
+})
 
 
 export const ReplyFormSchema = z.object({

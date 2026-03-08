@@ -53,7 +53,7 @@ const TechstackCard = ({ id, name, image, isSelected, onSelect, onEdit }: Techst
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            if (file.size > 5 * 1024 * 1024) { 
                 toast.error("File size should not exceed 5MB");
                 return;
             }

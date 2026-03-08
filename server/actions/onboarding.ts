@@ -4,161 +4,161 @@ import { revalidatePath } from "next/cache";
 import { db } from "../db";
 import { getUserByEmail, getUserById } from "../data/user";
 import { eq } from "drizzle-orm";
-import { verificationTokens, users, passwordResetTokens, tokens, auditLogs } from "../schema";
+import {  user, auditLogs } from "../schema";
 import { sendVerificationEmail } from "@/lib/mail";
 import { v4 as uuidv4 } from 'uuid';
 import { z } from "zod";
 import { headers } from "next/headers";
-import { currentUser } from "@/lib/auth";
+import { auth } from "../auth";
 
 
 const schema = z.object({
   email: z.string().email(),
 });
 
-export const getVerificationTokenByEmail = async (email: string) => {
-  try {
-    const verificationToken = await db
-      .select()
-      .from(verificationTokens)
-      .where(eq(verificationTokens.email, email))
-      .limit(1);
+// export const getVerificationTokenByEmail = async (email: string) => {
+//   try {
+//     const verificationToken = await db
+//       .select()
+//       .from(verificationTokens)
+//       .where(eq(verificationTokens.email, email))
+//       .limit(1);
     
-    revalidatePath('/tokens');
-    return verificationToken[0];
-  } catch (error) {
-    console.log(error);
-  }
-}
+//     revalidatePath('/tokens');
+//     return verificationToken[0];
+//   } catch (error) {
+//     console.log(error);
+//   }
+// }
 
-export const getVerificationTokenByToken = async (token: string) => {
-  try {
-    const verificationToken = await db
-      .select()
-      .from(verificationTokens)
-      .where(eq(verificationTokens.token, token))
-      .limit(1);
+// export const getVerificationTokenByToken = async (token: string) => {
+//   try {
+//     const verificationToken = await db
+//       .select()
+//       .from(verificationTokens)
+//       .where(eq(verificationTokens.token, token))
+//       .limit(1);
     
-    revalidatePath('/tokens');
-    return verificationToken[0];
-  } catch (error) {
-    console.log(error);
-  }
-}
+//     revalidatePath('/tokens');
+//     return verificationToken[0];
+//   } catch (error) {
+//     console.log(error);
+//   }
+// }
 
-export const newVerification = async (token: string) => {
-  const existingToken = await getVerificationTokenByToken(token);
+// export const newVerification = async (token: string) => {
+//   const existingToken = await getVerificationTokenByToken(token);
 
-  if (!existingToken) {
-    return { error: "Invalid token" };
-  }
+//   if (!existingToken) {
+//     return { error: "Invalid token" };
+//   }
 
-  const hasExpired = new Date(existingToken.expires) < new Date();
+//   const hasExpired = new Date(existingToken.expires) < new Date();
 
-  if (hasExpired) {
-    return { error: "Token has expired" };
-  }
+//   if (hasExpired) {
+//     return { error: "Token has expired" };
+//   }
 
-  const existingUser = await getUserByEmail(existingToken.email);
+//   const existingUser = await getUserByEmail(existingToken.email);
 
-  if (!existingUser) {
-    return { error: "User not found" };
-  }
+//   if (!existingUser) {
+//     return { error: "User not found" };
+//   }
 
-  await db
-    .update(users)
-    .set({
-      emailVerified: new Date(),
-      email: existingToken.email
-    })
-    .where(eq(users.id, existingUser.id));
+//   await db
+//     .update(users)
+//     .set({
+//       emailVerified: new Date(),
+//       email: existingToken.email
+//     })
+//     .where(eq(users.id, existingUser.id));
 
-  await db
-    .delete(verificationTokens)
-    .where(eq(verificationTokens.id, existingToken.id));
+//   await db
+//     .delete(verificationTokens)
+//     .where(eq(verificationTokens.id, existingToken.id));
 
-  return { success: "Email verified" };
-}
+//   return { success: "Email verified" };
+// }
 
-export const getPasswordResetTokenByToken = async (token: string) => {
-  try {
-    const passwordResetToken = await db
-      .select()
-      .from(passwordResetTokens)
-      .where(eq(passwordResetTokens.token, token))
-      .limit(1);
+// export const getPasswordResetTokenByToken = async (token: string) => {
+//   try {
+//     const passwordResetToken = await db
+//       .select()
+//       .from(passwordResetTokens)
+//       .where(eq(passwordResetTokens.token, token))
+//       .limit(1);
     
-    revalidatePath('/tokens');
-    return passwordResetToken[0];
-  } catch {
-    return null;
-  }
-}
+//     revalidatePath('/tokens');
+//     return passwordResetToken[0];
+//   } catch {
+//     return null;
+//   }
+// }
 
-export const getPasswordResetTokenByEmail = async (email: string) => {
-  try {
-    const passwordResetToken = await db
-      .select()
-      .from(passwordResetTokens)
-      .where(eq(passwordResetTokens.email, email))
-      .limit(1);
+// export const getPasswordResetTokenByEmail = async (email: string) => {
+//   try {
+//     const passwordResetToken = await db
+//       .select()
+//       .from(passwordResetTokens)
+//       .where(eq(passwordResetTokens.email, email))
+//       .limit(1);
     
-    revalidatePath('/tokens');
-    return passwordResetToken[0];
-  } catch {
-    return null;
-  }
-}
+//     revalidatePath('/tokens');
+//     return passwordResetToken[0];
+//   } catch {
+//     return null;
+//   }
+// }
 
-export const getReviewInvitationTokenByEmail = async (email: string) => {
-  try {
-    const reviewInvitationToken = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.email, email))
-      .limit(1);
+// export const getReviewInvitationTokenByEmail = async (email: string) => {
+//   try {
+//     const reviewInvitationToken = await db
+//       .select()
+//       .from(tokens)
+//       .where(eq(tokens.email, email))
+//       .limit(1);
     
-    revalidatePath('/tokens');
-    return reviewInvitationToken[0];
-  } catch {
-    return null;
-  }
-}
+//     revalidatePath('/tokens');
+//     return reviewInvitationToken[0];
+//   } catch {
+//     return null;
+//   }
+// }
 
-export async function requestVerificationToken(data: z.infer<typeof schema>) {
-  const validatedFields = schema.safeParse(data);
+// export async function requestVerificationToken(data: z.infer<typeof schema>) {
+//   const validatedFields = schema.safeParse(data);
   
-  if (!validatedFields.success) {
-    return { error: "Invalid email address" };
-  }
+//   if (!validatedFields.success) {
+//     return { error: "Invalid email address" };
+//   }
 
-  const { email } = validatedFields.data;
+//   const { email } = validatedFields.data;
 
-  const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
+//   const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
-  if (!user[0]) {
-    return { error: "User not found" };
-  }
+//   if (!user[0]) {
+//     return { error: "User not found" };
+//   }
 
-  if (user[0].emailVerified) {
-    return { error: "Email already verified" };
-  }
+//   if (user[0].emailVerified) {
+//     return { error: "Email already verified" };
+//   }
 
-  await db.delete(verificationTokens).where(eq(verificationTokens.email, email));
+//   await db.delete(verificationTokens).where(eq(verificationTokens.email, email));
 
-  const token = uuidv4();
-  const expires = new Date(Date.now() + 3600000); // 1 hour from now
+//   const token = uuidv4();
+//   const expires = new Date(Date.now() + 3600000); // 1 hour from now
 
-  await db.insert(verificationTokens).values({
-    email,
-    token,
-    expires,
-  });
+//   await db.insert(verificationTokens).values({
+//     email,
+//     token,
+//     expires,
+//   });
 
-  await sendVerificationEmail(email, token);
+//   await sendVerificationEmail(email, token);
 
-  return { success: "Verification email sent. Please check your inbox." };
-}
+//   return { success: "Verification email sent. Please check your inbox." };
+// }
 
 export const Settings = async (values: {
     email: string;
@@ -168,17 +168,15 @@ export const Settings = async (values: {
     role: "USER" | "ADMIN";
     image?: File;
   }) => {
-    const user = await currentUser();
+   const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+})
   
-    if (!user) {
+    if (!session) {
       return { error: "Unauthorized!" };
     }
   
-    const dbUser = await getUserById(user.id);
-  
-    if (!dbUser) {
-      return { error: "Unauthorized!" };
-    }
+   
   
     const headersList = await headers();
     const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
@@ -186,11 +184,11 @@ export const Settings = async (values: {
   
     try {
       await db
-        .update(users)
+        .update(user)
         .set({
           ...values,
         })
-        .where(eq(users.id, dbUser.id))
+        .where(eq(user.id))
         .execute();
   
       await db.insert(auditLogs).values({
@@ -226,7 +224,7 @@ export const Settings = async (values: {
     }
   
     try {
-      await db.update(users).set({ deletionRequestedAt: now }).where(eq(users.id, userId))
+      await db.update(user).set({ deletionRequestedAt: now }).where(eq(user.id, userId))
   
       // Insert an audit log entry
       await db.insert(auditLogs).values({

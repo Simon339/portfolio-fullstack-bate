@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -42,6 +41,64 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Helper function to parse features from various formats
+  const parseFeatures = (featuresValue: any): ProjectFeature[] => {
+    let featuresArray: ProjectFeature[] = []
+    
+    try {
+      if (typeof featuresValue === 'string') {
+        const featuresStr = featuresValue.trim()
+        
+        if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
+          // Parse as JSON array
+          const parsed = JSON.parse(featuresStr)
+          
+          // Handle both array of strings and array of objects
+          if (Array.isArray(parsed)) {
+            featuresArray = parsed.map(item => {
+              if (typeof item === 'string') {
+                return { name: item, description: '' }
+              } else if (typeof item === 'object' && item !== null) {
+                return {
+                  name: item.name || item.Name || 'Feature',
+                  description: item.description || item.Description || ''
+                }
+              }
+              return { name: 'Feature', description: '' }
+            })
+          }
+        } else if (featuresStr.includes(',')) {
+          // Comma-separated string
+          featuresArray = featuresStr.split(',').map(item => ({
+            name: item.trim(),
+            description: ''
+          }))
+        } else if (featuresStr !== '') {
+          // Single feature string
+          featuresArray = [{ name: featuresStr, description: '' }]
+        }
+      } else if (Array.isArray(featuresValue)) {
+        // Already an array
+        featuresArray = featuresValue.map(item => {
+          if (typeof item === 'string') {
+            return { name: item, description: '' }
+          } else if (typeof item === 'object' && item !== null) {
+            return {
+              name: item.name || item.Name || 'Feature',
+              description: item.description || item.Description || ''
+            }
+          }
+          return { name: 'Feature', description: '' }
+        })
+      }
+    } catch (error) {
+      console.error('Error parsing features:', error, 'Value:', featuresValue)
+      // Return empty array on error
+    }
+    
+    return featuresArray
+  }
+
   useEffect(() => {
     const getProject = async () => {
       try {
@@ -49,7 +106,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         const response = await fetchProjectById(projectId)
 
         if (response.success && response.data) {
-          setProject(response.data)
+          const projectData = response.data
+          
+          // Parse features from string to array if needed
+          const parsedProject = {
+            ...projectData,
+            features: parseFeatures(projectData.features)
+          }
+          
+          setProject(parsedProject)
         } else {
           setError(response.error || "Failed to load project")
         }
@@ -84,6 +149,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       </div>
     )
   }
+
+  const safeFeatures = project.features || []
 
   return (
     <div className="w-full bg-[#000319] text-white min-h-screen">
@@ -159,11 +226,11 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             </div>
 
             {/* Features */}
-            {project.features.length > 0 && (
+            {safeFeatures.length > 0 && (
               <div>
                 <h2 className="text-xl font-semibold mb-4">Features</h2>
                 <ul className="space-y-3">
-                  {project.features.map((feature, index) => (
+                  {safeFeatures.map((feature, index) => (
                     <li key={index} className="flex gap-3">
                       <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></div>
                       <div>
@@ -260,4 +327,3 @@ function ProjectDetailsSkeleton() {
     </div>
   )
 }
-

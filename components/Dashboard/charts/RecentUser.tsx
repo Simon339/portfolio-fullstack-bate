@@ -14,7 +14,6 @@ interface User {
   surname: string
   image: string
   email: string
-  role: "USER" | "SUPER_USER" | "ADMIN";
   status?: 'Verified' | 'Not Verified';
   createdAt: Date
 }

@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+"use client"
+
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, MailOpen, Trash2 } from 'lucide-react';
@@ -9,6 +11,16 @@ import Link from 'next/link';
 import InquiriesCard from './InquiriesCard';
 import { Tooltip } from '@heroui/react';
 import DeleteMessage from './modals/DeleteMessage';
+
+interface ServiceInquiry {
+    id: string;
+    name: string;
+    companyName: string;
+    service: string;
+    createdAt: Date;
+    isSelected?: boolean;
+    isRead?: boolean;
+}
 
 const InquiriesTab = () => {
     const [selectAll, setSelectAll] = React.useState(false);

@@ -4,35 +4,32 @@ import { SettingsSchema } from "@/types";
 import * as z from "zod";
 import { getUserById } from "@/server/data/user";
 import { db } from "@/server/db";
-import { auditLogs, deletedUsers, users } from "@/server/schema";
+import { auditLogs,  user } from "@/server/schema";
 import { eq, lte } from "drizzle-orm";
-import { currentUser } from "@/lib/auth";
 import { headers } from "next/headers";
+import { auth } from "../auth";
 
 export const Settings = async (values: z.infer<typeof SettingsSchema>) => {
-  const user = await currentUser();
+  const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+})
 
-  if (!user) {
+  if (!session.user) {
     return { error: "Unauthorized!" };
   }
 
-  const dbUser = await getUserById(user.id);
-
-  if (!dbUser) {
-    return { error: "Unauthorized!" };
-  }
-
+  
   const headersList = await headers();
   const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';
 
   try {
     await db
-      .update(users)
+      .update(user)
       .set({
         ...values,
       })
-      .where(eq(users.id, dbUser.id))
+      .where(eq(user.id, session.user.id))
       .execute();
 
     await db.insert(auditLogs).values({

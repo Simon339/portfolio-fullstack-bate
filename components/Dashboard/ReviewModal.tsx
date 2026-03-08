@@ -13,6 +13,7 @@ import {
     Form,
     FormControl,
     FormField,
+    FormItem,
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
@@ -83,22 +84,25 @@ const ReviewModal = () => {
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-
                         {/* Email Field */}
-                        <FormField control={form.control} name="email" render={({ field }) => (
-                            <div className="form-item">
-                                <FormLabel className="form-label">Email</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        placeholder="Enter your email"
-                                        type="email"
-                                        {...field}
-                                        disabled={isLoading}
-                                    />
-                                </FormControl>
-                                <FormMessage>{form.formState.errors.email?.message}</FormMessage>
-                            </div>
-                        )} />
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem> 
+                                    <FormLabel className="form-label">Email</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="Enter your email"
+                                            type="email"
+                                            {...field}
+                                            disabled={isLoading}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         <DialogFooter>
                             <Button

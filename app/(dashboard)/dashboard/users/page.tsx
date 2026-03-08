@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 import React, { useState, useEffect } from 'react';
-
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-//import Checkbox from '@mui/material/Checkbox';
 import { useRouter } from 'next/navigation';
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Trash2, } from 'lucide-react';
-
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import UsersCard from '@/components/Dashboard/UsersCard';
@@ -19,12 +17,9 @@ import { toast } from 'sonner';
 interface User {
   id: string;
   name: string;
-  surname: string;
   image: string;
   email: string;
-  role: "USER" | "SUPER_USER" | "ADMIN";
   status: "Verified" | "Not Verified";
-  approval: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: Date;
   color?: string;
   isSelected: boolean;
@@ -57,7 +52,7 @@ const Page = () => {
     try {
       setLoading(true);
       const usersData = await getbyUserDetails();
-      setUsers(usersData);
+      setUsers(usersData || []);
     } catch (err) {
       setError("Failed to fetch users. Please try again later.");
     } finally {
@@ -139,7 +134,7 @@ const Page = () => {
             onClose={() => setIsDeleteModalOpen(false)}
             onDelete={handleDelete}
             isDeleting={isDeleting}
-            selectedUserNames={users.filter(u => u.isSelected).map(u => `${u.name} ${u.surname}`).join(", ")}
+            selectedUserNames={users.filter(u => u.isSelected).map(u => `${u.name}`).join(", ")}
           />
 
           <UserModal />
@@ -157,20 +152,19 @@ const Page = () => {
             ) : (
               currentUser.map((user) => (
                 <div key={user.id} onClick={() => router.push(`/dashboard/users/${user.id}`)}>
+                  <Link href={`/dashboard/users/${user.id}`}>
                   <UsersCard
                     id={user.id}
                     name={user.name}
-                    surname={user.surname}
                     image={user.image}
                     email={user.email}
-                    role={user.role}
                     createdAt={user.createdAt}
                     status={user.status}
-                    approval={user.approval}
                     color={user.color}
                     isSelected={user.isSelected}
                     onSelect={handleSelectuser}
                   />
+                  </Link>
                 </div>
               ))
             )}

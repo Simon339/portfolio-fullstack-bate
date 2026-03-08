@@ -3,9 +3,10 @@
 import { RatingSchema } from "@/types";
 import { db } from "../db";
 import * as z from "zod";
-import { generateReviewInvitationtoken } from "@/lib/token";
+import { v4 as uuidv4 } from 'uuid';
+import { generateReviewInvitationToken } from "@/lib/token";
 import { sendReviewInvitationToken } from "@/lib/mail";
-import { auditLogs, ratings, tokens } from "../schema";
+import { auditLogs, ratings, verification } from "../schema";
 import { eq, and, gt } from "drizzle-orm";
 import { headers } from "next/headers";
 
@@ -21,14 +22,17 @@ export async function RatingAction(data: z.infer<typeof RatingSchema>) {
     const newRating = await db.insert(ratings).values({
       rating: data.rating,
       feedback: data.feedback || null,
-    }).returning();
+    });
+
+    // Extract the ID from the insert result
+    const ratingId = newRating[0].insertId || newRating[0].id;
 
     await db.insert(auditLogs).values({
       action: 'CREATE',
       tableName: 'ratings',
-      recordId: newRating[0].id,
+      recordId: ratingId,
       userId: null, // Set userId to null if not available
-      details: JSON.stringify({ action: 'Rating submitted', data: newRating[0] }),
+      details: JSON.stringify({ action: 'Rating submitted' }),
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
@@ -72,14 +76,14 @@ export async function submitReview(formData: FormData) {
   const userAgent = headersList.get('user-agent') || 'unknown';
 
   try {
-    const validToken = await db.select().from(tokens).where(
+    const validToken = await db.select().from(verification).where(
       and(
-        eq(tokens.token, token),
-        gt(tokens.expires, new Date())
+        eq(verification.value, token),
+        gt(verification.expiresAt, new Date())
       )
     ).then((result) => result[0]);
 
-    if (!validToken || validToken.expires < new Date()) {
+    if (!validToken || validToken.expiresAt < new Date()) {
       return { success: false, error: "Invalid or expired token" };
     }
 
@@ -91,26 +95,49 @@ export async function submitReview(formData: FormData) {
       return { success: false, error: "Invalid rating" };
     }
 
-    const review = await db.insert(ratings).values({
+    // Generate IDs for both rating and audit log
+    const ratingId = uuidv4();
+    const auditLogId = uuidv4(); // Generate ID for audit log too
+    const now = new Date();
+
+    // Insert the review
+    await db.insert(ratings).values({
+      id: ratingId,
       rating,
       feedback: feedback || null,
       name: name || null,
-    }).returning();
+      createdAt: now,
+      updatedAt: now,
+    });
 
-    await db.delete(tokens).where(eq(tokens.id, validToken.id));
+    // Delete the used token
+    await db.delete(verification).where(eq(verification.id, validToken.id));
 
-    // Log the action in audit_logs
+    // Log the action in audit_logs with its own ID
     await db.insert(auditLogs).values({
       action: 'CREATE',
       tableName: 'ratings',
-      recordId: review[0].id,
-      userId: null, 
-      details: JSON.stringify({ action: 'Review submitted', data: review[0] }),
+      recordId: ratingId,
+      userId: null,
+      details: JSON.stringify({ action: 'Review submitted', rating, name }),
       ipAddress: ipAddress,
       userAgent: userAgent,
+      createdAt: now,
+      updatedAt: now, 
     });
 
-    return { success: true, data: review[0] };
+    // Return success response
+    return { 
+      success: true, 
+      data: {
+        id: ratingId,
+        name: name || null,
+        rating,
+        feedback: feedback || null,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      }
+    };
   } catch (error) {
     console.error("Failed to submit review:", error);
     return { success: false, error: "Failed to submit review" };
@@ -131,10 +158,12 @@ export async function sendReviewInvitation(data: z.infer<Awaited<ReturnType<type
   }
   const { email } = validatedFields.data;
 
-  const reviewInvitationToken = await generateReviewInvitationtoken(email);
+  const reviewInvitationToken = await generateReviewInvitationToken(email);
+  
+  // Make sure you're passing the correct properties
   await sendReviewInvitationToken(
-    reviewInvitationToken.email,
-    reviewInvitationToken.token
+    reviewInvitationToken.identifier,
+    reviewInvitationToken.value
   );
 
   return { success: "Invitation email sent!" };

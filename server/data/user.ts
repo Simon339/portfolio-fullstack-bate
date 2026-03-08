@@ -1,36 +1,46 @@
 "use server"
 
 import { db } from "@/server/db"
-import { users } from "@/server/schema"
+import { user } from "@/server/schema"
 import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { auth } from "@/server/auth" // Import the auth function from NextAuth.js
-import type { User } from "next-auth"
+import { auth } from "@/server/auth" 
+import { headers } from "next/headers"
 
-interface CustomUser extends User {
-  id: string
-  name: string
-  surname: string
-  role: string
-  phone: string
-  status: string
-}
 
-export async function getCurrentUser(): Promise<CustomUser | null> {
-  const session = await auth()
-  return session?.user as CustomUser | null
+export async function getCurrentUser() {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  const [currentUser] = await db
+    .select()
+    .from(user)
+    .where(eq(user.id, session.user.id))
+    .limit(1);
+
+  return {
+    ...session,
+    currentUser,
+  };
 }
 
 // Get the current user ID from the session
 async function getCurrentusersId() {
-  const session = await auth() // Get the current session
+  const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+}) // Get the current session
 
   if (!session?.user?.id) {
     return null
   }
 
   // Use direct query instead of query builder
-  const [userId] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1)
+  const [userId] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1)
 
   return userId
 }
@@ -44,7 +54,7 @@ export async function getCurrentUserId() {
 export const getUserByEmail = async (email: string) => {
   try {
     // Use direct query instead of query builder
-    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+    const [user] = await db.select().from(user).where(eq(user.email, email)).limit(1)
 
     revalidatePath("/users")
     return user
@@ -58,7 +68,7 @@ export const getUserByEmail = async (email: string) => {
 export const getUserById = async (id: string) => {
   try {
     // Use direct query instead of query builder
-    const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1)
+    const [user] = await db.select().from(user).where(eq(user.id, id)).limit(1)
 
     return user
   } catch (error) {
@@ -80,7 +90,7 @@ export async function requestApproval(email: string) {
       throw new Error('Only users with "User" role can request approval')
     }
 
-    const updatedUser = await db.update(users).set({ status: "PENDING" }).where(eq(users.email, email)).returning()
+    const updatedUser = await db.update(user).set({ status: "PENDING" }).where(eq(user.email, email)).returning()
 
     revalidatePath("/users")
     return updatedUser[0]
@@ -103,7 +113,7 @@ export async function updateApprovalStatus(email: string, status: "APPROVED" | "
       throw new Error('Can only update approval status for users with "User" role')
     }
 
-    const updatedUser = await db.update(users).set({ status }).where(eq(users.email, email)).returning()
+    const updatedUser = await db.update(user).set({ status }).where(eq(user.email, email)).returning()
 
     revalidatePath("/users")
     return updatedUser[0]
@@ -127,21 +137,42 @@ export async function getUserProfile() {
 }
 
 // Get user profile by ID
-export async function getUserProfileById(userId: string) {
+export const getUserProfileById = async (userId: string) => {
   try {
-    if (!userId) {
-      return null
+    // First try to get user from BetterAuth if available
+    if (auth) {
+      try {
+        const session = await auth.api.getSession({
+          headers: await headers() // Add headers for authentication context
+        });
+        
+        if (session?.user?.id === userId) {
+          // Return the user from the session if it matches the requested ID
+          return session.user;
+        }
+        // If session exists but user ID doesn't match, fall back to database
+        // (or you might want to handle this differently based on your auth logic)
+      } catch (error) {
+       
+      }
     }
 
-    // Use direct query instead of query builder and add the missing userId parameter
-    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+    // Fallback to direct database query
+    const result = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
 
-    return user
+    return result[0] || null;
   } catch (error) {
-    console.error(`Error fetching user profile for ID ${userId}:`, error)
-    return null
+    console.error("Error fetching user profile:", error);
+    throw new Error(
+      `Failed to fetch user profile: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
-}
+};
+
 
 // Update user profile
 export async function updateUserProfile(formData: FormData) {
@@ -178,7 +209,7 @@ export async function updateUserProfile(formData: FormData) {
 
     // Update user in database
     await db
-      .update(users)
+      .update(user)
       .set({
         name,
         surname,
@@ -188,10 +219,10 @@ export async function updateUserProfile(formData: FormData) {
         ...(imageUrl && { image: imageUrl }),
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId))
+      .where(eq(user.id, userId))
 
     // Update last activity date
-    await db.update(users).set({ lastActivityDate: new Date() }).where(eq(users.id, userId))
+    await db.update(user).set({ lastActivityDate: new Date() }).where(eq(user.id, userId))
 
     revalidatePath(`/onboarding/${userId}`)
     return { success: true }
@@ -210,15 +241,15 @@ export async function deleteUserAccount() {
     }
 
     await db
-      .update(users)
+      .update(user)
       .set({
         deletionRequestedAt: new Date(),
         status: "REJECTED",
       })
-      .where(eq(users.id, userId))
+      .where(eq(user.id, userId))
 
     // Clear session (if using NextAuth.js)
-    await auth().signOut()
+    // await auth().signOut()
 
     return { success: true }
   } catch (error) {
@@ -231,7 +262,7 @@ export async function deleteUserAccount() {
 export async function logoutUser() {
   try {
     // Clear the session (if using NextAuth.js)
-    await auth().signOut()
+    // await auth().signOut()
     return { success: true }
   } catch (error) {
     console.error("Error logging out user:", error)

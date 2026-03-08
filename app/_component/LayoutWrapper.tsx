@@ -1,20 +1,32 @@
-"use server"
+// LayoutWrapper.tsx
+"use client";
 
 import type React from "react";
 import Providers from "@/components/Website/providers"
-import SessionProvider from "@/components/Auth/SessionProvider"
-import { auth } from "@/server/auth"
 import RatingModal from "@/components/Website/RatingModal"
+import { authClient } from "@/hooks/getcurrectuser";
 
-export default async function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const session = await auth()
+export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
+  const { 
+    data: session, 
+    isPending,
+    error,
+  } = authClient.useSession();
+
+  // Show loading state
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
 
   return (
-    <SessionProvider session={session}>
-      <Providers>
-        {children}
-        <RatingModal />
-      </Providers>
-    </SessionProvider>
-  )
+    <Providers>
+      {children}
+      <RatingModal />
+    </Providers>
+  );
 }

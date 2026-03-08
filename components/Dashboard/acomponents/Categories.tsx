@@ -12,7 +12,6 @@ import CategoryCard from "../CategoryCard";
 import CategoriesDeleteModal from "../modals/CategoriesDelet";
 import { deleteCategories, editCategory, fetchCategories } from "@/server/data/projectactions";
 
-
 interface Category {
   id: string;
   name: string;
@@ -104,12 +103,14 @@ const Categories = () => {
   const handleEdit = async (id: string, data: FormData) => {
     try {
       const result = await editCategory(id, data);
-      setCategories(prev =>
-        prev.map(cat =>
-          cat.id === id ? { ...cat, ...result.category } : cat
-        )
-      );
-      toast.success("Category updated successfully");
+      if (result) {
+        setCategories(prev =>
+          prev.map(cat =>
+            cat.id === id ? { ...cat, ...result.category } : cat
+          )
+        );
+        toast.success("Category updated successfully");
+      }
     } catch (error) {
       console.error("Error updating Category:", error);
       toast.error("Failed to update Category");

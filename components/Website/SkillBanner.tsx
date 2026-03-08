@@ -1,10 +1,10 @@
 export const SkillsCard = () => {
   // Function to get color based on skill level
-  const getColorForLevel = (level) => {
-    if (level >= 80) return "#10B981" // Green for high skills
-    if (level >= 60) return "#3B82F6" // Blue for medium-high skills
-    if (level >= 40) return "#8B5CF6" // Purple for medium skills
-    return "#EC4899" // Pink for beginner skills
+  const getColorForLevel = (level: any) => {
+    if (level >= 80) return "#10B981"
+    if (level >= 60) return "#3B82F6"
+    if (level >= 40) return "#8B5CF6"
+    return "#EC4899"
   }
 
   const skillCategories = [
@@ -28,6 +28,7 @@ export const SkillsCard = () => {
       title: "Data",
       skills: [
         { name: "Python", level: 70 },
+        { name: "Python Django", level: 60 },
         { name: "SQL", level: 65 },
         { name: "Java", level: 60 },
         { name: "VBA", level: 55 },
@@ -39,6 +40,7 @@ export const SkillsCard = () => {
         { name: "Git", level: 75 },
         { name: "GitHub", level: 70 },
         { name: "Huawei 5G", level: 45 },
+        { name: "Postman", level: 60 },
       ],
     },
     {
@@ -46,6 +48,8 @@ export const SkillsCard = () => {
       skills: [
         { name: "Next.js", level: 85 },
         { name: "Vite", level: 80 },
+        { name: "Node.js", level: 70 },
+        { name: "Api Development", level: 65 },
       ],
     },
   ]
@@ -78,13 +82,15 @@ export const SkillsCard = () => {
                       </span>
                     </div>
                     <div className="h-[1px] w-full bg-white/10 relative">
+                     
                       <div
-                        className="absolute top-0 left-0 h-[1px]"
-                        style={{
-                          width: `${skill.level}%`,
-                          backgroundColor: skillColor,
-                        }}
-                      ></div>
+  className="absolute top-0 left-0 h-[1px] animate-[progressAnimation_1s_ease-out_forwards]"
+  style={{
+    '--target-width': `${skill.level}%`,
+    backgroundColor: skillColor,
+    animationDelay: `${skillIndex * 100}ms`,
+  } as React.CSSProperties}
+></div>
                     </div>
                   </div>
                 )
@@ -116,5 +122,3 @@ export const SkillsCard = () => {
     </div>
   )
 }
-
-

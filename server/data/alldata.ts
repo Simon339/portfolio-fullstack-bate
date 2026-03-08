@@ -7,44 +7,238 @@ import { db } from "../db";
 import bcrypt from "bcryptjs";
 import { AddNewUserSchema } from "@/types";
 import { revalidatePath } from "next/cache";
-import { generateVerificationToken } from "@/lib/token";
-import { sendVerificationEmail, sendVerificationEmailForAddedUser } from "@/lib/mail";
-import { users, auditLogs, deletedUsers, contactForms, serviceInquiries, projects } from "../schema"; 
-import { eq, desc, and, gte, lt, count, inArray } from "drizzle-orm";
+import { user, auditLogs, contactForms, serviceInquiries, projects, session, account, member, organization, invitation, ratings } from "../schema"; 
+import { eq, desc, and, gte, lt, count, inArray, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "../auth";
 
-
 export async function getUsers() {
   try {
-    const user = await db.select().from(users);
+    const Users = await db.select().from(user);
     revalidatePath('/users');
-    return { count: user.length, success: true };
+    return { count: Users.length, success: true };
   } catch (error) {
     return { count: 0, success: false };
   }
 }
 
-export async function getbyUserDetails() {
-  const Users = await db.select({
-    id: users.id,
-    name: users.name,
-    surname: users.surname,
-    email: users.email,
-    phone: users.phone,
-    country: users.country,
-    image: users.image,
-    role: users.role,
-    createdAt: users.createdAt,
-    emailVerified: users.emailVerified,
-    approval: users.status,
-  }).from(users);
+export async function getUserDetails(userId: string) {
+  // Get basic user info
+  const [userData] = await db.select({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    emailVerified: user.emailVerified,
+  })
+  .from(user)
+  .where(eq(user.id, userId));
+
+  if (!userData) {
+    throw new Error('User not found');
+  }
+
+  // Get user sessions
+  const userSessions = await db.select({
+    id: session.id,
+    expiresAt: session.expiresAt,
+    ipAddress: session.ipAddress,
+    userAgent: session.userAgent,
+    createdAt: session.createdAt,
+    activeOrganizationId: session.activeOrganizationId,
+    activeTeamId: session.activeTeamId,
+  })
+  .from(session)
+  .where(eq(session.userId, userId))
+  .orderBy(desc(session.createdAt));
+
+  // Get linked accounts
+  const linkedAccounts = await db.select({
+    id: account.id,
+    providerId: account.providerId,
+    accountId: account.accountId,
+    createdAt: account.createdAt,
+    scope: account.scope,
+  })
+  .from(account)
+  .where(eq(account.userId, userId));
+
+  // Get organization memberships
+  const memberships = await db.select({
+    id: member.id,
+    organizationId: member.organizationId,
+    role: member.role,
+    createdAt: member.createdAt,
+    organization: {
+      id: organization.id,
+      name: organization.name,
+      slug: organization.slug,
+      logo: organization.logo,
+    },
+  })
+  .from(member)
+  .leftJoin(organization, eq(member.organizationId, organization.id))
+  .where(eq(member.userId, userId));
+
+  // Get invitations sent by user
+  const sentInvitations = await db.select({
+    id: invitation.id,
+    email: invitation.email,
+    organizationId: invitation.organizationId,
+    role: invitation.role,
+    status: invitation.status,
+    createdAt: invitation.createdAt,
+    expiresAt: invitation.expiresAt,
+    organization: {
+      name: organization.name,
+      slug: organization.slug,
+    },
+  })
+  .from(invitation)
+  .leftJoin(organization, eq(invitation.organizationId, organization.id))
+  .where(eq(invitation.inviterId, userId))
+  .orderBy(desc(invitation.createdAt));
+
+  // Get user audit logs
+  const userAuditLogs = await db.select({
+    id: auditLogs.id,
+    action: auditLogs.action,
+    tableName: auditLogs.tableName,
+    recordId: auditLogs.recordId,
+    timestamp: auditLogs.timestamp,
+    ipAddress: auditLogs.ipAddress,
+    userAgent: auditLogs.userAgent,
+    details: auditLogs.details,
+  })
+  .from(auditLogs)
+  .where(eq(auditLogs.userId, userId))
+  .orderBy(desc(auditLogs.timestamp))
+  .limit(100);
+
+  // Get current active session
+  const currentSession = userSessions.find(session => 
+    new Date(session.expiresAt) > new Date()
+  );
+
+  // Calculate derived stats
+  const stats = {
+    sessionCount: userSessions.length,
+    activeSessionCount: userSessions.filter(s => new Date(s.expiresAt) > new Date()).length,
+    linkedAccountCount: linkedAccounts.length,
+    organizationCount: memberships.length,
+    sentInvitationCount: sentInvitations.length,
+    auditLogCount: userAuditLogs.length,
+    lastActive: userAuditLogs[0]?.timestamp || userData.updatedAt,
+  };
+
+  // Get verification status
+  const verification = {
+    email: userData.emailVerified,
+    accounts: linkedAccounts.length > 0,
+    hasPassword: linkedAccounts.some(acc => acc.providerId === 'email'),
+  };
+
+  // Build complete user profile
+  const userDetails = {
+    ...userData,
+    status: userData.emailVerified ? 'Verified' : 'Not Verified',
+    verification,
+    sessions: {
+      all: userSessions,
+      current: currentSession,
+      stats: {
+        total: stats.sessionCount,
+        active: stats.activeSessionCount,
+      },
+    },
+    accounts: linkedAccounts,
+    organizations: memberships.map(m => ({
+      membershipId: m.id,
+      role: m.role,
+      joinedAt: m.createdAt,
+      organization: m.organization,
+    })),
+    invitations: {
+      sent: sentInvitations,
+      stats: {
+        pending: sentInvitations.filter(i => i.status === 'pending').length,
+        accepted: sentInvitations.filter(i => i.status === 'accepted').length,
+        total: stats.sentInvitationCount,
+      },
+    },
+    activity: {
+      auditLogs: userAuditLogs,
+      stats: {
+        totalActions: stats.auditLogCount,
+        lastActive: stats.lastActive,
+      },
+    },
+    stats,
+    permissions: {
+      isOrganizationOwner: memberships.some(m => m.role === 'owner'),
+      isOrganizationAdmin: memberships.some(m => m.role === 'admin' || m.role === 'owner'),
+      canInvite: memberships.some(m => m.role === 'admin' || m.role === 'owner'),
+      organizations: memberships.map(m => ({
+        id: m.organizationId,
+        role: m.role,
+        permissions: getPermissionsByRole(m.role),
+      })),
+    },
+  };
+
+  return userDetails;
+}
+
+// Helper function to get permissions by role
+function getPermissionsByRole(role: string) {
+  const permissions = {
+    member: ['view_projects', 'view_members', 'comment'],
+    admin: ['view_projects', 'edit_projects', 'view_members', 'invite_members', 'manage_roles', 'comment'],
+    owner: ['view_projects', 'edit_projects', 'delete_projects', 'view_members', 'invite_members', 'manage_roles', 'delete_members', 'transfer_ownership', 'comment'],
+  };
+  
+  return permissions[role as keyof typeof permissions] || permissions.member;
+}
+
+// If you want to get details for multiple users at once
+export async function getbyUserDetails(userIds?: string[]) {
+  let query = db.select({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    createdAt: user.createdAt,
+    emailVerified: user.emailVerified,
+    // Additional aggregated data
+    sessionCount: sql<number>`COUNT(DISTINCT ${session.id})`,
+    organizationCount: sql<number>`COUNT(DISTINCT ${member.organizationId})`,
+    lastActive: sql<Date>`MAX(${auditLogs.timestamp})`,
+  })
+  .from(user)
+  .leftJoin(session, eq(user.id, session.userId))
+  .leftJoin(member, eq(user.id, member.userId))
+  .leftJoin(auditLogs, eq(user.id, auditLogs.userId))
+  .groupBy(user.id);
+
+  if (userIds && userIds.length > 0) {
+    query = query.where(inArray(user.id, userIds));
+  }
+
+  const users = await query;
 
   revalidatePath('/users');
-  return Users.map(user => ({
+  
+  return users.map(user => ({
     ...user,
     status: user.emailVerified ? 'Verified' : 'Not Verified',
     isSelected: false,
+    stats: {
+      sessions: user.sessionCount,
+      organizations: user.organizationCount,
+    },
+    lastActive: user.lastActive || user.createdAt,
   }));
 }
 
@@ -55,17 +249,17 @@ export async function getUserSignupAnalytics() {
 
   try {
     const currentYearSignups = await db.select({ count: count() })
-      .from(users)
+      .from(user)
       .where(and(
-        gte(users.createdAt, new Date(currentYear, 0, 1)),
-        lt(users.createdAt, new Date(currentYear + 1, 0, 1))
+        gte(user.createdAt, new Date(currentYear, 0, 1)),
+        lt(user.createdAt, new Date(currentYear + 1, 0, 1))
       ));
 
     const lastYearSignups = await db.select({ count: count() })
-      .from(users)
+      .from(user)
       .where(and(
-        gte(users.createdAt, new Date(lastYear, 0, 1)),
-        lt(users.createdAt, new Date(currentYear, 0, 1))
+        gte(user.createdAt, new Date(lastYear, 0, 1)),
+        lt(user.createdAt, new Date(currentYear, 0, 1))
       ));
 
     const percentageChange = lastYearSignups[0].count !== 0
@@ -92,7 +286,9 @@ export async function getUserSignupAnalytics() {
 
 export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
   try {
-    const session = await auth(); // Get the current session
+    const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+}) // Get the current session
     const userId = session?.user?.id; // Extract the user ID from the session
 
     if (!userId) {
@@ -104,7 +300,7 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
 
     // Step 2: Insert the new user into the database
     const [user] = await db
-      .insert(users)
+      .insert(user)
       .values({
         email: data.email.toLowerCase(),
         name: data.name,
@@ -115,17 +311,16 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
         image: imageUrl,
         password: await bcrypt.hash("defaultPassword", 10), // Hash the default password
       })
-      .returning();
 
     // Step 3: Generate a verification token and send a verification email
-    const verificationToken = await generateVerificationToken(data.email.toLowerCase());
+    // const verificationToken = await generateVerificationToken(data.email.toLowerCase());
     const password = "defaultPassword";
     const email = data.email.toLowerCase();
-    await sendVerificationEmailForAddedUser(
-      email,
-      verificationToken.token,
-      password
-    );
+    // await sendVerificationEmailForAddedUser(
+    //   email,
+    //   // verificationToken.token,
+    //   password
+    // );
 
     // Step 4: Dynamically collect IP address and user agent
     const headersList = await headers();
@@ -170,9 +365,9 @@ export async function deleteUser(formData: FormData) {
   }
 
   try {
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [user] = await db.select().from(user).where(eq(user.id, userId));
 
-    await db.delete(users).where(eq(users.id, userId));
+    await db.delete(user).where(eq(user.id, userId));
 
     await db.insert(auditLogs).values({
       action: 'DELETE',
@@ -185,11 +380,11 @@ export async function deleteUser(formData: FormData) {
     });
 
   
-    await db.insert(deletedUsers).values({
-      originalUserId: userId,
-      email: user.email,
-      userData: JSON.stringify(user),
-    });
+    // await db.insert(deletedUsers).values({
+    //   originalUserId: userId,
+    //   email: user.email,
+    //   userData: JSON.stringify(user),
+    // });
 
     revalidatePath('/users');
     return { success: true, message: "User deleted successfully" };
@@ -210,7 +405,9 @@ export async function updateUserRole(
   newRole: string
 ): Promise<ServerActionResponse> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+})
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
@@ -222,7 +419,7 @@ export async function updateUserRole(
     const userAgent = headersList.get("user-agent") || "unknown";
 
     // Update the user role in the database
-    await db.update(users).set({ role: newRole }).where(eq(users.id, userId));
+    await db.update(user).set({ role: newRole }).where(eq(user.id, userId));
 
     // Log the action in the audit logs
     await db.insert(auditLogs).values({
@@ -253,7 +450,9 @@ export async function updateUserEmail(
   newEmail: string
 ): Promise<ServerActionResponse> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+})
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
@@ -265,7 +464,7 @@ export async function updateUserEmail(
     const userAgent = headersList.get("user-agent") || "unknown";
 
     // Update the user email in the database
-    await db.update(users).set({ email: newEmail }).where(eq(users.id, userId));
+    await db.update(user).set({ email: newEmail }).where(eq(user.id, userId));
 
     // Log the action in the audit logs
     await db.insert(auditLogs).values({
@@ -296,7 +495,9 @@ export async function updateApprovalStatus(
   status: "PENDING" | "APPROVED" | "REJECTED"
 ): Promise<ServerActionResponse> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+    })
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
@@ -309,9 +510,8 @@ export async function updateApprovalStatus(
 
     // Update the user approval status in the database
     await db
-      .update(users)
-      .set({ status: status }) // Use the correct field name from your schema
-      .where(eq(users.id, userId));
+      .update(user)
+      .where(eq(user.id, userId));
 
     // Log the action in the audit logs
     await db.insert(auditLogs).values({
@@ -341,7 +541,9 @@ export async function deleteUserPermanently(
   userId: string
 ): Promise<ServerActionResponse> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+})
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
@@ -349,8 +551,8 @@ export async function deleteUserPermanently(
     }
 
     // First get the user data to store in deleted_users table
-    const userToDelete = await db.query.users.findFirst({
-      where: eq(users.id, userId),
+    const userToDelete = await db.query.user.findFirst({
+      where: eq(user.id, userId),
     });
 
     if (!userToDelete) {
@@ -362,11 +564,11 @@ export async function deleteUserPermanently(
     const userAgent = headersList.get("user-agent") || "unknown";
 
     // Store user data in deleted_users table
-    await db.insert(deletedUsers).values({
-      originalUserId: userId,
-      email: userToDelete.email,
-      userData: JSON.stringify(userToDelete),
-    });
+    // await db.insert(deletedUsers).values({
+    //   originalUserId: userId,
+    //   email: userToDelete.email,
+    //   userData: JSON.stringify(userToDelete),
+    // });
 
     // Log the deletion
     await db.insert(auditLogs).values({
@@ -380,7 +582,7 @@ export async function deleteUserPermanently(
     });
 
     // Delete the user
-    await db.delete(users).where(eq(users.id, userId));
+    await db.delete(user).where(eq(user.id, userId));
 
     // Revalidate the users page to reflect changes
     revalidatePath("/users");
@@ -425,7 +627,7 @@ export async function getUserAuditLogs(userId: string): Promise<AuditLog[]> {
 
 export async function getTotalUsers() {
   try {
-    const totalUsers = await db.select().from(users);
+    const totalUsers = await db.select().from(user);
     revalidatePath("/dashboard");
     return totalUsers.length;
   } catch (error) {
@@ -438,8 +640,7 @@ export async function getStaffCount() {
   try {
     const staff = await db
       .select()
-      .from(users)
-      .where(inArray(users.role, ["ADMIN", "SUPER_ADMIN"])); 
+      .from(user)
 
     return staff.length;
   } catch (error) {
