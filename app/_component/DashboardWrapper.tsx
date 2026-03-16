@@ -67,12 +67,12 @@ interface User {
   name: string;
   email: string;
   image: string;
+  role?: string;
 }
 
 interface NotificationDetails {
   unreadContacts: number;
   unreadServices: number;
-  unreadInvitations?: number; // Added missing property
 }
 
 // Constants for notification types
@@ -115,7 +115,7 @@ const NOTIFICATION_TYPES = {
 } as const;
 
 // NotificationItem component with inherited functionality
-const NotificationItem = ({ notification, onClick, onMarkAsRead, onAccept, onReject }: { notification: DashboardNotification; onClick: (id: string) => void; onMarkAsRead?: (id: string, type: "contact" | "service" | "access") => void; onAccept?: (id: string) => void; onReject?: (id: string) => void }) => {
+const NotificationItem = ({ notification, onClick, onMarkAsRead }: { notification: DashboardNotification; onClick: (id: string) => void; onMarkAsRead?: (id: string, type: "contact" | "service" | "access") => void; }) => {
   // Determine notification type based on source
   let notificationTypeKey: keyof typeof NOTIFICATION_TYPES = 'info';
   
@@ -161,7 +161,7 @@ const NotificationItem = ({ notification, onClick, onMarkAsRead, onAccept, onRej
             </p>
             
             {/* Action buttons based on notification type */}
-            {notification.source === 'access' && onAccept && onReject ? (
+            {notification.source === 'access'  ? (
               <div className="flex gap-1">
                 <Button
                   variant="ghost"
@@ -170,7 +170,6 @@ const NotificationItem = ({ notification, onClick, onMarkAsRead, onAccept, onRej
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    onAccept(notification.id);
                   }}
                 >
                   <UserCheck className="h-3 w-3 mr-1" />
@@ -183,7 +182,6 @@ const NotificationItem = ({ notification, onClick, onMarkAsRead, onAccept, onRej
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    onReject(notification.id);
                   }}
                 >
                   <UserX className="h-3 w-3 mr-1" />
@@ -234,7 +232,7 @@ const EmptyState = ({ message = "No notifications yet", submessage = "Check back
 );
 
 // NotificationsDropdown component with proper empty state
-const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificationsOpen, unreadNotificationsCount, notificationDetails, fetchNotifications, handleNotificationClick, handleMarkAllAsRead, handleAcceptInvitation, handleRejectInvitation }: { notifications: DashboardNotification[]; notificationsOpen: boolean; setNotificationsOpen: (open: boolean) => void; unreadNotificationsCount: number; notificationDetails?: NotificationDetails; fetchNotifications: () => void; handleNotificationClick: (id: string) => void; handleMarkAllAsRead: () => void; handleAcceptInvitation: (id: string) => void; handleRejectInvitation: (id: string) => void }) => {
+const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificationsOpen, unreadNotificationsCount, notificationDetails, handleNotificationClick, handleMarkAllAsRead }: { notifications: DashboardNotification[]; notificationsOpen: boolean; setNotificationsOpen: (open: boolean) => void; unreadNotificationsCount: number; notificationDetails?: NotificationDetails; handleNotificationClick: (id: string) => void; handleMarkAllAsRead: () => void }) => {
   const router = useRouter();
   const hasUnread = notifications.some(n => !n.read);
 
@@ -245,7 +243,6 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
           variant="ghost"
           size="icon"
           className="relative h-8 w-8 hover:bg-gray-100"
-          onClick={() => fetchNotifications()}
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4 text-gray-600" />
@@ -274,9 +271,6 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
                 </Badge>
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
                   {notificationDetails.unreadServices} inquiries
-                </Badge>
-                <Badge variant="outline" className="bg-green-50 text-green-700">
-                  {notificationDetails.unreadInvitations || 0} invites
                 </Badge>
               </div>
             )}
@@ -310,8 +304,6 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
                   <NotificationItem
                     notification={notification}
                     onClick={handleNotificationClick}
-                    onAccept={handleAcceptInvitation}
-                    onReject={handleRejectInvitation}
                   />
                 </div>
               ))}
@@ -340,154 +332,11 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [notificationDetails, setNotificationDetails] = useState<NotificationDetails | null>(null);
-  const { data: activeOrganization } = authClient.useActiveOrganization();
-  const { data: organizations } = authClient.useListOrganizations();
-
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session, isPending: sessionLoading, error: sessionError, refetch: refetchSession } = authClient.useSession();
 
-  const {
-    data: session,
-    isPending: sessionLoading,
-    error: sessionError,
-    refetch: refetchSession
-  } = authClient.useSession();
 
-  // Fetch notifications data including pending invitations
-  const fetchNotificationsWithInvitations = useCallback(async () => {
-    try {
-      // Fetch all data in parallel
-      const [count, notificationList, details, ] = await Promise.all([
-        countUnreadNotifications(),
-        getNotificationCounts(),
-      ]);
-
-      const simpleNotifications = await getSimpleNotifications({ limit: 200 });
-
-      // Ensure notificationList is an array
-      const safeNotificationList = Array.isArray(notificationList) ? notificationList : [];
-      
-      // Fetch pending invitations
-      let invitationsData: PendingInvitation[] = [];
-      try {
-        const organizationId = organizations?.[0]?.id || "";
-        
-        if (organizationId) {
-          const { data: invitations, error } = await authClient.organization.listInvitations({
-            query: {
-              organizationId: organizationId,
-            },
-          });
-          
-          if (!error && invitations) {
-            invitationsData = invitations.map((inv: any) => ({
-              id: inv.id,
-              name: inv.invitee?.name  || 'Unknown',
-              createdAt: new Date(inv.createdAt || Date.now()),
-              logo: inv.logo,
-              slug: inv.slug
-            }));
-          }
-        }
-      } catch (invitationError) {
-      }
-
-      // Transform simple notifications to DashboardNotification format
-      const transformedSimpleNotifications: DashboardNotification[] = simpleNotifications.map((notif: any) => {
-        const originalId = notif.id.replace(/^(contact_|service_|invite_)/, '');
-        const source = notif.source === 'contact_form' ? 'contact_form' : 
-                      notif.source === 'service_inquiry' ? 'service_inquiry' : 'access';
-        
-        return {
-          id: notif.id,
-          originalId: originalId,
-          title: notif.title || 'Notification',
-          message: notif.message || '',
-          type: source === 'contact_form' ? 'info' : 
-                source === 'service_inquiry' ? 'warning' : 'success',
-          read: notif.read || false,
-          createdAt: new Date(notif.createdAt),
-          metadata: notif,
-          source: source
-        };
-      });
-
-      // Transform invitations to DashboardNotification format
-      const transformedInvitations: DashboardNotification[] = invitationsData.map((inv: PendingInvitation) => ({
-        id: `invite_${inv.id}`,
-        title: 'Access Invitation',
-        message: `${inv.name} invited you to join`,
-        type: 'success',
-        read: false,
-        createdAt: inv.createdAt,
-        source: 'access',
-        metadata: { invitation: inv }
-      }));
-
-      // Combine all notifications
-      const allNotifications = [
-        ...transformedSimpleNotifications,
-        ...transformedInvitations
-      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-      // Calculate unread count (simple notifications count + unread invitations)
-      const unreadInvitationsCount = invitationsData.length; // Assuming all invitations are unread initially
-      const totalUnreadCount = count + unreadInvitationsCount;
-      
-      setUnreadNotificationsCount(totalUnreadCount);
-      setNotifications(allNotifications);
-      
-      // Update notification details with invitations count
-      if (details) {
-        setNotificationDetails({
-          ...details,
-          unreadInvitations: unreadInvitationsCount
-        });
-      }
-    } catch (error) {
-      toast.error("Failed to load notifications");
-    }
-  }, [organizations]);
-
-  // Handle invitation acceptance inherited from Notificationdashcard.tsx
-  const handleAcceptInvitation = async (id: string) => {
-    try {
-      const cleanId = id.replace('invite_', '');
-      const { data, error } = await authClient.organization.acceptInvitation({
-        invitationId: cleanId,
-      });
-      
-      if (!error) {
-        setNotifications(prev => prev.filter((notif) => notif.id !== id));
-        setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
-        toast.success("Invitation accepted");
-      } else {
-        toast.error("Failed to accept invitation");
-      }
-    } catch (error) {
-      toast.error("Failed to accept invitation");
-    }
-  };
-
-  // Handle invitation rejection inherited from Notificationdashcard.tsx
-  const handleRejectInvitation = async (id: string) => {
-    try {
-      const cleanId = id.replace('invite_', '');
-      const { error } = await authClient.organization.rejectInvitation({
-        invitationId: cleanId,
-      });
-      
-      if (!error) {
-        setNotifications(prev => prev.filter((notif) => notif.id !== id));
-        setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
-        toast.success("Invitation rejected");
-      } else {
-        toast.error("Failed to reject invitation");
-      }
-    } catch (error) {
-      toast.error("Failed to reject invitation");
-    }
-  };
 
   useEffect(() => {
     if (!sessionLoading && !session?.user?.id) {
@@ -502,21 +351,12 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
         name: session.user.name || userWithCustomFields.name,
         email: session.user.email,
         image: session.user.image || "",
+        role: session.user.role || userWithCustomFields.role,
       });
     }
 
     setLoading(false);
   }, [session, sessionLoading, router]);
-
-  // Fetch notifications when component mounts and when session changes
-  useEffect(() => {
-    if (session?.user?.id) {
-      fetchNotificationsWithInvitations();
-      // Set up interval for polling
-      const intervalId = setInterval(fetchNotificationsWithInvitations, 30000);
-      return () => clearInterval(intervalId);
-    }
-  }, [session?.user?.id, fetchNotificationsWithInvitations]);
 
   const handleNotificationClick = async (notificationId: string) => {
     try {
@@ -640,9 +480,9 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
       <div className="flex grow min-h-screen text-gray-800 bg-gray-50 overflow-hidden">
         <Sidebar className="w-64 bg-white shadow-sm border-r border-gray-200">
           <SidebarHeader className="bg-white border-b border-gray-200">
-            <div className="flex items-center h-14 px-4">
-              <span className="text-sm font-semibold text-gray-900 truncate">
-                MS Portfolio{activeOrganization ? ` - ${activeOrganization.name}` : " - Create/Join org"}
+            <div className="flex items-center justify-center text-center h-14 px-4">
+              <span className="text-sm font-semibold text-gray-900 text-center truncate">
+                MS Portfolio
               </span>
             </div>
           </SidebarHeader>
@@ -723,11 +563,8 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
                   setNotificationsOpen={setNotificationsOpen}
                   unreadNotificationsCount={unreadNotificationsCount}
                   notificationDetails={notificationDetails || undefined}
-                  fetchNotifications={fetchNotificationsWithInvitations}
                   handleNotificationClick={handleNotificationClick}
                   handleMarkAllAsRead={handleMarkAllAsRead}
-                  handleAcceptInvitation={handleAcceptInvitation}
-                  handleRejectInvitation={handleRejectInvitation}
                 />
               </div>
               <div className="hidden md:flex items-center space-x-2">

@@ -15,12 +15,19 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
 
   // Show loading state
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  return (
+   <div className="flex items-center justify-center h-screen gap-2">
+      <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
+      <span className="text-gray-600 text-sm">
+        Please wait
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite]">.</span>
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite_0.2s]">.</span>
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite_0.4s]">.</span>
+      </span>
+    </div>
+  )
+}
+
 
 
   return (

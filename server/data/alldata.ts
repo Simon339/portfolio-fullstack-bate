@@ -7,10 +7,21 @@ import { db } from "../db";
 import bcrypt from "bcryptjs";
 import { AddNewUserSchema } from "@/types";
 import { revalidatePath } from "next/cache";
-import { user, auditLogs, contactForms, serviceInquiries, projects, session, account, member, organization, invitation, ratings } from "../schema"; 
+import { user, auditLogs, contactForms, serviceInquiries, projects, session, account, ratings } from "../schema"; 
 import { eq, desc, and, gte, lt, count, inArray, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "../auth";
+import { randomBytes } from "crypto";
+import { twoFactor } from "@/auth-schema";
+
+function generateSecureLogId() {
+  // Add timestamp to ensure uniqueness even with same random value
+  const timestamp = Date.now().toString(36).slice(-4);
+  const randomValue = randomBytes(4).toString("base64").toUpperCase();
+  const logid = `log-${timestamp}-${randomValue}`;
+  
+  return logid;
+}
 
 export async function getUsers() {
   try {
@@ -65,41 +76,6 @@ export async function getUserDetails(userId: string) {
   .from(account)
   .where(eq(account.userId, userId));
 
-  // Get organization memberships
-  const memberships = await db.select({
-    id: member.id,
-    organizationId: member.organizationId,
-    role: member.role,
-    createdAt: member.createdAt,
-    organization: {
-      id: organization.id,
-      name: organization.name,
-      slug: organization.slug,
-      logo: organization.logo,
-    },
-  })
-  .from(member)
-  .leftJoin(organization, eq(member.organizationId, organization.id))
-  .where(eq(member.userId, userId));
-
-  // Get invitations sent by user
-  const sentInvitations = await db.select({
-    id: invitation.id,
-    email: invitation.email,
-    organizationId: invitation.organizationId,
-    role: invitation.role,
-    status: invitation.status,
-    createdAt: invitation.createdAt,
-    expiresAt: invitation.expiresAt,
-    organization: {
-      name: organization.name,
-      slug: organization.slug,
-    },
-  })
-  .from(invitation)
-  .leftJoin(organization, eq(invitation.organizationId, organization.id))
-  .where(eq(invitation.inviterId, userId))
-  .orderBy(desc(invitation.createdAt));
 
   // Get user audit logs
   const userAuditLogs = await db.select({
@@ -127,8 +103,6 @@ export async function getUserDetails(userId: string) {
     sessionCount: userSessions.length,
     activeSessionCount: userSessions.filter(s => new Date(s.expiresAt) > new Date()).length,
     linkedAccountCount: linkedAccounts.length,
-    organizationCount: memberships.length,
-    sentInvitationCount: sentInvitations.length,
     auditLogCount: userAuditLogs.length,
     lastActive: userAuditLogs[0]?.timestamp || userData.updatedAt,
   };
@@ -154,20 +128,6 @@ export async function getUserDetails(userId: string) {
       },
     },
     accounts: linkedAccounts,
-    organizations: memberships.map(m => ({
-      membershipId: m.id,
-      role: m.role,
-      joinedAt: m.createdAt,
-      organization: m.organization,
-    })),
-    invitations: {
-      sent: sentInvitations,
-      stats: {
-        pending: sentInvitations.filter(i => i.status === 'pending').length,
-        accepted: sentInvitations.filter(i => i.status === 'accepted').length,
-        total: stats.sentInvitationCount,
-      },
-    },
     activity: {
       auditLogs: userAuditLogs,
       stats: {
@@ -176,16 +136,7 @@ export async function getUserDetails(userId: string) {
       },
     },
     stats,
-    permissions: {
-      isOrganizationOwner: memberships.some(m => m.role === 'owner'),
-      isOrganizationAdmin: memberships.some(m => m.role === 'admin' || m.role === 'owner'),
-      canInvite: memberships.some(m => m.role === 'admin' || m.role === 'owner'),
-      organizations: memberships.map(m => ({
-        id: m.organizationId,
-        role: m.role,
-        permissions: getPermissionsByRole(m.role),
-      })),
-    },
+   
   };
 
   return userDetails;
@@ -204,42 +155,117 @@ function getPermissionsByRole(role: string) {
 
 // If you want to get details for multiple users at once
 export async function getbyUserDetails(userIds?: string[]) {
-  let query = db.select({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    image: user.image,
-    createdAt: user.createdAt,
-    emailVerified: user.emailVerified,
-    // Additional aggregated data
-    sessionCount: sql<number>`COUNT(DISTINCT ${session.id})`,
-    organizationCount: sql<number>`COUNT(DISTINCT ${member.organizationId})`,
-    lastActive: sql<Date>`MAX(${auditLogs.timestamp})`,
-  })
-  .from(user)
-  .leftJoin(session, eq(user.id, session.userId))
-  .leftJoin(member, eq(user.id, member.userId))
-  .leftJoin(auditLogs, eq(user.id, auditLogs.userId))
-  .groupBy(user.id);
+  try {
+    let query = db.select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      createdAt: user.createdAt,
+      emailVerified: user.emailVerified,
+      role: user.role,
+      banned: user.banned,
+      twoFactorEnabled: user.twoFactorEnabled,
+      banReason: user.banReason,
+      banExpires: user.banExpires,
+    })
+    .from(user);
 
-  if (userIds && userIds.length > 0) {
-    query = query.where(inArray(user.id, userIds));
+    if (userIds && userIds.length > 0) {
+      query = query.where(inArray(user.id, userIds));
+    }
+
+    const users = await query;
+    
+    // Get session counts separately if needed
+    const usersWithStats = await Promise.all(
+      users.map(async (u) => {
+        const [sessionCount] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(session)
+          .where(eq(session.userId, u.id));
+        
+        const [lastActive] = await db
+          .select({ timestamp: auditLogs.timestamp })
+          .from(auditLogs)
+          .where(eq(auditLogs.userId, u.id))
+          .orderBy(desc(auditLogs.timestamp))
+          .limit(1);
+
+        return {
+          ...u,
+          sessionCount: sessionCount?.count || 0,
+          lastActive: lastActive?.timestamp || u.createdAt,
+        };
+      })
+    );
+
+    return usersWithStats;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return [];
+  }
+}
+
+// Fix deleteUser function
+export async function deleteUser(formData: FormData): Promise<{ success: boolean; error?: string; message?: string }> {
+  const userId = formData.get("userId") as string;
+  
+  if (!userId) {
+    return { error: "User ID is required", success: false };
   }
 
-  const users = await query;
+  try {
+    // Get the current session
+    const session = await auth.api.getSession({
+      headers: await headers()
+    });
+    
+    const loggedInUserId = session?.user?.id;
+    
+    if (!loggedInUserId) {
+      return { error: "Not authenticated", success: false };
+    }
 
-  revalidatePath('/users');
-  
-  return users.map(user => ({
-    ...user,
-    status: user.emailVerified ? 'Verified' : 'Not Verified',
-    isSelected: false,
-    stats: {
-      sessions: user.sessionCount,
-      organizations: user.organizationCount,
-    },
-    lastActive: user.lastActive || user.createdAt,
-  }));
+    const headersList = await headers();
+    const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
+    const userAgent = headersList.get('user-agent') || 'unknown';
+
+    // Get user data before deletion
+    const [userData] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, userId));
+
+    if (!userData) {
+      return { error: "User not found", success: false };
+    }
+
+    // Delete the user
+    await db.delete(user).where(eq(user.id, userId));
+
+    // Log the deletion
+    await db.insert(auditLogs).values({
+      action: 'DELETE',
+      tableName: 'users',
+      timestamp: new Date(),
+      recordId: generateSecureLogId(),
+      userId: loggedInUserId,
+      details: JSON.stringify({ 
+        action: 'User deleted', 
+        deletedUserId: userId,
+        deletedUserEmail: userData.email 
+      }),
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    revalidatePath('/users');
+    return { success: true, message: "User deleted successfully" };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return { error: "Failed to delete user", success: false };
+  }
 }
 
 export async function getUserSignupAnalytics() {
@@ -299,7 +325,7 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
     const imageUrl = data.image ? URL.createObjectURL(data.image) : undefined;
 
     // Step 2: Insert the new user into the database
-    const [user] = await db
+    const [userdata] = await db
       .insert(user)
       .values({
         email: data.email.toLowerCase(),
@@ -331,7 +357,8 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
     await db.insert(auditLogs).values({
       action: 'CREATE',
       tableName: 'users',
-      recordId: user.id, // Use the newly created user's ID
+      timestamp: new  Date(),
+      recordId: generateSecureLogId(), // Use the newly created user's ID
       userId: userId, // Use the logged-in user's ID
       details: JSON.stringify({ action: 'User created', data: user }),
       ipAddress: ipAddress, // Use dynamically collected IP address
@@ -353,47 +380,6 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
   }
 }
 
-
-export async function deleteUser(formData: FormData) {
-  const userId = formData.get("userId") as string;
-  const headersList = await headers();
-    const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
-    const userAgent = headersList.get('user-agent') || 'unknown';
-
-  if (!userId) {
-    return { error: "User ID is required", success: false };
-  }
-
-  try {
-    const [user] = await db.select().from(user).where(eq(user.id, userId));
-
-    await db.delete(user).where(eq(user.id, userId));
-
-    await db.insert(auditLogs).values({
-      action: 'DELETE',
-      tableName: 'users',
-      recordId: user.id,
-      userId: userId,
-      details: JSON.stringify({ action: 'User deleted', data: user }),
-      ipAddress: ipAddress, // Use dynamically collected IP address
-      userAgent: userAgent,
-    });
-
-  
-    // await db.insert(deletedUsers).values({
-    //   originalUserId: userId,
-    //   email: user.email,
-    //   userData: JSON.stringify(user),
-    // });
-
-    revalidatePath('/users');
-    return { success: true, message: "User deleted successfully" };
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    return { error: "Failed to delete user", success: false };
-  }
-}
-
 type ServerActionResponse = {
   success: boolean;
   message?: string;
@@ -402,7 +388,7 @@ type ServerActionResponse = {
 
 export async function updateUserRole(
   userId: string,
-  newRole: string
+  newRole:  "admin" | "owner"
 ): Promise<ServerActionResponse> {
   try {
     const session = await auth.api.getSession({
@@ -425,7 +411,8 @@ export async function updateUserRole(
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
-      recordId: userId,
+      timestamp: new Date(),
+      recordId: generateSecureLogId(),
       userId: loggedInUserId,
       details: JSON.stringify({ action: "User role updated", newRole }),
       ipAddress: ipAddress,
@@ -470,8 +457,9 @@ export async function updateUserEmail(
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
-      recordId: userId,
+      recordId: generateSecureLogId(),
       userId: loggedInUserId,
+      timestamp: new Date(),
       details: JSON.stringify({ action: "User email updated", newEmail }),
       ipAddress: ipAddress,
       userAgent: userAgent,
@@ -486,53 +474,6 @@ export async function updateUserEmail(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update user email",
-    };
-  }
-}
-
-export async function updateApprovalStatus(
-  userId: string,
-  status: "PENDING" | "APPROVED" | "REJECTED"
-): Promise<ServerActionResponse> {
-  try {
-    const session = await auth.api.getSession({
-    headers: await headers() // you need to pass the headers object.
-    })
-    const loggedInUserId = session?.user?.id;
-
-    if (!loggedInUserId) {
-      throw new Error("User not authenticated");
-    }
-
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
-
-    // Update the user approval status in the database
-    await db
-      .update(user)
-      .where(eq(user.id, userId));
-
-    // Log the action in the audit logs
-    await db.insert(auditLogs).values({
-      action: "UPDATE",
-      tableName: "users",
-      recordId: userId,
-      userId: loggedInUserId,
-      details: JSON.stringify({ action: "User approval status updated", status }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
-    });
-
-    // Revalidate the users page to reflect changes
-    revalidatePath("/users");
-
-    return { success: true, message: `User status updated to ${status}` };
-  } catch (error) {
-    console.error("Failed to update approval status:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to update approval status",
     };
   }
 }
@@ -574,7 +515,8 @@ export async function deleteUserPermanently(
     await db.insert(auditLogs).values({
       action: "DELETE",
       tableName: "users",
-      recordId: userId,
+      recordId: generateSecureLogId(),
+      timestamp: new Date(),
       userId: loggedInUserId,
       details: JSON.stringify({ action: "User permanently deleted" }),
       ipAddress: ipAddress,
@@ -598,7 +540,7 @@ export async function deleteUserPermanently(
 }
 
 export type AuditLog = {
-  id: string
+  id: number
   action: string
   tableName: string
   recordId: string
@@ -631,7 +573,6 @@ export async function getTotalUsers() {
     revalidatePath("/dashboard");
     return totalUsers.length;
   } catch (error) {
-    console.error("Failed to fetch total users:", error);
     return 0;
   }
 }
@@ -644,7 +585,6 @@ export async function getStaffCount() {
 
     return staff.length;
   } catch (error) {
-    console.error("Failed to fetch staff count:", error);
     return 0;
   }
 }
@@ -663,7 +603,6 @@ export async function getTotalRequests() {
 
     return unreadContactForms.length + unreadServiceInquiries.length;
   } catch (error) {
-    console.error("Failed to fetch total requests:", error);
     return 0;
   }
 }
@@ -673,7 +612,6 @@ export async function getTotalProjects() {
     const totalProjects = await db.select().from(projects);
     return totalProjects.length;
   } catch (error) {
-    console.error("Failed to fetch total projects:", error);
     return 0;
   }
 }

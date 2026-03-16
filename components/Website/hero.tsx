@@ -7,7 +7,7 @@ export default function Hero (){
   return (
     <div className="pb-1 pt-3 sm:pb-0 sm:pt-1">
       <div
-        className="h-screen w-full bg-black-100  bg-grid-white/[0.03]
+        className="h-screen w-full bg-black-100  bg-grid-white/[0.09] bg-repeat bg-center
        absolute top-0 left-0 flex items-center justify-center"
       >
         

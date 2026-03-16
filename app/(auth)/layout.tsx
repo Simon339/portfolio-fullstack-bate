@@ -13,13 +13,17 @@ export const metadata: Metadata = {
 
 function LoadingIndicator() {
   return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
+    <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
+      <span className="text-gray-600 text-sm">
+        Please wait
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite]">.</span>
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite_0.2s]">.</span>
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite_0.4s]">.</span>
+      </span>
     </div>
   )
 }
-
-
 export default function AuthLayout({
   children,
 }: {

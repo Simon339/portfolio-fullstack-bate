@@ -1,5 +1,7 @@
 ignoredBuiltDependencies:
   - '@heroui/shared-utils'
+  - '@prisma/engines'
   - esbuild
+  - prisma
   - sharp
   - unrs-resolver

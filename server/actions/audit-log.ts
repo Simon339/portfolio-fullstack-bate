@@ -24,7 +24,7 @@ export async function fetchLogs(page = 1, userFilter = "", actionFilter = "all",
     let countQuery = db.select({ count: sql<number>`count(*)` }).from(auditLogs)
     
     if (conditions.length > 0) {
-      countQuery = countQuery.where(...conditions)
+      countQuery = countQuery.where(and(...conditions))
     }
     
     const countResult = await countQuery
@@ -116,16 +116,22 @@ export async function fetchLogs(page = 1, userFilter = "", actionFilter = "all",
 
 export async function exportLogs(format: "json" | "csv", userFilter = "", actionFilter = "all") {
   try {
-    // Build query with filters
-    let query = db.select().from(auditLogs)
-
-    // Apply filters
+    // Build conditions array
+    const conditions = []
+    
     if (userFilter) {
-      query = query.where(like(auditLogs.userId, `%${userFilter}%`))
+      conditions.push(like(auditLogs.userId, `%${userFilter}%`))
     }
 
     if (actionFilter !== "all") {
-      query = query.where(eq(auditLogs.action, actionFilter))
+      conditions.push(eq(auditLogs.action, actionFilter))
+    }
+
+    // Build query with filters
+    let query = db.select().from(auditLogs)
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions))
     }
 
     // Fetch all logs that match the filters

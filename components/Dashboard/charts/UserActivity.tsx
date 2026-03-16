@@ -16,7 +16,7 @@ interface UserActivity {
   user: string
   action: string
   time: Date
-  iconType: string
+  iconType?: string
 }
 
 export default function UserActivity() {
