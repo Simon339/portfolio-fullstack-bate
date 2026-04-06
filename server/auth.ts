@@ -113,12 +113,9 @@ export const auth = betterAuth({
     tableName: "session",
   },
   account: {
-    modelName: "account",
-    tableName: "account",
-  },
-  verification: {
-    modelName: "verification",
-    tableName: "verification",
+    accountLinking: {
+      trustedProviders: ["email-password", "github", "google"],
+    },
   },
 
   emailAndPassword: {
