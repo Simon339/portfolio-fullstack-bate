@@ -1,6 +1,6 @@
 import Hero from "@/components/Website/hero"
 
-const Home = () => {
+export default function Page() {
   return (
     <section className="min-h-screen flex items-center justify-center">
       <div className="container max-w-screen-lg w-full px-4">
@@ -9,5 +9,3 @@ const Home = () => {
     </section>
   )
 }
-
-export default Home

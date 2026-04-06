@@ -14,98 +14,35 @@ export async function RegisterAccount(data: z.infer<typeof SignUpSchema>) {
     const validatedData = SignUpSchema.parse(data);
     const fullname = validatedData.name + " " + validatedData.surname;
 
-   
     // Make sure you're using the correct auth library
     const result = await auth.api.signUpEmail({
       body: {
-        email: validatedData.email.trim().toLowerCase(),
+        email: validatedData.email,
         password: validatedData.password,
-        name: fullname,
-        // role: "user",
+        image: `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(fullname)}`,
+        name: fullname
       },
     });
-    // If result is undefined or null
-    if (!result) {
-      return {
-        success: false,
-        error: "No response received from server. Please check your network connection.",
-      };
-    }
-
-    // Check for response data structure
-    if (result.data) {
-      
-      if (result.data.error) {
-        return {
-          success: false,
-          error: result.data.error.message || "Registration failed",
-        };
-      }
-      
-      if (result.data.user) {
-        return {
-          success: true,
-          message: "Account created! Please check your email to verify your account.",
-        };
-      }
-    }
-
-    // Handle direct error property
-    if ((result as any).error) {
-      const error = (result as any).error;
-      
-      return {
-        success: false,
-        error: error.message || "Registration failed. Please try again.",
-      };
-    }
-
+     
     // If we get here without errors, assume success
     return {
       success: true,
       message: "Account created! Please check your email to verify your account.",
     };
-
-  } catch (error: any) {
-    console.error("Registration error details:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
-
-    // Network errors
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      return {
-        success: false,
-        error: "Network error. Please check your internet connection.",
-      };
-    }
-
-    // Zod validation errors
+  } catch (error) {
+    // Handle validation or API errors
     if (error instanceof z.ZodError) {
-      const errors = error.errors.map(e => e.message).join(', ');
       return {
         success: false,
-        error: `Validation error: ${errors}`,
+        message: "Validation failed",
+        errors: error.errors,
       };
     }
-
-    // Check for duplicate email
-    if (
-      error.message?.toLowerCase().includes("already exists") ||
-      error.message?.toLowerCase().includes("duplicate") ||
-      error.message?.toLowerCase().includes("email exists") ||
-      error.code === 409
-    ) {
-      return {
-        success: false,
-        error: "This email is already registered. Please use a different email or try logging in.",
-      };
-    }
-
+    
+    // Handle authentication errors
     return {
       success: false,
-      error: error.message || "Failed to create account. Please try again.",
+      message: error instanceof Error ? error.message : "Failed to create account",
     };
   }
 }

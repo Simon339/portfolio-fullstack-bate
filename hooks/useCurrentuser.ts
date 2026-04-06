@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
-import { getUserById } from "@/server/data/user"
+import { getUserById } from "@/server/actions/user"
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
 

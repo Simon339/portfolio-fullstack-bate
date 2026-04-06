@@ -5,8 +5,7 @@ export const SettingsSchema = z.object({
   name: z.string().min(2, 'First name must be at least 2 characters'),
   surname: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number'),
-  role: z.enum(["USER", "ADMIN"], { message: "Role must be either USER or ADMIN" }),
+  role: z.enum(["USER", "ADMIN"], { message: "Role must be either USER or ADMIN" }).optional(),
   image: z.instanceof(File)
     .refine((file) => file.size <= 5000000, `Max image size is 5MB.`)
     .refine(
@@ -29,9 +28,9 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export const AddNewUserSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  firstname: z.string().min(2, { message: "Name must be at least 2 characters." }),
   surname: z.string().min(2, { message: "Surname must be at least 2 characters." }),
-  role: z.enum(["USER", "ADMIN", "SUPER_ADMIN"], { message: "Role must be either USER or ADMIN" }),
+  role: z.enum(["user", "admin", "owner"], { message: "Role must be either user , admin or super admin" }),
   email: z.string().email({ message: "Invalid email address." }),
   image: z
     .instanceof(File)
@@ -41,10 +40,6 @@ export const AddNewUserSchema = z.object({
       "Only .jpg, .png, and .webp formats are supported."
     )
     .optional(),
-  country: z.string().refine((val) => countries.some(country => country.code === val), {
-    message: "Please select a valid country."
-  }),
-  phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, { message: "Invalid phone number." }),
 });
 
 export const RatingSchema = z.object({

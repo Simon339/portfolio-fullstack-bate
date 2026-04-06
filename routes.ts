@@ -12,7 +12,7 @@ export const publicRoutes = [
     "/dashboard/surveys",
   ]
   
-  export const authRoutes = ["/auth", "/sign-up", "/verify-email", "/reset", "/new-password"]
+  export const authRoutes = ["/auth", "/sign-up", "/verify-email", "/reset", "/new-password", "/two-factor"]
   
   export const apiAuthPrefix = "/api/auth"
   

@@ -1,7 +1,7 @@
 // proxy.ts
 import { auth } from "@/server/auth";
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { headers as Header } from "next/headers";
 
 // Define route arrays
 const publicRoutes = [
@@ -21,26 +21,35 @@ const publicRoutes = [
   "/dashboard/surveys"
 ];
 
-const authRoutes = ["/auth"];
+const authRoutes = ["/auth", , "/two-factor", "/verify-email", "/reset", "/new-password"];
 const apiAuthPrefix = "/api/auth";
 
 export async function proxy(request: NextRequest) {
   const { nextUrl } = request;
   const { pathname } = nextUrl;
 
-  // Get session from Better Auth
+  const isDynamicProjectRoute = pathname.startsWith("/projects/");
+  const isPublicRoute = publicRoutes.includes(pathname) || isDynamicProjectRoute;
+
+  
+  if (
+    pathname.startsWith(apiAuthPrefix) ||
+    isPublicRoute ||
+    ["Login.json", "Experience.json", "Projects.json", "Support.json"].some(
+      (suffix) => pathname.endsWith(suffix)
+    )
+  ) {
+    return NextResponse.next();
+  }
+
+  
   const session = await auth.api.getSession({
-    headers: request.headers,
+    headers: await Header()
   });
 
   const isLoggedIn = !!session?.user;
 
-  // Skip API auth routes
-  if (pathname.startsWith(apiAuthPrefix)) {
-    return NextResponse.next();
-  }
-
-  // Handle authentication routes
+  
   if (authRoutes.includes(pathname)) {
     if (isLoggedIn) {
       nextUrl.pathname = "/dashboard";
@@ -49,50 +58,42 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if this is a dynamic project route
-  const isDynamicProjectRoute = pathname.startsWith('/projects/');
-  
-  // Check if it's a public route or project route
-  const isPublicRoute = publicRoutes.includes(pathname) || isDynamicProjectRoute;
-
-  // Allow auth check for `json` endpoints
-  if (['Login.json', 'Experience.json', 'Projects.json', 'Support.json']
-    .some(suffix => pathname.endsWith(suffix))) {
-    return NextResponse.next();
-  }
-
-  // Redirect to login if not logged in and not a public route
-  if (!isLoggedIn && !isPublicRoute) {
-    nextUrl.pathname = '/auth';
-    nextUrl.searchParams.set('next', pathname);
+ 
+  if (!isLoggedIn) {
+    nextUrl.pathname = "/auth";
+    nextUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(nextUrl);
   }
 
-  // Collect IP address and user agent
-  const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
-  const userAgent = request.headers.get('user-agent') || 'unknown';
-
-  // Attach IP and User-Agent to request headers
+  
   const headers = new Headers(request.headers);
-  headers.set('x-ip-address', ipAddress);
-  headers.set('x-user-agent', userAgent);
 
-  // Also attach user info if logged in
-  if (isLoggedIn && session.user) {
-    headers.set('x-user-id', session.user.id);
-    headers.set('x-user-email', session.user.email);
-    
-    // Type assertion to access custom fields
+  const ipAddress = request.headers.get("x-forwarded-for") || "unknown";
+  const userAgent = request.headers.get("user-agent") || "unknown";
+
+  headers.set("x-ip-address", ipAddress);
+  headers.set("x-user-agent", userAgent);
+
+  if (session.user) {
+    headers.set("x-user-id", session.user.id);
+    headers.set("x-user-email", session.user.email);
+
     const userWithCustomFields = session.user as any;
     if (userWithCustomFields.role) {
-      headers.set('x-user-role', userWithCustomFields.role);
+      headers.set("x-user-role", userWithCustomFields.role);
     }
   }
 
-  // Continue with the modified headers
   return NextResponse.next({ request: { headers } });
 }
 
+// export const config = {
+//   matcher: [
+//     "/dashboard/:path*",  // only protect dashboard pages
+//     "/api/:path*",        // run for API routes
+//     '/((?!api|_next/static|_next/image|.*\\.png$).*)',
+//   ],
+// };
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files

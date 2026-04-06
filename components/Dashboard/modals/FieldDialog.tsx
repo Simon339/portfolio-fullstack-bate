@@ -16,7 +16,7 @@ type FieldDialogProps = {
   fieldName: keyof User;
   currentValue: string;
   onUpdate: (value: string) => void;
-  userId: number;
+  userId: string;
 };
 
 const FieldDialog = ({ title, fieldName, currentValue, onUpdate }: FieldDialogProps) => {

@@ -3,7 +3,7 @@ import { TextGenerateEffect } from '@/components/ui/text-generate-effect';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 
-export default function Hero (){
+export default function Hero () {
   return (
     <div className="pb-1 pt-3 sm:pb-0 sm:pt-1">
       <div

@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Star } from "lucide-react"
@@ -67,6 +67,9 @@ export default function RatingModal() {
       <DialogContent className="sm:max-w-[400px] bg-black-100">
         <DialogHeader>
           <DialogTitle className="text-white">Rate Your Experience</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Please rate your experience with our service. Your feedback helps us improve.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex justify-center py-2">
           {[...Array(5)].map((_, index) => {
@@ -106,4 +109,3 @@ export default function RatingModal() {
     </Dialog>
   )
 }
-

@@ -155,7 +155,6 @@ const ProjectTable = () => {
         toast.error(`Failed to delete ${failCount} project(s)`)
       }
     } catch (error) {
-      console.error("Error during bulk deletion:", error)
       toast.error("An error occurred while deleting projects")
     } finally {
       setBulkDeleteModalOpen(false)
@@ -527,7 +526,7 @@ const ProjectTable = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border-[#acc2ef]"
+              className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border border-[#acc2ef]"
             >
               <Plus className="h-4 w-4 mr-1" />
             </Button>

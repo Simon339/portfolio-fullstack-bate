@@ -7,11 +7,7 @@ import RatingModal from "@/components/Website/RatingModal"
 import { authClient } from "@/hooks/getcurrectuser";
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { 
-    data: session, 
-    isPending,
-    error,
-  } = authClient.useSession();
+  const { data: session, isPending, error} = authClient.useSession();
 
   // Show loading state
   if (isPending) {
@@ -31,9 +27,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
 
 
   return (
-    <Providers>
+    <>
       {children}
       <RatingModal />
-    </Providers>
+    </>
   );
 }

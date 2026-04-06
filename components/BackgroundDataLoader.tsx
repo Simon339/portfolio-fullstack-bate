@@ -1,16 +1,17 @@
+// components/ToastProviderWrapper.tsx
 "use client"
 
-import { useEffect } from "react"
+import { ToastProvider } from "@/hooks/use-toast"
+import { useEffect, useState } from "react"
 
-interface BackgroundDataLoaderProps {
-  loadData: () => Promise<void>
-}
+export default function ToastProviderWrapper() {
+  const [mounted, setMounted] = useState(false)
 
-export default function BackgroundDataLoader({ loadData }: BackgroundDataLoaderProps) {
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    setMounted(true)
+  }, [])
 
-  return null // This component doesn't render anything
+  if (!mounted) return null
+  
+  return <ToastProvider />
 }
-

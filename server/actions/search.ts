@@ -1,8 +1,8 @@
 "use server"
 
 import { db } from "@/server/db"
-import { projects, categories, techstacks, serviceInquiries, contactForms, users } from "@/server/schema"
-import { ilike, or } from "drizzle-orm"
+import { projects, categories, techstacks, serviceInquiries, contactForms, user } from "@/server/schema"
+import { sql } from "drizzle-orm"
 
 export type SearchResult = {
   id: string
@@ -19,27 +19,25 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
     return []
   }
 
-  const searchTerm = `%${query.toLowerCase()}%`
+  const searchTerm = query.trim().toLowerCase()
   const results: SearchResult[] = []
 
   // Search projects
   const projectResults = await db
-    .select({
-      id: projects.id,
-      name: projects.name,
-      description: projects.description,
-      image: projects.image,
-      createdAt: projects.createdAt,
-    })
+    .select()
     .from(projects)
-    .where(or(ilike(projects.name, searchTerm), ilike(projects.description, searchTerm)))
+    .where(
+      sql`LOWER(${projects.name}) LIKE ${`%${searchTerm}%`} OR LOWER(${projects.description}) LIKE ${`%${searchTerm}%`}`
+    )
     .limit(5)
 
   results.push(
     ...projectResults.map((project) => ({
       id: project.id,
       title: project.name,
-      description: project.description.substring(0, 100) + (project.description.length > 100 ? "..." : ""),
+      description: project.description 
+        ? project.description.substring(0, 100) + (project.description.length > 100 ? "..." : "")
+        : "No description",
       type: "project" as const,
       url: `/dashboard/projects/${project.id}`,
       createdAt: project.createdAt,
@@ -49,64 +47,50 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
 
   // Search categories
   const categoryResults = await db
-    .select({
-      id: categories.id,
-      name: categories.name,
-    })
+    .select()
     .from(categories)
-    .where(ilike(categories.name, searchTerm))
+    .where(sql`LOWER(${categories.name}) LIKE ${`%${searchTerm}%`}`)
     .limit(5)
 
   results.push(
     ...categoryResults.map((category) => ({
       id: category.id,
       title: category.name,
-      description: `Category`,
+      description: "Category",
       type: "category" as const,
-      url: `/dashboard/projects`,
+      url: `/dashboard/projects?category=${category.id}`,
+      createdAt: category.createdAt,
     })),
   )
 
   // Search techstacks
   const techstackResults = await db
-    .select({
-      id: techstacks.id,
-      name: techstacks.name,
-      image: techstacks.image,
-    })
+    .select()
     .from(techstacks)
-    .where(ilike(techstacks.name, searchTerm))
+    .where(sql`LOWER(${techstacks.name}) LIKE ${`%${searchTerm}%`}`)
     .limit(5)
 
   results.push(
     ...techstackResults.map((techstack) => ({
       id: techstack.id,
       title: techstack.name,
-      description: `Technology`,
+      description: "Technology Stack",
       type: "techstack" as const,
-      url: `/dashboard/projects`,
+      url: `/dashboard/projects?techstack=${techstack.id}`,
+      createdAt: techstack.createdAt,
       image: techstack.image,
     })),
   )
 
   // Search service inquiries
   const inquiryResults = await db
-    .select({
-      id: serviceInquiries.id,
-      name: serviceInquiries.name,
-      companyName: serviceInquiries.companyName,
-      service: serviceInquiries.service,
-      email: serviceInquiries.email,
-      createdAt: serviceInquiries.createdAt,
-    })
+    .select()
     .from(serviceInquiries)
     .where(
-      or(
-        ilike(serviceInquiries.name, searchTerm),
-        ilike(serviceInquiries.companyName, searchTerm),
-        ilike(serviceInquiries.service, searchTerm),
-        ilike(serviceInquiries.email, searchTerm),
-      ),
+      sql`LOWER(${serviceInquiries.name}) LIKE ${`%${searchTerm}%`} OR 
+          LOWER(${serviceInquiries.companyName}) LIKE ${`%${searchTerm}%`} OR 
+          LOWER(${serviceInquiries.service}) LIKE ${`%${searchTerm}%`} OR 
+          LOWER(${serviceInquiries.email}) LIKE ${`%${searchTerm}%`}`
     )
     .limit(5)
 
@@ -114,7 +98,7 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
     ...inquiryResults.map((inquiry) => ({
       id: inquiry.id,
       title: inquiry.name,
-      description: `${inquiry.companyName} - ${inquiry.service}`,
+      description: `${inquiry.companyName || "No company"} - ${inquiry.service}`,
       type: "inquiry" as const,
       url: `/dashboard/inquiries/${inquiry.id}`,
       createdAt: inquiry.createdAt,
@@ -123,21 +107,13 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
 
   // Search contact forms
   const contactResults = await db
-    .select({
-      id: contactForms.id,
-      name: contactForms.name,
-      topic: contactForms.topic,
-      email: contactForms.email,
-      createdAt: contactForms.createdAt,
-    })
+    .select()
     .from(contactForms)
     .where(
-      or(
-        ilike(contactForms.name, searchTerm),
-        ilike(contactForms.topic, searchTerm),
-        ilike(contactForms.email, searchTerm),
-        ilike(contactForms.message, searchTerm),
-      ),
+      sql`LOWER(${contactForms.name}) LIKE ${`%${searchTerm}%`} OR 
+          LOWER(${contactForms.topic}) LIKE ${`%${searchTerm}%`} OR 
+          LOWER(${contactForms.email}) LIKE ${`%${searchTerm}%`} OR 
+          LOWER(${contactForms.message}) LIKE ${`%${searchTerm}%`}`
     )
     .limit(5)
 
@@ -145,7 +121,7 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
     ...contactResults.map((contact) => ({
       id: contact.id,
       title: contact.name,
-      description: `${contact.topic}`,
+      description: contact.topic || "Contact form submission",
       type: "contact" as const,
       url: `/dashboard/mails/${contact.id}`,
       createdAt: contact.createdAt,
@@ -154,35 +130,29 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
 
   // Search users
   const userResults = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      surname: users.surname,
-      email: users.email,
-      image: users.image,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .where(or(ilike(users.name, searchTerm), ilike(users.surname, searchTerm), ilike(users.email, searchTerm)))
+    .select()
+    .from(user)
+    .where(
+      sql`LOWER(${user.name}) LIKE ${`%${searchTerm}%`} OR LOWER(${user.email}) LIKE ${`%${searchTerm}%`}`
+    )
     .limit(5)
 
   results.push(
-    ...userResults.map((user) => ({
-      id: user.id,
-      title: `${user.name} ${user.surname}`,
-      description: user.email,
+    ...userResults.map((userItem) => ({
+      id: userItem.id,
+      title: userItem.name || "Unknown User",
+      description: userItem.email,
       type: "user" as const,
-      url: `/dashboard/users/${user.id}`,
-      createdAt: user.createdAt,
-      image: user.image,
+      url: `/dashboard/users/${userItem.id}`,
+      createdAt: userItem.createdAt,
+      image: userItem.image,
     })),
   )
 
-  // Sort results by relevance (for now, just by creation date)
+  // Sort results by relevance (most recent first)
   return results.sort((a, b) => {
     if (!a.createdAt) return 1
     if (!b.createdAt) return -1
-    return b.createdAt.getTime() - a.createdAt.getTime()
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 }
-

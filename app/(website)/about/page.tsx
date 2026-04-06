@@ -47,20 +47,22 @@ export default function About() {
 
             {/* Companies */}
             <div className="pt-4">
-              <p className="text-sm text-muted-foreground mb-4">Companies I&apos;ve worked with:</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Companies I&apos;ve worked with:
+              </p>
               <div className="flex flex-wrap gap-4 items-center">
                 {companies.map((company) => (
                   <div
                     key={company.id}
-                    className="w-10 h-10 rounded-full border border-[#685189] bg-primary/5 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 hover:border-primary"
+                    className="w-10 h-10 rounded-full border border-[#685189] bg-primary/5 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 hover:border-primary overflow-hidden"
                     title={company.name}
                   >
                     <Image
                       src={company.logo || "/placeholder.svg"}
                       alt={company.name}
-                      width={24}
-                      height={24}
-                      className="object-contain w-6 h-6 opacity-80 hover:opacity-100"
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover"
                     />
                   </div>
                 ))}

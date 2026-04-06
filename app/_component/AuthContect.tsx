@@ -11,26 +11,20 @@ const AuthContent = ({ children }: { children: React.ReactNode }) =>  {
   }
 
   // Show loading state while checking session
-  if (isPending) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  // Show error state if session check fails
-  if (error) {
-    console.error("Session check error:", error);
-    // Still show auth page even on error - user can try to login
-  }
+  // if (isPending) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen bg-white">
+  //       <div className="w-5 h-5 border-t-2 border-[#acc2ef] rounded-full animate-spin"></div>
+  //     </div>
+  //   );
+  // }
 
   // If session exists but hasn't redirected yet (fallback)
   if (session?.user?.id && !isPending) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
-          <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin mb-4 mx-auto"></div>
+          <div className="w-5 h-5 border-t-2 border-[#acc2ef] rounded-full animate-spin mb-4 mx-auto"></div>
           <p className="text-gray-600">Redirecting to dashboard...</p>
         </div>
       </div>

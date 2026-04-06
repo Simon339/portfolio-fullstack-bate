@@ -44,7 +44,7 @@ export default function Header() {
         "fixed inset-x-0 top-0 z-50 transition-all duration-300",
         scrolled
           ? "backdrop-blur-xl bg-black-100/90 border-b border-white/10 shadow-lg"
-          : "backdrop-blur-md bg-black-100/80"
+          : "backdrop-blur-md bg-black-100/80 border-b border-white/10"
       )}
     >
       <nav className="max-w-screen-xl mx-auto flex items-center justify-between px-4 lg:px-8 h-16">

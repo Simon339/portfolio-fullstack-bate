@@ -34,70 +34,36 @@ interface Notification {
   originalId?: string;
 }
 
-interface PendingInvitation {
-  id: string;
-  name: string;
-  slug?: string;
-  logo?: string;
-  createdAt: Date;
-}
 
 const Notificationdashcard = () => {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
-  
-  // Get organizations using the hook at the top level
-  const { data: organizations } = authClient.useListOrganizations();
-  
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         // Fetch notifications
         const simpleNotifications = await getSimpleNotifications({ limit: 200 });
+
         
-        // Fetch pending invitations
-        let invitationsData: PendingInvitation[] = [];
-        try {
-          const organizationId = organizations?.[0]?.id || "";
-          
-          if (organizationId) {
-            const { data: invitations, error } = await authClient.organization.listInvitations({
-              query: {
-                organizationId: organizationId,
-              },
-            });
-            
-            if (!error && invitations) {
-              invitationsData = invitations.map((inv: any) => ({
-                id: inv.id,
-                name: inv.invitee?.name  || 'Unknown',
-                createdAt: new Date(inv.createdAt || Date.now()),
-                logo: inv.logo,
-                slug: inv.slug
-              }));
-            }
-          }
-        } catch (invitationError) {
-        }
 
         // Transform notifications
         const transformedNotifications: Notification[] = simpleNotifications.map((notif: any) => {
           // Extract the original ID from the prefixed one
           const originalId = notif.id.replace(/^(contact_|service_|invite_)/, '');
-          
+
           return {
             id: notif.id,
             originalId: originalId,
-            type: notif.source === 'contact_form' ? 'contact' : 
-                  notif.source === 'service_inquiry' ? 'service' : 'access',
-            name: notif.message?.split('From: ')[1]?.split(' - ')[0] || 
-                  notif.message?.split('New Invite: ')[1]?.split(' (')[0] || 
-                  'Unknown',
+            type: notif.source === 'contact_form' ? 'contact' :
+              notif.source === 'service_inquiry' ? 'service' : 'access',
+            name: notif.message?.split('From: ')[1]?.split(' - ')[0] ||
+              notif.message?.split('New Invite: ')[1]?.split(' (')[0] ||
+              'Unknown',
             topic: notif.title?.includes('Contact') ? notif.message?.split(' - ')[1] : undefined,
             service: notif.title?.includes('Service') ? notif.message?.split('Service: ')[1]?.split(' - ')[0] : undefined,
             companyName: notif.title?.includes('Service') ? notif.message?.split('Company: ')[1] : undefined,
@@ -110,28 +76,26 @@ const Notificationdashcard = () => {
         });
 
         setNotifications(transformedNotifications);
-        setPendingInvitation(invitationsData);
-        
+
         // Calculate unread count from notifications + pending invitations
         const unreadNotifications = transformedNotifications.filter(n => !n.read).length;
-        setUnreadCount(unreadNotifications + invitationsData.length);
+        setUnreadCount(unreadNotifications );
       } catch (error) {
         // Fallback to empty arrays
         setNotifications([]);
-        setPendingInvitation([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [organizations]); // Add organizations as dependency
+  }, []); // Add organizations as dependency
 
   const deleteNotification = async (id: string, type: 'contact' | 'service') => {
     try {
       // Extract original ID
       const originalId = id.replace(/^(contact_|service_)/, '');
-      
+
       if (type === 'contact') {
         await deleteRecords({ contactFormIds: [originalId] });
       } else {
@@ -147,11 +111,11 @@ const Notificationdashcard = () => {
     try {
       // Extract original ID
       const originalId = id.replace(/^(contact_|service_)/, '');
-      
+
       if (type === 'contact' || type === 'service') {
         await markNotificationAsRead(originalId);
       }
-      
+
       setNotifications(
         notifications.map((notification) =>
           notification.id === id ? { ...notification, read: true } : notification
@@ -168,8 +132,7 @@ const Notificationdashcard = () => {
       setNotifications(
         notifications.map((notification) => ({ ...notification, read: true }))
       );
-      // Only reset notification unread count, keep pending invitations
-      setUnreadCount(pendingInvitation.length);
+  
     } catch (error) {
     }
   };
@@ -177,49 +140,19 @@ const Notificationdashcard = () => {
   // Combine notifications and pending invitations for the "All" tab
   const allItems = [
     ...notifications.filter((n) => !n.read && !n.archived),
-    ...pendingInvitation.map((inv) => ({
-      id: inv.id,
-      type: "access" as const,
-      name: inv.name,
-      slug: inv.slug,
-      logo: inv.logo || '/placeholder.png',
-      createdAt: inv.createdAt,
-      read: false, // Add required property
-    })),
+   
   ];
 
   const handleAccept = async (id: string) => {
-    try {
-      const { data, error } = await authClient.organization.acceptInvitation({
-        invitationId: id,
-      });
-      
-      if (!error) {
-        setPendingInvitation(pendingInvitation.filter((inv) => inv.id !== id));
-        setUnreadCount(prev => prev - 1);
-      } else {
-      }
-    } catch (error) {
-    }
+    
   };
 
   const handleReject = async (id: string) => {
-    try {
-      const { error } = await authClient.organization.rejectInvitation({
-        invitationId: id,
-      });
-      
-      if (!error) {
-        setPendingInvitation(pendingInvitation.filter((inv) => inv.id !== id));
-        setUnreadCount(prev => prev - 1);
-      } else {
-      }
-    } catch (error) {
-    }
+    
   };
 
   return (
-    <Card className="bg-white border-0 shadow-sm overflow-hidden">
+    <Card className="bg-white border border-[#acc2ef] shadow-sm overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-medium">Notifications</CardTitle>
@@ -230,9 +163,9 @@ const Notificationdashcard = () => {
               </Badge>
             )}
             {notifications.filter(n => !n.read).length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={markAllAsRead}
                 className="h-8 text-xs"
               >
@@ -247,8 +180,8 @@ const Notificationdashcard = () => {
       <CardContent className="p-0">
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
           <div className="px-6">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="all">All</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 mb-4 border-[#acc2ef]">
+              <TabsTrigger  value="all">All</TabsTrigger>
               <TabsTrigger value="unread">Unread</TabsTrigger>
               <TabsTrigger value="access">Access</TabsTrigger>
             </TabsList>
@@ -314,8 +247,12 @@ const Notificationdashcard = () => {
                                   Mark as read
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem 
-                                onClick={() => deleteNotification(item.id, item.type)}
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (item.type === "contact" || item.type === "service") {
+                                    deleteNotification(item.id, item.type);
+                                  }
+                                }}
                                 className="text-red-600"
                               >
                                 Delete
@@ -329,13 +266,13 @@ const Notificationdashcard = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-[200px] text-center">
                     <div className="relative inline-flex items-center justify-center">
-      {/* Multiple ring waves */}
-      <div className="absolute h-12 w-12 rounded-full border-2 border-muted-foreground opacity-0 animate-[ring_2s_ease-out_infinite]" />
-      <div className="absolute h-12 w-12 rounded-full border-2 border-muted-foreground opacity-0 animate-[ring_2s_ease-out_0.5s_infinite]" />
-      <div className="absolute h-12 w-12 rounded-full border-2 border-muted-foreground opacity-0 animate-[ring_2s_ease-out_1s_infinite]" />
-      
-      <Bell className="relative h-8 w-8 text-muted-foreground opacity-40" />
-    </div>            <p className="text-sm text-muted-foreground">No notifications</p>
+                      {/* Multiple ring waves */}
+                      <div className="absolute h-12 w-12 rounded-full border-2 border-muted-foreground opacity-0 animate-[ring_2s_ease-out_infinite]" />
+                      <div className="absolute h-12 w-12 rounded-full border-2 border-muted-foreground opacity-0 animate-[ring_2s_ease-out_0.5s_infinite]" />
+                      <div className="absolute h-12 w-12 rounded-full border-2 border-muted-foreground opacity-0 animate-[ring_2s_ease-out_1s_infinite]" />
+
+                      <Bell className="relative h-8 w-8 text-muted-foreground opacity-40" />
+                    </div>            <p className="text-sm text-muted-foreground">No notifications</p>
                   </div>
                 )}
               </TabsContent>
@@ -350,8 +287,8 @@ const Notificationdashcard = () => {
                   notifications
                     .filter((n) => !n.read && !n.archived)
                     .map((notification) => (
-                      <div key={notification.id} className="flex items-start gap-3 pb-4 last:pb-0" 
-                           onClick={() => router.push(`/dashboard/mails`)}>
+                      <div key={notification.id} className="flex items-start gap-3 pb-4 last:pb-0"
+                        onClick={() => router.push(`/dashboard/mails`)}>
                         <span className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
                         <div className="flex-1 space-y-1">
                           <p className="text-sm font-medium leading-none">{notification.name}</p>
@@ -373,8 +310,12 @@ const Notificationdashcard = () => {
                             <DropdownMenuItem onClick={() => markAsRead(notification.id, notification.type)}>
                               Mark as read
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => deleteNotification(notification.id, notification.type)}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (notification.type === "contact" || notification.type === "service") {
+                                  deleteNotification(notification.id, notification.type);
+                                }
+                              }}
                               className="text-red-600"
                             >
                               Delete
@@ -390,63 +331,14 @@ const Notificationdashcard = () => {
                   </div>
                 )}
               </TabsContent>
-
-              {/* Access Tab */}
-              <TabsContent value="access" className="m-0 space-y-4">
-                {loading ? (
-                  <div className="flex justify-center items-center h-[200px]">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-                  </div>
-                ) : pendingInvitation.length > 0 ? (
-                  pendingInvitation.map((invitation) => (
-                    <div key={invitation.id} className="flex items-start gap-3 pb-4 last:pb-0">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {invitation.name?.charAt(0) || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {invitation.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Slug: {invitation.slug || ""}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Invited {formatDistanceToNow(new Date(invitation.createdAt), { addSuffix: true })}
-                        </p>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleAccept(invitation.id)}>
-                            <UserCheck className="mr-2 h-4 w-4" /> Accept
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleReject(invitation.id)}>
-                            <UserX className="mr-2 h-4 w-4" /> Reject
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-[200px] text-center">
-                    <UserCheck className="h-8 w-8 text-muted-foreground mb-2 opacity-40" />
-                    <p className="text-sm text-muted-foreground">No pending invitions</p>
-                  </div>
-                )}
-              </TabsContent>
             </div>
           </ScrollArea>
         </Tabs>
       </CardContent>
-      <CardFooter className="border-t bg-gray-50/50 py-3">
+      <CardFooter className="border-t border-[#acc2ef] bg-gray-50/50 py-3">
         <Button variant="ghost" size="sm" className="w-full justify-between" onClick={() => router.push("/dashboard/mails")}>
           View all notifications
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4 text-[#acc2ef]" />
         </Button>
       </CardFooter>
     </Card>

@@ -5,11 +5,10 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import AuthContent from "../_component/AuthContect"
 
-
 export const metadata: Metadata = {
-  title: "Sign In | Sign Up",
-  description: "Sign in to your account or create a new one",
-}
+  title: "Authentication",
+  description: "Sign in, create an account, reset your password, and manage access",
+};
 
 function LoadingIndicator() {
   return (

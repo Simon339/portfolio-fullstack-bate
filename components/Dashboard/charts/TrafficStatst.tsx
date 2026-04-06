@@ -64,14 +64,14 @@ export default function TrafficStats() {
   const trendColor = isPositiveChange ? "text-emerald-500" : "text-red-500";
 
   return (
-    <Card className="bg-white border-0 shadow-sm overflow-hidden">
+    <Card className="bg-white border border-[#acc2ef] shadow-sm overflow-hidden">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-medium">Traffic Stats</CardTitle>
           {!loading && !error && (
             <Badge
               variant={trafficStats.isPositive ? "outline" : "destructive"}
-              className={`ml-2 flex items-center gap-1 ${
+              className={`ml-2 flex items-center gap-1 border-[#acc2ef] ${
                 trafficStats.isPositive
                   ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
                   : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
@@ -118,7 +118,7 @@ export default function TrafficStats() {
       </CardContent>
 
       {!loading && !error && analytics.success && (
-        <CardFooter className="border-t bg-gray-50/50 px-6 py-4">
+        <CardFooter className="border-t border-[#acc2ef] bg-gray-50/50 px-6 py-4">
           <div className="space-y-2 w-full">
             <div className={`flex items-center gap-2 text-sm font-medium ${trendColor}`}>
               Audit logs {changeText} by {Math.abs(analytics.percentageChange).toFixed(1)}% this year
@@ -175,7 +175,7 @@ function ErrorState({ message }: { message: string }) {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center h-[300px] text-center px-6">
-      <LineChart className="h-10 w-10 text-muted-foreground mb-3 opacity-40" />
+      <LineChart className="h-10 w-10 text-muted-foreground  mb-3 opacity-40" />
       <p className="text-sm font-medium text-muted-foreground mb-1">No traffic data available</p>
       <p className="text-xs text-muted-foreground max-w-[250px]">Start tracking visitors to see analytics here</p>
     </div>

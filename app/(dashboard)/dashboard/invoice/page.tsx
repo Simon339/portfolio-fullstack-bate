@@ -468,7 +468,7 @@ const handlePrint = async (quotation: Quotation) => {
           <p className="text-gray-600 mt-2 text-lg">Manage and track customer quotations</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" className="bg-transparent border rounded-full hover:border-blue-500 hover:animate-pulse hover:opacity-95" onClick={() => window.location.href = '/dashboard/invoice/newquotation'}>
+          <Button variant="outline" size="icon" className="bg-transparent border border-[#acc2ef] rounded-full hover:border-blue-500 hover:animate-pulse hover:opacity-95" onClick={() => window.location.href = '/dashboard/invoice/newquotation'}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -588,6 +588,7 @@ const handlePrint = async (quotation: Quotation) => {
           <div className="space-x-2">
             <Button
               variant="outline"
+              className="bg-gray-50 border-[#acc2ef]"
               size="sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
@@ -596,6 +597,7 @@ const handlePrint = async (quotation: Quotation) => {
             </Button>
             <Button
               variant="outline"
+              className="bg-gray-50 border-[#acc2ef]"
               size="sm"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}

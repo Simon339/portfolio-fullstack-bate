@@ -105,7 +105,7 @@ export function DataTable<TData extends { id: string; isSelected?: boolean }, TV
               size="sm"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="text-red-600 hover:text-red-700 bg-gray-50 border-[#acc2ef] rounded-xl hover:bg-red-50 border-red-200"
+              className="text-red-600 hover:text-red-700 bg-gray-50  rounded-xl hover:bg-red-50 border-red-200"
             >
               {isDeleting ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

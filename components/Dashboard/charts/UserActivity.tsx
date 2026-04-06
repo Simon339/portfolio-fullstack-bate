@@ -29,7 +29,12 @@ export default function UserActivity() {
       try {
         setLoading(true)
         const data = await getUserActivities()
-        setUserActivities(data)
+        setUserActivities(
+          data.map((activity: any) => ({
+            ...activity,
+            id: String(activity.id),
+          }))
+        )
       } catch (err) {
         setError("Failed to fetch user activities. Please try again later.")
       } finally {
@@ -55,7 +60,7 @@ export default function UserActivity() {
   }
 
   return (
-    <Card className="bg-white border-0 shadow-sm overflow-hidden">
+    <Card className="bg-white border border-[#acc2ef] shadow-sm overflow-hidden">
       <CardHeader>
         <CardTitle className="text-lg font-medium">User Activity</CardTitle>
         <CardDescription>Recent user interactions</CardDescription>
@@ -73,7 +78,7 @@ export default function UserActivity() {
             <ScrollArea className="h-[300px]">
             {userActivities.map((activity) => (
               <div key={activity.id} className="flex items-start gap-4">
-                <div className="mt-1 rounded-full bg-primary/10 p-2">{getIconComponent(activity.iconType)}</div>
+                <div className="mt-1 rounded-full bg-primary/10 p-2">{getIconComponent(activity.iconType ?? "")}</div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium leading-none">{activity.user}</p>
@@ -90,7 +95,7 @@ export default function UserActivity() {
         )}
       </CardContent>
 
-      <CardFooter className="border-t bg-gray-50/50 py-3">
+      <CardFooter className="border-t border-[#acc2ef] bg-gray-50/50 py-3">
         <Button variant="ghost" size="sm" className="w-full justify-between" onClick={() => window.location.href = "/dashboard/reports"}>
           View all activity
           <ChevronRight className="h-4 w-4" />

@@ -1,15 +1,17 @@
-
-import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/mysql2';
+import { drizzle } from "drizzle-orm/mysql2";
 import mysql from 'mysql2/promise';
-import * as dotenv from "dotenv";
 
-dotenv.config();
-
-// Create MySQL connection pool
-const poolConnection = mysql.createPool({
+// Create connection pool
+const pool = mysql.createPool({
   uri: process.env.DATABASE_URL!,
 });
 
-// Create drizzle instance with MySQL
-export const db = drizzle({ client:poolConnection });
+// Test connection
+pool.getConnection().then(conn => {
+  console.log('Database connected successfully');
+  conn.release();
+}).catch(err => {
+  console.error('Database connection failed:', err);
+});
+
+export const db = drizzle(pool);

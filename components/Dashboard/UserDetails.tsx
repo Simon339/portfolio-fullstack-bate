@@ -6,35 +6,26 @@ import { useEffect, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, Clock, Trash2, XCircle, Globe, Shield, Users, Key, Mail, Calendar, Monitor, Smartphone, Eye, EyeOff } from "lucide-react"
+import { CheckCircle, Clock, Trash2, XCircle, Globe, Shield, Users, Key, Mail, Calendar, Monitor, Smartphone, Eye, EyeOff, Ban, UserX, RefreshCw, UserCog, Loader2, LogOut, UserMinus } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import EditableField from "./forms/EditableField"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import Activities from "./activities"
 import { toast } from "sonner"
-import {
-  deleteUserPermanently,
-  getUserAuditLogs,
-  updateUserEmail,
-  updateUserRole,
-} from "@/server/data/alldata"
+import { getUserAuditLogs } from "@/server/data/alldata"
 import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Chip } from "@heroui/react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ScrollArea } from "../ui/scroll-area"
 import { Badge } from "../ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
+import { banUser, deleteUser, impersonateUser, revokeAllUserSessions, revokeUserSession, stopImpersonating, unbanUser, updateUserRole, updateUserEmail, updateUserName } from "@/server/actions/user"
+import { useRouter } from "next/navigation"
 
 type User = {
   id: string
@@ -42,11 +33,15 @@ type User = {
   image: string
   email: string
   status: "Verified" | "Not Verified"
-  role?: string
+  role?: "user" | "admin" | "owner"
+  twoFactorEnabled?: boolean
+  banned: boolean
+  banReason: string | null
+  banExpires: Date | null
   createdAt: string
   updatedAt: Date
   emailVerified: boolean
-  
+
   // Additional fields from comprehensive schema
   sessions?: {
     all: Array<{
@@ -55,8 +50,7 @@ type User = {
       ipAddress: string | null
       userAgent: string | null
       createdAt: Date
-      activeOrganizationId: string | null
-      activeTeamId: string | null
+      impersonatedBy: string | null
     }>
     current: any | null
     stats: {
@@ -64,48 +58,17 @@ type User = {
       active: number
     }
   }
-  
+
   accounts?: Array<{
     id: string
     providerId: string
     accountId: string
+    password: string | null | boolean
     createdAt: Date
     scope: string | null
   }>
-  
-  organizations?: Array<{
-    membershipId: string
-    role: "member" | "admin" | "owner"
-    joinedAt: Date
-    organization: {
-      id: string
-      name: string
-      slug: string
-      logo: string | null
-    }
-  }>
-  
-  invitations?: {
-    sent: Array<{
-      id: string
-      email: string
-      organizationId: string
-      role: "member" | "admin" | "owner"
-      status: "pending" | "accepted" | "rejected" | "cancelled"
-      createdAt: Date
-      expiresAt: Date
-      organization: {
-        name: string
-        slug: string
-      }
-    }>
-    stats: {
-      pending: number
-      accepted: number
-      total: number
-    }
-  }
-  
+
+
   activity?: {
     auditLogs: Array<{
       id: number
@@ -122,43 +85,32 @@ type User = {
       lastActive: Date
     }
   }
-  
+
   stats?: {
     sessionCount: number
     activeSessionCount: number
     linkedAccountCount: number
-    organizationCount: number
-    sentInvitationCount: number
     auditLogCount: number
     lastActive: Date
   }
-  
+
   verification?: {
     email: boolean
     accounts: boolean
-    hasPassword: boolean
   }
-  
-  permissions?: {
-    isOrganizationOwner: boolean
-    isOrganizationAdmin: boolean
-    canInvite: boolean
-    organizations: Array<{
-      id: string
-      role: string
-      permissions: string[]
-    }>
-  }
+
 }
 
 interface UserDetailProps {
   user: User
+  onUserUpdate?: (user: User) => void
+  onUserDelete?: (userId: string) => void
 }
 
-const roleColor: Record<"USER" | "SUPER_ADMIN" | "ADMIN" | "default", "warning" | "success" | "secondary"> = {
-  USER: "warning",
-  SUPER_ADMIN: "success",
-  ADMIN: "success",
+const roleColor: Record<"user" | "admin" | "owner" | "default", "warning" | "success" | "secondary"> = {
+  user: "warning",
+  admin: "success",
+  owner: "success",
   default: "secondary",
 }
 
@@ -171,12 +123,17 @@ const providerColors: Record<string, string> = {
   default: "bg-gray-50 text-gray-700 border-gray-200",
 }
 
-const UserDetails = ({ user }: UserDetailProps) => {
+const UserDetails = ({ user, onUserUpdate, onUserDelete }: UserDetailProps) => {
   const [currentUser, setCurrentUser] = useState<User>(user)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [auditLogs, setAuditLogs] = useState<any[]>(user.activity?.auditLogs || [])
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
+  const [banDialogOpen, setBanDialogOpen] = useState(false)
+  const [banReason, setBanReason] = useState("")
+  const [banDuration, setBanDuration] = useState("permanent")
+  const [isBanning, setIsBanning] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchAuditLogs = async () => {
@@ -196,20 +153,24 @@ const UserDetails = ({ user }: UserDetailProps) => {
     }
   }, [user.id, user.activity?.auditLogs])
 
-  const handleRoleChange = async (newRole: string) => {
-    try {
-      const result = await updateUserRole(currentUser.id, newRole)
-      if (result.success) {
-        setCurrentUser((prevUser) => ({ ...prevUser, role: newRole }))
-        toast.success(result.message)
-      } else {
-        toast.error(result.error)
-      }
-    } catch (error) {
-      console.error("Failed to update role:", error)
-      toast.error("Failed to update role")
+  const handleRoleChange = async (newRole: "user" | "admin" | "owner") => {
+  try {
+    // Call the server action to update user role
+    const result = await updateUserRole(currentUser.id, newRole)
+    
+    if (!result.success) {
+      toast.error(result.error || "Failed to update role")
+      return
     }
+
+    // Success - update local state
+    setCurrentUser((prevUser) => ({ ...prevUser, role: newRole }))
+    toast.success(result.message || "User role updated successfully")
+  } catch (error) {
+    console.error("Failed to update role:", error)
+    toast.error(error instanceof Error ? error.message : "Failed to update role")
   }
+}
 
   const handleEmailChange = async (newEmail: string) => {
     try {
@@ -226,30 +187,133 @@ const UserDetails = ({ user }: UserDetailProps) => {
     }
   }
 
+  const handleNameChange = async (newName: string) => {
+    try {
+     const result = await updateUserName(currentUser.id, newName)
+      if (result.success) {
+        setCurrentUser((prevUser) => ({ ...prevUser, name: newName }))
+        toast.success("Name updated successfully")
+      } else {
+        toast.error(result.error || "Failed to update name")
+      }
+    } catch (error) {
+      console.error("Failed to update name:", error)
+      toast.error("Failed to update name")
+    }
+  }
+
   const handlePermanentDelete = async () => {
     try {
-      const result = await deleteUserPermanently(currentUser.id)
-      if (result.success) {
-        toast.success("User permanently deleted")
-        // Redirect or handle deletion in parent
-      } else {
-        toast.error(result.error || "Failed to delete user")
+      const formData = new FormData();
+      formData.append("userId", currentUser.id);
+      const result = await deleteUser(formData);
+
+      // Check if the response indicates success
+      if (result?.success === false) {
+        toast.error(result.message || "Failed to delete user")
+        return
       }
+
+      // Success
+      toast.success(result?.message || "User permanently deleted")
+
+      // Redirect or handle deletion in parent
+      router.push("/dashboard/users")
+
     } catch (error) {
       console.error("Failed to delete user:", error)
       toast.error("Failed to delete user")
     }
   }
 
+  const handleRevokeSession = async (sessionId: string) => {
+  try {
+    // Find the session to revoke from currentUser.sessions data
+    const sessionToRevoke = currentUser.sessions?.all?.find(s => s.id === sessionId)
+    if (!sessionToRevoke) {
+      toast.error("Session not found")
+      return
+    }
+
+    // Call the server action to revoke the session
+    const result = await revokeUserSession(sessionToRevoke.id)
+    
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+
+    // Update local state after successful API call
+    if (currentUser.sessions) {
+      const updatedSessions = {
+        ...currentUser.sessions,
+        all: currentUser.sessions.all.filter(s => s.id !== sessionId),
+        stats: {
+          ...currentUser.sessions.stats,
+          total: currentUser.sessions.stats.total - 1,
+          active: currentUser.sessions.stats.active - 1
+        }
+      }
+      const updatedUser = { ...currentUser, sessions: updatedSessions }
+      setCurrentUser(updatedUser)
+      onUserUpdate?.(updatedUser)
+    }
+    toast.success(result.message || "Session revoked successfully")
+  } catch (error) {
+    console.error("Failed to revoke session:", error)
+    toast.error(error instanceof Error ? error.message : "Failed to revoke session")
+  }
+}
+
+const handleRevokeAllSessions = async () => {
+  try {
+    // Call the server action to revoke all sessions
+    const result = await revokeAllUserSessions(currentUser.id)
+    
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+
+    // Update local state after successful API call
+    if (currentUser.sessions) {
+      const updatedSessions = {
+        ...currentUser.sessions,
+        all: [],
+        stats: { total: 0, active: 0 }
+      }
+      const updatedUser = { ...currentUser, sessions: updatedSessions }
+      setCurrentUser(updatedUser)
+      onUserUpdate?.(updatedUser)
+    }
+    toast.success(result.message || "All sessions revoked successfully")
+  } catch (error) {
+    console.error("Failed to revoke sessions:", error)
+    toast.error(error instanceof Error ? error.message : "Failed to revoke all sessions")
+  }
+}
+
+  const handleRefreshLogs = async () => {
+    setIsLoading(true)
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      // In a real app, this would fetch fresh audit logs
+      toast.success("Activity logs refreshed")
+    } catch (error) {
+      console.error("Failed to refresh logs:", error)
+      toast.error("Failed to refresh activity logs")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const isVerified = currentUser.status === "Verified"
- 
+
   const getInitials = (name: string): string => {
     return `${name.charAt(0)}`.toUpperCase()
   }
 
   const initials = getInitials(currentUser.name)
 
-  const getRoleColor = (role: "USER" | "SUPER_ADMIN" | "ADMIN"): "warning" | "success" | "secondary" => {
+  const getRoleColor = (role: 'admin' | 'user' | 'owner'): "warning" | "success" | "secondary" => {
     return roleColor[role] || "secondary"
   }
 
@@ -297,64 +361,91 @@ const UserDetails = ({ user }: UserDetailProps) => {
               {currentUser.name}
             </h2>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <Chip
-                color={currentUser.status === "Verified" ? "success" : "warning"}
-                variant="flat"
-                className="flex items-center gap-1 text-xs font-normal border-[#acc2ef]"
+              <Badge
+                variant={currentUser.status === "Verified" ? "default" : "secondary"}
+                className="flex items-center gap-1 text-xs font-normal"
               >
-                <div className="flex items-center gap-1 text-xs">
-                  {isVerified ? (
-                    <>
-                      <CheckCircle className="w-3 h-3" />
-                      <span>Verified</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-3 h-3" />
-                      <span>Not Verified</span>
-                    </>
+                {isVerified ? (
+                  <>
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Verified</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-3 h-3" />
+                    <span>Not Verified</span>
+                  </>
+                )}
+              </Badge>
+
+              {currentUser.banned ? (
+                <Badge variant="destructive" className="text-xs">
+                  <Ban className="w-3 h-3 mr-1" />
+                  Banned
+                  {currentUser.banReason && (
+                    <span className="ml-1 text-xs opacity-80">
+                      ({currentUser.banReason})
+                    </span>
                   )}
-                </div>
-              </Chip>
-              {currentUser.organizations && currentUser.organizations.length > 0 && (
+                </Badge>
+              ) : (
                 <Badge variant="outline" className="text-xs">
-                  <Users className="w-3 h-3 mr-1" />
-                  {currentUser.organizations.length} Org{currentUser.organizations.length !== 1 ? 's' : ''}
+                  Active
                 </Badge>
               )}
+
               {currentUser.sessions && (
                 <Badge variant="outline" className="text-xs">
                   <Monitor className="w-3 h-3 mr-1" />
                   {currentUser.sessions.stats.active} Active
                 </Badge>
               )}
+
+              {currentUser.role && (
+                <Badge
+                  variant={currentUser.role === "admin" || currentUser.role === "owner" ? "default" : "secondary"}
+                  className="text-xs capitalize"
+                >
+                  <Shield className="w-3 h-3 mr-1" />
+                  {currentUser.role}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" className="shrink-0">
-              <Trash2 className="w-4 h-4 mr-1" />
-              Delete User
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Permanently delete user?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the user account and remove all associated
-                data including sessions, organizations memberships, and audit logs.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handlePermanentDelete} className="bg-red-600 hover:bg-red-700">
-                Delete Permanently
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="flex items-center gap-2 flex-wrap">
+          {currentUser.banned ? (
+            <UnbanDialog userId={currentUser.id} userName={currentUser.name} />
+          ) : (
+            <BanDialog userId={currentUser.id} userName={currentUser.name}/>
+          )}
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="border-[#acc2ef] rounded-lg hover:bg-gray-50">
+                <Trash2 className="w-4 h-4 mr-1 text-destructive" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Permanently delete user?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the user account and remove all associated
+                  data including sessions, organizations memberships, and audit logs.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handlePermanentDelete} className="bg-red-600 hover:bg-red-700">
+                  Delete Permanently
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <ImpersonateDialog userId={currentUser.id} userName={currentUser.name} />
+        </div>
       </div>
 
       {/* Tabs Navigation */}
@@ -362,21 +453,45 @@ const UserDetails = ({ user }: UserDetailProps) => {
         <TabsList className="w-full justify-start rounded-none border-b border-[#acc2ef] bg-transparent px-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="organizations">Organizations</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="p-6 space-y-6">
+          {/* Ban Warning */}
+          {currentUser.banned && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <Ban className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-red-800">User is Banned</h4>
+                <p className="text-sm text-red-600">
+                  {currentUser.banReason && `Reason: ${currentUser.banReason}`}
+                  {currentUser.banExpires && (
+                    <span className="block">
+                      Expires: {format(new Date(currentUser.banExpires), "MMMM d, yyyy 'at' HH:mm")}
+                    </span>
+                  )}
+                  {!currentUser.banExpires && <span className="block">Duration: Permanent</span>}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Basic Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <EditableField 
-              label="Email" 
-              value={currentUser.email} 
-              onSave={handleEmailChange} 
-              icon={<Mail className="w-4 h-4" />}
+            <EditableField
+              label="Name"
+              value={currentUser.name}
+              onSave={handleNameChange}
             />
-            
+
+            <EditableField
+              label="Email"
+              value={currentUser.email}
+              onSave={handleEmailChange}
+            />
+
             <div className="space-y-2">
               <Label htmlFor="role" className="text-sm text-gray-600 flex items-center gap-2">
                 <Shield className="w-4 h-4" />
@@ -387,9 +502,9 @@ const UserDetails = ({ user }: UserDetailProps) => {
                   <SelectValue placeholder="Select a role" defaultValue={currentUser.role} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USER">User</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="owner">Owner</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -404,6 +519,26 @@ const UserDetails = ({ user }: UserDetailProps) => {
                 <span className="text-gray-400 ml-2">
                   ({formatDistanceToNow(new Date(currentUser.createdAt), { addSuffix: true })})
                 </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-600 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Last Updated
+              </Label>
+              <div className="h-10 px-3 py-2 text-sm bg-gray-50 border border-[#acc2ef] rounded-md flex items-center">
+                {format(new Date(currentUser.updatedAt), "MMMM d, yyyy")}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-600 flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                User ID
+              </Label>
+              <div className="h-10 px-3 py-2 text-sm bg-gray-50 border border-[#acc2ef] rounded-md flex items-center font-mono text-xs">
+                {currentUser.id}
               </div>
             </div>
           </div>
@@ -427,20 +562,6 @@ const UserDetails = ({ user }: UserDetailProps) => {
             <Card>
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-lg font-semibold">
-                  {currentUser.stats?.organizationCount || 0}
-                </CardTitle>
-                <CardDescription className="text-xs">Organizations</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="text-sm text-blue-600 flex items-center gap-1">
-                  <Users className="w-3 h-3" /> member
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-lg font-semibold">
                   {currentUser.accounts?.length || 0}
                 </CardTitle>
                 <CardDescription className="text-xs">Linked Accounts</CardDescription>
@@ -455,51 +576,56 @@ const UserDetails = ({ user }: UserDetailProps) => {
             <Card>
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-lg font-semibold">
-                  {currentUser.activity?.stats.totalActions || 0}
+                  {currentUser.activity?.stats.totalActions || auditLogs.length || 0}
                 </CardTitle>
                 <CardDescription className="text-xs">Total Actions</CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
                 <div className="text-sm text-orange-600 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> last {currentUser.activity?.stats.lastActive ? formatDistanceToNow(new Date(currentUser.activity.stats.lastActive), { addSuffix: true }) : 'never'}
+                  <Clock className="w-3 h-3" /> tracked
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  {currentUser.twoFactorEnabled ? (
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-gray-400" />
+                  )}
+                </CardTitle>
+                <CardDescription className="text-xs">2FA Status</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className={`text-sm flex items-center gap-1 ${currentUser.twoFactorEnabled ? 'text-green-600' : 'text-gray-500'}`}>
+                  <Shield className="w-3 h-3" /> {currentUser.twoFactorEnabled ? 'Enabled' : 'Disabled'}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Sessions Section */}
-          {currentUser.sessions && currentUser.sessions.all.length > 0 && (
+          {/* Linked Accounts Preview */}
+          {currentUser.accounts && currentUser.accounts.length > 0 && (
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <Monitor className="w-5 h-5" />
-                Recent Sessions
+                <Globe className="w-5 h-5" />
+                Linked Accounts
               </h3>
-              <ScrollArea className="h-[200px] w-full rounded-md border border-[#acc2ef]">
-                <div className="p-4 space-y-3">
-                  {currentUser.sessions.all.slice(0, 5).map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-3 border border-[#acc2ef] rounded-md">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${getDeviceType(session.userAgent) === 'Mobile' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                          {getDeviceType(session.userAgent) === 'Mobile' ? (
-                            <Smartphone className="w-4 h-4 text-blue-600" />
-                          ) : (
-                            <Monitor className="w-4 h-4 text-gray-600" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium text-sm">{getBrowser(session.userAgent)} • {getDeviceType(session.userAgent)}</div>
-                          <div className="text-xs text-gray-500">
-                            {session.ipAddress} • {formatDistanceToNow(new Date(session.createdAt), { addSuffix: true })}
-                          </div>
-                        </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {currentUser.accounts.map((account) => (
+                  <div key={account.id} className={`flex items-center gap-3 p-3 border rounded-md ${providerColors[account.providerId] || providerColors.default}`}>
+                    <Globe className="w-5 h-5" />
+                    <div>
+                      <div className="font-medium">{getProviderDisplayName(account.providerId)}</div>
+                      <div className="text-xs opacity-70">
+                        Connected {formatDistanceToNow(new Date(account.createdAt), { addSuffix: true })}
                       </div>
-                      <Badge variant={new Date(session.expiresAt) > new Date() ? "default" : "outline"}>
-                        {new Date(session.expiresAt) > new Date() ? "Active" : "Expired"}
-                      </Badge>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </TabsContent>
@@ -507,7 +633,8 @@ const UserDetails = ({ user }: UserDetailProps) => {
         {/* Security Tab */}
         <TabsContent value="security" className="p-6 space-y-6">
           <h3 className="text-lg font-medium text-gray-900">Authentication & Security</h3>
-          
+
+
           {/* Verification Status */}
           <Card>
             <CardHeader>
@@ -521,7 +648,7 @@ const UserDetails = ({ user }: UserDetailProps) => {
                   </div>
                   <div>
                     <div className="font-medium">Email Verification</div>
-                    <div className="text-sm text-gray-500">{currentUser.emailVerified ? 'Verified' : 'Not verified'}</div>
+                    <div className="text-sm text-gray-500">{currentUser.email}</div>
                   </div>
                 </div>
                 <Badge variant={currentUser.emailVerified ? "default" : "destructive"}>
@@ -531,28 +658,44 @@ const UserDetails = ({ user }: UserDetailProps) => {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${currentUser.verification?.accounts ? 'bg-green-100' : 'bg-gray-100'}`}>
-                    <Key className={`w-4 h-4 ${currentUser.verification?.accounts ? 'text-green-600' : 'text-gray-400'}`} />
+                  <div className={`p-2 rounded-full ${currentUser.accounts?.some(acc => acc.password) ? 'bg-green-100' : 'bg-gray-100'}`}>
+                    <Key className={`w-4 h-4 ${currentUser.accounts?.some(acc => acc.password) ? 'text-green-600' : 'text-gray-400'}`} />
                   </div>
                   <div>
-                    <div className="font-medium">Linked Accounts</div>
-                    <div className="text-sm text-gray-500">{currentUser.accounts?.length || 0} provider(s)</div>
+                    <div className="font-medium">Password Authentication</div>
+                    <div className="text-sm text-gray-500">{currentUser.accounts?.some(acc => acc.password) ? 'Password set' : 'No password (OAuth only)'}</div>
                   </div>
                 </div>
-                <Badge variant={currentUser.verification?.accounts ? "default" : "outline"}>
-                  {currentUser.verification?.accounts ? "Linked" : "None"}
+                <Badge variant={currentUser.accounts?.some(acc => acc.password) ? "default" : "outline"}>
+                  {currentUser.accounts?.some(acc => acc.password) ? "Enabled" : "Not Set"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${currentUser.twoFactorEnabled ? 'bg-green-100' : 'bg-gray-100'}`}>
+                    <Shield className={`w-4 h-4 ${currentUser.twoFactorEnabled ? 'text-green-600' : 'text-gray-400'}`} />
+                  </div>
+                  <div>
+                    <div className="font-medium">Two-Factor Authentication</div>
+                    <div className="text-sm text-gray-500">{currentUser.twoFactorEnabled ? 'Enabled' : 'Not enabled'}</div>
+                  </div>
+                </div>
+                <Badge variant={currentUser.twoFactorEnabled ? "default" : "outline"}>
+                  {currentUser.twoFactorEnabled ? "Enabled" : "Disabled"}
                 </Badge>
               </div>
             </CardContent>
           </Card>
 
           {/* Linked Accounts */}
-          {currentUser.accounts && currentUser.accounts.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Linked Authentication Providers</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Linked Authentication Providers</CardTitle>
+              <CardDescription>External accounts connected to this user</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {currentUser.accounts && currentUser.accounts.length > 0 ? (
                 <div className="space-y-3">
                   {currentUser.accounts.map((account) => (
                     <div key={account.id} className="flex items-center justify-between p-3 border border-[#acc2ef] rounded-md">
@@ -563,7 +706,7 @@ const UserDetails = ({ user }: UserDetailProps) => {
                         <div>
                           <div className="font-medium">{getProviderDisplayName(account.providerId)}</div>
                           <div className="text-xs text-gray-500">
-                            Connected {formatDistanceToNow(new Date(account.createdAt), { addSuffix: true })}
+                            ID: {account.accountId} • Connected {formatDistanceToNow(new Date(account.createdAt), { addSuffix: true })}
                           </div>
                         </div>
                       </div>
@@ -573,141 +716,105 @@ const UserDetails = ({ user }: UserDetailProps) => {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Session Management */}
-          {currentUser.sessions && currentUser.sessions.all.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Active Sessions</CardTitle>
-                <CardDescription>Manage user's active login sessions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {currentUser.sessions.all
-                    .filter(session => new Date(session.expiresAt) > new Date())
-                    .map((session) => (
-                      <div key={session.id} className="flex items-center justify-between p-3 border border-[#acc2ef] rounded-md">
-                        <div>
-                          <div className="font-medium">
-                            {getBrowser(session.userAgent)} on {getDeviceType(session.userAgent)}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            IP: {session.ipAddress || 'Unknown'} • 
-                            Expires: {format(new Date(session.expiresAt), 'MMM d, HH:mm')}
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => toast.info('Revoke session feature coming soon')}>
-                          Revoke
-                        </Button>
-                      </div>
-                    ))}
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Globe className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No linked authentication providers</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        {/* Organizations Tab */}
-        <TabsContent value="organizations" className="p-6">
-          {currentUser.organizations && currentUser.organizations.length > 0 ? (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Organization Memberships</h3>
-                <Badge variant="outline">
-                  {currentUser.organizations.length} Organization{currentUser.organizations.length !== 1 ? 's' : ''}
-                </Badge>
-              </div>
+        {/* Sessions Tab */}
+        <TabsContent value="sessions" className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Session Management</h3>
+            {currentUser.sessions && currentUser.sessions.all.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Revoke All Sessions
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Revoke All Sessions?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will log the user out of all devices. They will need to log in again.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRevokeAllSessions} className="bg-red-600 hover:bg-red-700">
+                      Revoke All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {currentUser.organizations.map((org) => (
-                  <Card key={org.membershipId} className="overflow-hidden">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">{org.organization.name}</CardTitle>
-                        <Badge variant={
-                          org.role === 'owner' ? 'default' : 
-                          org.role === 'admin' ? 'secondary' : 'outline'
-                        }>
-                          {org.role.toUpperCase()}
-                        </Badge>
-                      </div>
-                      <CardDescription>@{org.organization.slug}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">Joined</span>
-                          <span className="font-medium">
-                            {format(new Date(org.joinedAt), 'MMM d, yyyy')}
-                          </span>
+          {currentUser.sessions && currentUser.sessions.all.length > 0 ? (
+            <ScrollArea className="h-[400px] w-full rounded-md border border-[#acc2ef]">
+              <div className="p-4 space-y-3">
+                {currentUser.sessions.all.map((session) => {
+                  const isActive = new Date(session.expiresAt) > new Date()
+                  const isCurrent = currentUser.sessions?.current?.id === session.id
+
+                  return (
+                    <div key={session.id} className={`flex items-center justify-between p-4 border rounded-md ${isCurrent ? 'border-blue-300 bg-blue-50' : 'border-[#acc2ef]'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${getDeviceType(session.userAgent) === 'Mobile' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                          {getDeviceType(session.userAgent) === 'Mobile' ? (
+                            <Smartphone className="w-4 h-4 text-blue-600" />
+                          ) : (
+                            <Monitor className="w-4 h-4 text-gray-600" />
+                          )}
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">Membership ID</span>
-                          <span className="font-mono text-xs">{org.membershipId.slice(0, 8)}...</span>
-                        </div>
-                        {currentUser.permissions?.organizations.find(o => o.id === org.organization.id) && (
-                          <div className="pt-2 border-t">
-                            <div className="text-sm font-medium mb-2">Permissions:</div>
-                            <div className="flex flex-wrap gap-1">
-                              {currentUser.permissions.organizations
-                                .find(o => o.id === org.organization.id)
-                                ?.permissions.map((perm, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    {perm}
-                                  </Badge>
-                                ))}
-                            </div>
+                        <div>
+                          <div className="font-medium text-sm flex items-center gap-2">
+                            {getBrowser(session.userAgent)} on {getDeviceType(session.userAgent)}
+                            {isCurrent && <Badge variant="default" className="text-xs">Current</Badge>}
                           </div>
+                          <div className="text-xs text-gray-500 space-y-1">
+                            <div>IP: {session.ipAddress || 'Unknown'}</div>
+                            <div>Created: {formatDistanceToNow(new Date(session.createdAt), { addSuffix: true })}</div>
+                            <div>Expires: {format(new Date(session.expiresAt), 'MMM d, yyyy HH:mm')}</div>
+                            {session.impersonatedBy && (
+                              <div className="text-orange-600">
+                                Impersonated by: {session.impersonatedBy}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={isActive ? "default" : "outline"}>
+                          {isActive ? "Active" : "Expired"}
+                        </Badge>
+                        {isActive && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRevokeSession(session.id)}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                          >
+                            Revoke
+                          </Button>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  )
+                })}
               </div>
-
-              {/* Invitations Sent */}
-              {currentUser.invitations && currentUser.invitations.sent.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Invitations Sent</CardTitle>
-                    <CardDescription>
-                      {currentUser.invitations.stats.pending} pending, {currentUser.invitations.stats.accepted} accepted
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[200px]">
-                      <div className="space-y-3 pr-4">
-                        {currentUser.invitations.sent.slice(0, 5).map((invite) => (
-                          <div key={invite.id} className="flex items-center justify-between p-3 border border-[#acc2ef] rounded-md">
-                            <div>
-                              <div className="font-medium">{invite.email}</div>
-                              <div className="text-sm text-gray-500">
-                                To: {invite.organization.name} • Role: {invite.role}
-                              </div>
-                            </div>
-                            <Badge variant={
-                              invite.status === 'pending' ? 'outline' :
-                              invite.status === 'accepted' ? 'default' :
-                              invite.status === 'rejected' ? 'destructive' : 'secondary'
-                            }>
-                              {invite.status}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            </ScrollArea>
           ) : (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Organizations</h3>
-              <p className="text-gray-500 mb-4">This user is not a member of any organization.</p>
+            <div className="text-center py-12 border border-[#acc2ef] rounded-md">
+              <Monitor className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Sessions Found</h3>
+              <p className="text-gray-500">This user has no active sessions.</p>
             </div>
           )}
         </TabsContent>
@@ -715,29 +822,369 @@ const UserDetails = ({ user }: UserDetailProps) => {
         {/* Activity Tab */}
         <TabsContent value="activity" className="p-6">
           <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Activity Timeline</h3>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                  <p className="mt-2 text-gray-500">Loading activities...</p>
-                </div>
-              ) : auditLogs.length > 0 ? (
-                <ScrollArea className="h-[500px] w-full rounded-md border border-[#acc2ef] p-4">
-                  <Activities auditLogs={auditLogs} />
-                </ScrollArea>
-              ) : (
-                <div className="text-center py-12 border border-[#acc2ef] rounded-md">
-                  <Clock className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Activity Found</h3>
-                  <p className="text-gray-500">No audit logs available for this user.</p>
-                </div>
-              )}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Activity Timeline</h3>
+              <Button variant="outline" size="sm" onClick={handleRefreshLogs} disabled={isLoading}>
+                <RefreshCw className={`w-4 h-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </div>
+
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <p className="mt-2 text-gray-500">Loading activities...</p>
+              </div>
+            ) : auditLogs.length > 0 ? (
+              <ScrollArea className="h-[500px] w-full rounded-md border border-[#acc2ef] p-4">
+                <Activities auditLogs={auditLogs} />
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-12 border border-[#acc2ef] rounded-md">
+                <Clock className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Activity Found</h3>
+                <p className="text-gray-500">No audit logs available for this user.</p>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: string }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isImpersonating, setIsImpersonating] = useState(false)
+  const router = useRouter();
+
+  // Check if currently impersonating
+  useEffect(() => {
+    const checkImpersonation = () => {
+      const impersonating = sessionStorage.getItem('isImpersonating') === 'true'
+      setIsImpersonating(impersonating)
+    }
+
+    checkImpersonation()
+
+    // Listen for storage changes
+    window.addEventListener('storage', checkImpersonation)
+    return () => window.removeEventListener('storage', checkImpersonation)
+  }, [])
+
+  const handleImpersonate = async () => {
+    setIsSubmitting(true)
+    try {
+
+      const result = await impersonateUser(userId);
+      
+      if (result.error) {
+        throw new Error(result.error || 'Failed to impersonate user')
+      }
+
+      toast.success(`Now impersonating ${userName}`)
+
+      // Store impersonation state
+      sessionStorage.setItem('isImpersonating', 'true')
+      sessionStorage.setItem('impersonatedUserId', userId)
+
+      // Close dialog
+      setIsOpen(false)
+
+      // Redirect to home page
+      router.push('/')
+      router.refresh()
+
+    } catch (error) {
+      console.error('Impersonation error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to impersonate user')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleStopImpersonating = async () => {
+    setIsSubmitting(true)
+    try {
+      const result = await stopImpersonating();
+
+      if (result.error) {
+        throw new Error(result.error || 'Failed to stop impersonation')
+      }
+
+      // Clear impersonation state
+      sessionStorage.removeItem('isImpersonating')
+      sessionStorage.removeItem('impersonatedUserId')
+
+      toast.success('Stopped impersonating user')
+
+      // Close dialog
+      setIsOpen(false)
+
+      // Redirect to users page
+      router.push('/dashboard/users')
+      router.refresh()
+
+    } catch (error) {
+      console.error('Stop impersonation error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to stop impersonation')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="cursor-pointer flex items-center gap-2">
+          {isImpersonating ? (
+            <UserMinus className="w-4 h-4 mr-1" />
+          ) : (
+            <UserCog className="w-4 h-4 mr-1" />
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[458px]">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold">
+            {isImpersonating ? 'Stop Impersonating' : 'Impersonate User'}
+          </DialogTitle>
+          <DialogDescription>
+            {isImpersonating
+              ? `Are you sure you want to stop impersonating and return to your admin account?`
+              : `Are you sure you want to start impersonating ${userName}?`
+            }
+            {isImpersonating
+              ? ''
+              : <span className="text-xs italic font-medium text-amber-800">  Warning: This action will be audited</span>
+            }
+          </DialogDescription>
+        </DialogHeader>
+
+        {isImpersonating && (
+          <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
+            <p className="text-xs text-yellow-600 text-center">
+              You are currently impersonating a user. Stopping will return you to your admin account.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-end mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={isImpersonating ? handleStopImpersonating : handleImpersonate}
+            disabled={isSubmitting}
+            className={isImpersonating
+              ? 'bg-yellow-600 hover:bg-yellow-700'
+              : 'bg-purple hover:bg-purple/30'
+            }
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {isImpersonating ? 'Stopping...' : 'Impersonating...'}
+              </>
+            ) : (
+              isImpersonating ? (
+                <>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Stop Impersonating
+                </>
+              ) : (
+                'Confirm Impersonate'
+              )
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+const BanSchema = z.object({
+  banReason: z.string().min(1, 'Ban reason is required'),
+  banExpiresIn: z.string().min(1, "Ban duration is required"),
+})
+
+const BanDialog = ({ userId, userName }: { userId: string; userName: string }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  const form = useForm<z.infer<typeof BanSchema>>({
+    resolver: zodResolver(BanSchema),
+    defaultValues: {
+      banReason: "",
+      banExpiresIn: "7days",
+    },
+  })
+
+  const resetForm = () => {
+    form.reset({
+      banReason: "",
+      banExpiresIn: "7days",
+    })
+  }
+
+  const getBanExpiresInSeconds = (duration: string): number | undefined => {
+    const durationMap: Record<string, number | undefined> = {
+      "1day": 60 * 60 * 24,
+      "7days": 60 * 60 * 24 * 7,
+      "30days": 60 * 60 * 24 * 30,
+      "permanent": undefined,
+    }
+    return durationMap[duration]
+  }
+
+  const onSubmit = async (values: z.infer<typeof BanSchema>) => {
+    setIsSubmitting(true)
+    try {
+      const banExpiresIn = getBanExpiresInSeconds(values.banExpiresIn)
+      await banUser(userId, values.banReason, banExpiresIn)
+      setIsOpen(false)
+      resetForm()
+      toast.success('User banned successfully')
+    } catch (error) {
+      toast.error('Failed to ban user')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="cursor-pointer flex items-center gap-2 text-orange-600 focus:text-orange-600">
+          <Ban className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[458px]">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold">
+            Ban User - {userName}
+          </DialogTitle>
+          <DialogDescription>
+            Enter the reason and duration for banning this user.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="banReason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reason:</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter the reason for banning this user" {...field} className="w-full" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="banExpiresIn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ban Duration:</FormLabel>
+                  <FormControl>
+                    <select 
+                      {...field} 
+                      className="w-full p-2 rounded border border-gray-300 bg-white"
+                    >
+                      <option value="1day">1 Day</option>
+                      <option value="7days">7 Days</option>
+                      <option value="30days">30 Days</option>
+                      <option value="permanent">Permanent</option>
+                    </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {isSubmitting ? "Banning..." : "Ban User"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const UnbanDialog = ({ userId, userName, }: { userId: string; userName: string; }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleUnban = async () => {
+    setIsSubmitting(true)
+    try {
+      await unbanUser(userId)
+      setIsOpen(false)
+      toast.success(`${userName} has been unbanned successfully`)
+    } catch (error) {
+      toast.error('Failed to unban user')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="cursor-pointer flex items-center gap-2 text-green-600 focus:text-green-600">
+          <CheckCircle className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Unban User</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to unban {userName}?
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="flex gap-3 justify-end mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleUnban}
+            disabled={isSubmitting}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isSubmitting ? "Unbanning..." : "Confirm Unban"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -1,11 +1,10 @@
-// schema.ts
+import { relations } from 'drizzle-orm';
 import { mysqlTable, varchar, boolean, datetime, text, index, foreignKey, int, json, primaryKey, mysqlEnum,  decimal, timestamp } from 'drizzle-orm/mysql-core';
-import { sql } from 'drizzle-orm';
-import { relations } from 'drizzle-orm/_relations';
+
 
 // User table
 export const user = mysqlTable('user', {
-  id: varchar('id', { length: 255 }).primaryKey(),
+  id: varchar('id', { length: 36 }).primaryKey(),
   name: varchar('name', { length: 255 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
@@ -25,23 +24,19 @@ export const user = mysqlTable('user', {
 
 // Session table
 export const session = mysqlTable('session', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  userId: varchar('user_id', { length: 255 }).notNull(),
-  token: varchar('token', { length: 255 }).notNull(),
+  id: varchar('id', { length: 36 }).primaryKey(),
+  userId: varchar('user_id', { length: 36 }).notNull(),
+  token: varchar('token', { length: 255 }).notNull().unique(),
   expiresAt: datetime('expires_at').notNull(),
   ipAddress: varchar('ip_address', { length: 45 }),
   userAgent: varchar('user_agent', { length: 500 }),
   createdAt: datetime('created_at').notNull(),
   updatedAt: datetime('updated_at').notNull(),
-  activeOrganizationId: varchar('active_organization_id', { length: 255 }),
-  activeTeamId: varchar('active_team_id', { length: 255 }),
   impersonatedBy: varchar('impersonated_by', { length: 255 }),
 }, (table) => ({
   userIdx: index('user_idx').on(table.userId),
   tokenIdx: index('token_idx').on(table.token),
   expiresIdx: index('expires_idx').on(table.expiresAt),
-  activeOrgIdx: index('session_active_org_idx').on(table.activeOrganizationId),
-  activeTeamIdx: index('session_active_team_idx').on(table.activeTeamId),
   userFk: foreignKey({
     columns: [table.userId],
     foreignColumns: [user.id],
@@ -56,8 +51,8 @@ export const session = mysqlTable('session', {
 
 // Account table
 export const account = mysqlTable('account', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  userId: varchar('user_id', { length: 255 }).notNull(),
+  id: varchar('id', { length: 36 }).primaryKey(),
+  userId: varchar('user_id', { length: 36 }).notNull(),
   accountId: varchar('account_id', { length: 255 }).notNull(),
   providerId: varchar('provider_id', { length: 255 }).notNull(),
   accessToken: text('access_token'),
@@ -82,7 +77,7 @@ export const account = mysqlTable('account', {
 
 // Verification table
 export const verification = mysqlTable('verification', {
-  id: varchar('id', { length: 255 }).primaryKey(),
+  id: varchar('id', { length: 36 }).primaryKey(),
   identifier: varchar('identifier', { length: 255 }).notNull(),
   value: varchar('value', { length: 255 }).notNull(),
   expiresAt: datetime('expires_at').notNull(),
@@ -174,9 +169,7 @@ export const serviceInquiries = mysqlTable('service_inquiries', {
 
 // Quotation Items Table 
 export const quotationItems = mysqlTable("quotation_items", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .default(sql`(UUID())`),
+  id: varchar("id", { length: 36 }).primaryKey(),
   quotationId: varchar("quotation_id", { length: 36 })
     .notNull(),
   description: text("description").notNull(),
@@ -280,21 +273,23 @@ export const auditLogs = mysqlTable('audit_logs', {
 
 // Relations
 export const usersRelations = relations(user, ({ many, one }) => ({
-  sessions: many(session),
+  sessions: many(session, { relationName: 'userSessions' }),
   accounts: many(account),
   twoFactor: one(twoFactor),
-  impersonatedSessions: many(session, { relationName: 'impersonatedBy' }),
+  impersonatedSessions: many(session, { relationName: 'impersonatedSessions' }),
 }));
 
+// Fix for sessionsRelations - add matching relationName values
 export const sessionsRelations = relations(session, ({ one }) => ({
   user: one(user, {
     fields: [session.userId],
     references: [user.id],
+    relationName: 'userSessions',
   }),
   impersonatedByUser: one(user, {
     fields: [session.impersonatedBy],
     references: [user.id],
-    relationName: 'impersonatedBy',
+    relationName: 'impersonatedSessions',
   }),
 }));
 
@@ -368,7 +363,7 @@ export const schema = {
 };
 
 // Export enum types
-export type UserRole = "user" | "admin" | "superadmin";
+export type UserRole = "user" | "admin" | "owner";
 
 // Export types
 export type User = typeof user.$inferSelect;

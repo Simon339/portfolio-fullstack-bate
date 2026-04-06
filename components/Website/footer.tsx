@@ -9,7 +9,7 @@ export default function Footer() {
   const version = "v2.1"
 
   return (
-    <footer className="py-6 backdrop-blur-md bg-black-100/75 border-t border-white/10">
+    <footer className="py-6 backdrop-blur-md bg-black-100 border-t border-white/10">
       <div className="max-w-screen-xl mx-auto px-4">
 
         <div className="flex flex-col lg:flex-row justify-between items-center gap-10">

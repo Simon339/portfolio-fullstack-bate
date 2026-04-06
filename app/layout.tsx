@@ -1,7 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
-import LayoutWrapper from "./_component/LayoutWrapper"
+import RatingModal from "@/components/Website/RatingModal"
+import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
   title: "Malesela's Portfolio",
@@ -14,12 +15,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <link href="/logo.png" rel="icon" />
       </head>
       <body className="min-h-screen grow scrollbar scrollbar-track-[#000B58] scrollbar-thumb-transparent">
-        <LayoutWrapper>{children}</LayoutWrapper>
+        {children}
+        <RatingModal />
+        <Toaster />
       </body>
     </html>
   )

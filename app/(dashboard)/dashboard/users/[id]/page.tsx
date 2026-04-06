@@ -6,7 +6,7 @@ import UserDetails from "@/components/Dashboard/UserDetails";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { getUserDetails } from '@/server/data/alldata'; // Assuming you'll create this function
+import { getUserDetails } from '@/server/data/alldata';
 
 // Enhanced User type to match the schema
 type User = {
@@ -14,7 +14,12 @@ type User = {
   name: string;
   image: string;
   email: string;
+  role: 'admin' | 'user' | 'owner';
+  twoFactorEnabled: boolean;
   status: "Verified" | "Not Verified";
+  banned: boolean
+  banReason: string | null
+  banExpires: Date | null
   createdAt: Date;
   updatedAt: Date;
   emailVerified: boolean;
@@ -27,8 +32,7 @@ type User = {
       ipAddress: string | null;
       userAgent: string | null;
       createdAt: Date;
-      activeOrganizationId: string | null;
-      activeTeamId: string | null;
+      impersonatedBy?: string | null;
     }>;
     current: any | null;
     stats: {
@@ -41,42 +45,11 @@ type User = {
     id: string;
     providerId: string;
     accountId: string;
+    password: string | null | boolean;
     createdAt: Date;
     scope: string | null;
   }>;
   
-  organizations?: Array<{
-    membershipId: string;
-    role: "member" | "admin" | "owner";
-    joinedAt: Date;
-    organization: {
-      id: string;
-      name: string;
-      slug: string;
-      logo: string | null;
-    };
-  }>;
-  
-  invitations?: {
-    sent: Array<{
-      id: string;
-      email: string;
-      organizationId: string;
-      role: "member" | "admin" | "owner";
-      status: "pending" | "accepted" | "rejected" | "cancelled";
-      createdAt: Date;
-      expiresAt: Date;
-      organization: {
-        name: string;
-        slug: string;
-      };
-    }>;
-    stats: {
-      pending: number;
-      accepted: number;
-      total: number;
-    };
-  };
   
   activity?: {
     auditLogs: Array<{
@@ -105,8 +78,6 @@ type User = {
     sessionCount: number;
     activeSessionCount: number;
     linkedAccountCount: number;
-    organizationCount: number;
-    sentInvitationCount: number;
     contactFormCount: number;
     ratingCount: number;
     serviceInquiryCount: number;
@@ -117,11 +88,8 @@ type User = {
   verification?: {
     email: boolean;
     accounts: boolean;
-    hasPassword: boolean;
   };
   
-  // For backward compatibility
-  role?: string;
   isSelected?: boolean;
 };
 
@@ -155,6 +123,11 @@ const Page = () => {
         name: userData.name || "",
         email: userData.email || "",
         image: userData.image || '',
+        role: userData.role || "",
+        twoFactorEnabled: userData.twoFactorEnabled || false,
+        banned: userData.banned || false,
+        banReason: userData.banReason || null,
+        banExpires: userData.banExpires ? new Date(userData.banExpires) : null,
         status: userData.emailVerified ? 'Verified' : 'Not Verified',
         createdAt: new Date(userData.createdAt),
         updatedAt: new Date(userData.updatedAt),
@@ -163,14 +136,10 @@ const Page = () => {
         // Additional data
         sessions: userData.sessions,
         accounts: userData.accounts,
-        organizations: userData.organizations,
-        invitations: userData.invitations,
         activity: userData.activity,
         stats: userData.stats,
         verification: userData.verification,
-        
-        // For compatibility with existing components
-        role: userData.organizations?.[0]?.role?.toUpperCase() || 'USER',
+    
         isSelected: false
       };
       
@@ -288,10 +257,6 @@ const Page = () => {
         <div className="hidden md:flex items-center gap-4">
           {user.stats && (
             <>
-              <div className="text-center px-3 py-1 bg-blue-50 rounded-lg">
-                <div className="text-lg font-semibold text-blue-700">{user.stats.organizationCount}</div>
-                <div className="text-xs text-blue-500">Organizations</div>
-              </div>
               <div className="text-center px-3 py-1 bg-green-50 rounded-lg">
                 <div className="text-lg font-semibold text-green-700">{user.stats.sessionCount}</div>
                 <div className="text-xs text-green-500">Sessions</div>
@@ -306,34 +271,11 @@ const Page = () => {
       </div>
       
       {/* User Details Component */}
-      <div className="flex-1 p-4 md:p-6">
+      <div className="flex-1">
         <UserDetails user={user} />
       </div>
       
-      {/* Refresh Button */}
-      <div className="p-4 border-t border-[#acc2ef] bg-white">
-        <div className="flex justify-between items-center">
-          <Button 
-            onClick={fetchUserDetails} 
-             
-           
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Refreshing...
-              </>
-            ) : (
-              'Refresh Data'
-            )}
-          </Button>
-          
-          <div className="text-sm text-gray-500">
-            Last updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
-      </div>
+      
     </section>
   );
 };

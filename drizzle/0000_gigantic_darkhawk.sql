@@ -1,5 +1,5 @@
 CREATE TABLE `account` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`user_id` varchar(255) NOT NULL,
 	`account_id` varchar(255) NOT NULL,
 	`provider_id` varchar(255) NOT NULL,
@@ -11,11 +11,12 @@ CREATE TABLE `account` (
 	`id_token` text,
 	`password` varchar(255),
 	`created_at` datetime NOT NULL,
-	`updated_at` datetime NOT NULL
+	`updated_at` datetime NOT NULL,
+	CONSTRAINT `account_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `audit_logs` (
-	`id` int AUTO_INCREMENT PRIMARY KEY,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`action` varchar(50) NOT NULL,
 	`table_name` varchar(255) NOT NULL,
 	`record_id` varchar(255) NOT NULL,
@@ -23,33 +24,36 @@ CREATE TABLE `audit_logs` (
 	`timestamp` datetime NOT NULL,
 	`details` json,
 	`ip_address` varchar(45),
-	`user_agent` text
+	`user_agent` text,
+	CONSTRAINT `audit_logs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `categories` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`name` varchar(255) NOT NULL,
-	CONSTRAINT `name_unique` UNIQUE INDEX(`name`)
+	CONSTRAINT `categories_id` PRIMARY KEY(`id`),
+	CONSTRAINT `categories_name_unique` UNIQUE(`name`)
 );
 --> statement-breakpoint
 CREATE TABLE `contact_forms` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`name` varchar(255) NOT NULL,
 	`topic` varchar(255) NOT NULL,
 	`email` varchar(255) NOT NULL,
 	`message` text NOT NULL,
 	`read` boolean NOT NULL DEFAULT false,
-	`created_at` datetime NOT NULL
+	`created_at` datetime NOT NULL,
+	CONSTRAINT `contact_forms_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `project_techstacks` (
 	`project_id` varchar(255) NOT NULL,
 	`techstack_id` varchar(255) NOT NULL,
-	CONSTRAINT PRIMARY KEY(`project_id`,`techstack_id`)
+	CONSTRAINT `project_techstacks_project_id_techstack_id_pk` PRIMARY KEY(`project_id`,`techstack_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `projects` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`name` varchar(255) NOT NULL,
 	`description` text NOT NULL,
 	`demo` varchar(255) NOT NULL,
@@ -57,11 +61,12 @@ CREATE TABLE `projects` (
 	`features` json,
 	`category_id` varchar(255),
 	`created_at` datetime NOT NULL,
-	`updated_at` datetime NOT NULL
+	`updated_at` datetime NOT NULL,
+	CONSTRAINT `projects_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `quotation_items` (
-	`id` varchar(36) PRIMARY KEY DEFAULT (UUID()),
+	`id` varchar(36) NOT NULL,
 	`quotation_id` varchar(36) NOT NULL,
 	`description` text NOT NULL,
 	`quantity` int NOT NULL,
@@ -69,20 +74,22 @@ CREATE TABLE `quotation_items` (
 	`unit_price` decimal(10,2) NOT NULL,
 	`total` decimal(10,2) NOT NULL,
 	`created_at` timestamp DEFAULT (now()),
-	`updated_at` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
+	`updated_at` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `quotation_items_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `ratings` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`rating` int NOT NULL,
 	`feedback` text,
 	`name` varchar(255),
 	`created_at` datetime NOT NULL,
-	`updated_at` datetime NOT NULL
+	`updated_at` datetime NOT NULL,
+	CONSTRAINT `ratings_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `service_inquiries` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`name` varchar(255) NOT NULL,
 	`company_name` varchar(255) NOT NULL,
 	`service` varchar(255) NOT NULL,
@@ -97,11 +104,12 @@ CREATE TABLE `service_inquiries` (
 	`terms` text,
 	`read` boolean NOT NULL DEFAULT false,
 	`created_at` datetime NOT NULL,
-	CONSTRAINT `quotation_number_unique` UNIQUE INDEX(`quotation_number`)
+	CONSTRAINT `service_inquiries_id` PRIMARY KEY(`id`),
+	CONSTRAINT `service_inquiries_quotation_number_unique` UNIQUE(`quotation_number`)
 );
 --> statement-breakpoint
 CREATE TABLE `session` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`user_id` varchar(255) NOT NULL,
 	`token` varchar(255) NOT NULL,
 	`expires_at` datetime NOT NULL,
@@ -111,28 +119,31 @@ CREATE TABLE `session` (
 	`updated_at` datetime NOT NULL,
 	`active_organization_id` varchar(255),
 	`active_team_id` varchar(255),
-	`impersonated_by` varchar(255)
+	`impersonated_by` varchar(255),
+	CONSTRAINT `session_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `techstacks` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`name` varchar(255) NOT NULL,
 	`image` text,
-	CONSTRAINT `name_unique` UNIQUE INDEX(`name`)
+	CONSTRAINT `techstacks_id` PRIMARY KEY(`id`),
+	CONSTRAINT `techstacks_name_unique` UNIQUE(`name`)
 );
 --> statement-breakpoint
 CREATE TABLE `two_factor` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`user_id` varchar(255) NOT NULL,
 	`secret` varchar(255),
 	`backup_codes` text,
 	`created_at` datetime NOT NULL,
 	`updated_at` datetime NOT NULL,
-	CONSTRAINT `user_id_unique` UNIQUE INDEX(`user_id`)
+	CONSTRAINT `two_factor_id` PRIMARY KEY(`id`),
+	CONSTRAINT `two_factor_user_id_unique` UNIQUE(`user_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `user` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`name` varchar(255),
 	`email` varchar(255) NOT NULL,
 	`email_verified` boolean NOT NULL DEFAULT false,
@@ -144,18 +155,29 @@ CREATE TABLE `user` (
 	`ban_expires` datetime,
 	`created_at` datetime NOT NULL,
 	`updated_at` datetime NOT NULL,
-	CONSTRAINT `email_unique` UNIQUE INDEX(`email`)
+	CONSTRAINT `user_id` PRIMARY KEY(`id`),
+	CONSTRAINT `user_email_unique` UNIQUE(`email`)
 );
 --> statement-breakpoint
 CREATE TABLE `verification` (
-	`id` varchar(255) PRIMARY KEY,
+	`id` varchar(255) NOT NULL,
 	`identifier` varchar(255) NOT NULL,
 	`value` varchar(255) NOT NULL,
 	`expires_at` datetime NOT NULL,
 	`created_at` datetime NOT NULL,
-	`updated_at` datetime NOT NULL
+	`updated_at` datetime NOT NULL,
+	CONSTRAINT `verification_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+ALTER TABLE `account` ADD CONSTRAINT `accounts_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `audit_logs` ADD CONSTRAINT `audit_logs_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `project_techstacks` ADD CONSTRAINT `project_techstacks_project_id_fk` FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `project_techstacks` ADD CONSTRAINT `project_techstacks_techstack_id_fk` FOREIGN KEY (`techstack_id`) REFERENCES `techstacks`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `projects` ADD CONSTRAINT `projects_category_id_fk` FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `quotation_items` ADD CONSTRAINT `quotation_items_quotation_id_fk` FOREIGN KEY (`quotation_id`) REFERENCES `service_inquiries`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `session` ADD CONSTRAINT `sessions_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `session` ADD CONSTRAINT `sessions_impersonated_by_fk` FOREIGN KEY (`impersonated_by`) REFERENCES `user`(`id`) ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `two_factor` ADD CONSTRAINT `two_factor_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX `accounts_user_idx` ON `account` (`user_id`);--> statement-breakpoint
 CREATE INDEX `provider_idx` ON `account` (`provider_id`);--> statement-breakpoint
 CREATE INDEX `account_provider_idx` ON `account` (`account_id`,`provider_id`);--> statement-breakpoint
@@ -189,13 +211,4 @@ CREATE INDEX `email_idx` ON `user` (`email`);--> statement-breakpoint
 CREATE INDEX `user_role_idx` ON `user` (`role`);--> statement-breakpoint
 CREATE INDEX `user_banned_idx` ON `user` (`banned`);--> statement-breakpoint
 CREATE INDEX `identifier_idx` ON `verification` (`identifier`);--> statement-breakpoint
-CREATE INDEX `verification_expires_idx` ON `verification` (`expires_at`);--> statement-breakpoint
-ALTER TABLE `account` ADD CONSTRAINT `accounts_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE `audit_logs` ADD CONSTRAINT `audit_logs_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE SET NULL;--> statement-breakpoint
-ALTER TABLE `project_techstacks` ADD CONSTRAINT `project_techstacks_project_id_fk` FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE `project_techstacks` ADD CONSTRAINT `project_techstacks_techstack_id_fk` FOREIGN KEY (`techstack_id`) REFERENCES `techstacks`(`id`) ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE `projects` ADD CONSTRAINT `projects_category_id_fk` FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE `quotation_items` ADD CONSTRAINT `quotation_items_quotation_id_fk` FOREIGN KEY (`quotation_id`) REFERENCES `service_inquiries`(`id`) ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE `session` ADD CONSTRAINT `sessions_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE `session` ADD CONSTRAINT `sessions_impersonated_by_fk` FOREIGN KEY (`impersonated_by`) REFERENCES `user`(`id`) ON DELETE SET NULL;--> statement-breakpoint
-ALTER TABLE `two_factor` ADD CONSTRAINT `two_factor_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE;
+CREATE INDEX `verification_expires_idx` ON `verification` (`expires_at`);

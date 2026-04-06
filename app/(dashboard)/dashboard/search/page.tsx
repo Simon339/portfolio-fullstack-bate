@@ -7,10 +7,24 @@ import { useSearchParams } from "next/navigation"
 import { searchAll, type SearchResult } from "@/server/actions/search"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, Cpu, FolderOpen, Mail, Search, Sparkles, Users } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+
+const typeIcons = {
+  projects: FolderOpen,
+  technologies: Cpu,
+  mails: Mail,
+  user: Users,
+}
+
+const typeLabels = {
+  projects: "Project",
+  technologies: "Technology",
+  mails: "Inquiry",
+  user: "User",
+}
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -22,6 +36,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (query) {
+      setSearchQuery(query)
       performSearch(query)
     }
   }, [query])
@@ -55,100 +70,194 @@ export default function SearchPage() {
     }
   }
 
-  const filteredResults = activeTab === "all" ? results : results.filter((result) => result.type === activeTab)
+  const filteredResults = activeTab === "all"
+    ? results
+    : results.filter((result) => result.type === activeTab)
 
   const tabs = [
-    { id: "all", label: "All Results" },
-    { id: "projects", label: "Projects" },
-    { id: "technologies", label: "Technologies" },
-    { id: "mails", label: "Inquiries" },
-    { id: "user", label: "Users" },
+    { id: "all", label: "All Results", icon: Sparkles },
+    { id: "projects", label: "Projects", icon: FolderOpen },
+    { id: "technologies", label: "Technologies", icon: Cpu },
+    { id: "mails", label: "Inquiries", icon: Mail },
+    { id: "user", label: "Users", icon: Users },
   ]
 
+  const getResultCount = (tabId: string) => {
+    if (tabId === "all") return results.length
+    return results.filter((r) => r.type === tabId).length
+  }
+
   return (
-    <div className="w-full h-full bg-gray-50 border-[#acc2ef] p-4 space-y-4">
-      <div className="flex items-center justify-between mb-2">
-        
-        <h1 className="text-xl font-medium text-center flex-1">Search</h1>
-        <div className="w-8"></div> 
-      </div>
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 via-white to-[#acc2ef]/10">
+      <div className="mx-auto px-2 py-8 space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-semibold text-gray-800 tracking-tight">Search</h1>
+          <p className="text-sm text-gray-500">Find projects, technologies, inquiries, and users</p>
+        </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <Input
-          type="search"
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 bg-white border-[#acc2ef] text-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <Button type="submit" className="bg-[#1E56A0] hover:bg-[#1E56A0]/90">
-          Search
-        </Button>
-      </form>
+        {/* Search Form */}
+        <form onSubmit={handleSearch} className="relative group">
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#1E56A0]/10 via-[#acc2ef]/20 to-[#1E56A0]/10 opacity-0 blur-lg group-focus-within:opacity-100 transition-opacity duration-500" />
 
-      <div className="flex overflow-x-auto py-1 gap-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-1 text-sm rounded-md whitespace-nowrap  border border-[#acc2ef] ${
-              activeTab === tab.id ? "bg-[#1E56A0] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-4">
-        <h2 className="text-sm font-medium text-gray-500 mb-4">
-          {loading ? "Searching..." : `${filteredResults.length} results found`}
-        </h2>
-
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-5 w-5 border-2 border-[#acc2ef] border-t-transparent rounded-full animate-spin"></div>
+          <div className="relative flex gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-[#1E56A0]" />
+              <Input
+                type="search"
+                placeholder="Search for anything..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 h-12 text-base bg-white border-[#acc2ef] rounded-xl shadow-sm focus:shadow-lg focus:shadow-[#1E56A0]/10 transition-all duration-300"
+              />
+            </div>
+            <Button type="submit"  size="lg" className="h-12 px-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </Button>
           </div>
-        ) : filteredResults.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">
-            {query ? "No results found" : "Enter a search term"}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredResults.map((result) => (
-              <Link href={result.url} key={`${result.type}-${result.id}`} className="block">
-                <div className="flex items-center gap-3 p-3 rounded-md border border-[#acc2ef] hover:bg-gray-50 transition-colors">
-                  <Avatar className="h-8 w-8">
-                      <AvatarImage src={result.image || `https://api.dicebear.com/6.x/initials/svg?seed=${result.title}`} alt={result.title} />
-                    <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                      {result.title.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+        </form>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-medium truncate">{result.title}</h3>
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-[#acc2ef]">
-                        {result.type === "user" ? "User" : result.type}
-                      </Badge>
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 p-1 bg-gray-100/80 rounded-xl">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            const count = getResultCount(tab.id)
+            const isActive = activeTab === tab.id
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  isActive
+                    ? "bg-white text-[#1E56A0] shadow-md shadow-[#1E56A0]/10"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-white/50"
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? "text-[#1E56A0]" : "text-gray-400"}`} />
+                <span className="hidden sm:inline">{tab.label}</span>
+                {count > 0 && (
+                  <span className={`ml-1 px-1.5 py-0.5 text-xs rounded-full ${
+                    isActive
+                      ? "bg-[#1E56A0]/10 text-[#1E56A0]"
+                      : "bg-gray-200 text-gray-500"
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Results */}
+        <div className="space-y-3">
+          {/* Results count */}
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-sm font-medium text-gray-500">
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-[#1E56A0]/30 border-t-[#1E56A0] rounded-full animate-spin" />
+                  Searching...
+                </span>
+              ) : (
+                `${filteredResults.length} result${filteredResults.length !== 1 ? "s" : ""} found`
+              )}
+            </h2>
+          </div>
+
+          {/* Loading state */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-4">
+              <div className="relative">
+                <div className="w-12 h-12 border-3 border-[#acc2ef] border-t-[#1E56A0] rounded-full animate-spin" />
+                <div className="absolute inset-0 w-12 h-12 border-3 border-transparent border-b-[#acc2ef]/50 rounded-full animate-spin animation-delay-150" style={{ animationDirection: 'reverse' }} />
+              </div>
+              <p className="text-sm text-gray-500">Searching across all content...</p>
+            </div>
+          ) : filteredResults.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                <Search className="w-8 h-8 text-gray-300" />
+              </div>
+              <div className="text-center">
+                <p className="text-gray-600 font-medium">
+                  {query ? "No results found" : "Start your search"}
+                </p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {query ? "Try different keywords or check your spelling" : "Enter a search term to find content"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredResults.map((result, index) => {
+                const TypeIcon = typeIcons[result.type]
+
+                return (
+                  <Link
+                    href={result.url}
+                    key={`${result.type}-${result.id}`}
+                    className="block group"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="relative flex items-center gap-4 p-4 rounded-xl border border-[#acc2ef]/60 bg-white hover:bg-gradient-to-r hover:from-white hover:to-[#acc2ef]/5 hover:border-[#1E56A0]/30 hover:shadow-lg hover:shadow-[#1E56A0]/5 transition-all duration-300 group-hover:-translate-y-0.5">
+                      {/* Avatar */}
+                      <Avatar className="h-12 w-12 ring-0 ring-offset-0">
+                        <AvatarImage
+                          src={result.image || `https://api.dicebear.com/7.x/shapes/svg?seed=${result.title}`}
+                          alt={result.title}
+                        />
+                        <AvatarFallback className="text-sm">
+                          {result.title.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      {/* Content */}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-semibold text-gray-800 group-hover:text-[#1E56A0] transition-colors truncate">
+                            {result.title}
+                          </h3>
+                          <Badge variant={result.type} className="shrink-0">
+                            <TypeIcon className="w-3 h-3 mr-1" />
+                            {typeLabels[result.type]}
+                          </Badge>
+                        </div>
+                        {result.description && (
+                          <p className="text-sm text-gray-500 truncate">
+                            {result.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Date */}
+                      {result.createdAt && (
+                        <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 shrink-0">
+                          <CalendarIcon className="h-3.5 w-3.5" />
+                          <span>{result.createdAt.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}</span>
+                        </div>
+                      )}
+
+                      {/* Hover arrow indicator */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <svg className="w-5 h-5 text-[#1E56A0]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </div>
-                    {result.description && <p className="text-xs text-gray-500 truncate">{result.description}</p>}
-                  </div>
-
-                  {result.createdAt && (
-                    <div className="text-xs text-gray-400 flex items-center whitespace-nowrap">
-                      <CalendarIcon className="h-3 w-3 mr-1" />
-                      {result.createdAt.toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
-
-

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "../db";
-import { getUserByEmail, getUserById } from "../data/user";
+import { getUserByEmail, getUserById } from "./user";
 import { eq } from "drizzle-orm";
 import {  user, auditLogs } from "../schema";
 import { sendVerificationEmail } from "@/lib/mail";

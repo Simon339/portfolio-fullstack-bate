@@ -2,7 +2,7 @@
 
 import { SettingsSchema } from "@/types";
 import * as z from "zod";
-import { getUserById } from "@/server/data/user";
+import { getUserById } from "@/server/actions/user";
 import { db } from "@/server/db";
 import { auditLogs,  user } from "@/server/schema";
 import { eq, lte } from "drizzle-orm";

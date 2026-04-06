@@ -179,7 +179,7 @@ const Techstack = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
             >
@@ -188,7 +188,7 @@ const Techstack = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
             >
@@ -197,7 +197,7 @@ const Techstack = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
             >
@@ -206,7 +206,7 @@ const Techstack = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage === totalPages}
             >
