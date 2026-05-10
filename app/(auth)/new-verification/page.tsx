@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link';
-import {  Loader2, FacebookIcon, GithubIcon, InstagramIcon, LinkedinIcon } from "lucide-react"
+import { Loader2, FacebookIcon, GithubIcon, InstagramIcon, LinkedinIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState, useTransition } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +22,8 @@ import { FormSuccess } from '@/components/Auth/FormSuccess';
 import { ResetSchema } from '@/types/vaildations/resetP';
 import { useRouter } from 'next/navigation';
 import { requestVerificationToken } from '@/server/data/token';
+import { toast } from 'sonner';
+import { authClient } from '@/hooks/getcurrectuser';
 
 const PasswordRest: React.FC = () => {
     const currentYear = new Date().getFullYear()
@@ -37,25 +39,31 @@ const PasswordRest: React.FC = () => {
         },
     });
 
-    const onSubmit = (data: z.infer<typeof ResetSchema>) => {
+    async function onSubmit(values: z.infer<typeof ResetSchema>) {
         setError("");
-    setSuccess("");
-    form.reset();
+        setSuccess("");
 
-    startTransition(() => {
-        requestVerificationToken(data)
-            .then((data) => {
-                setError(data?.error);
-                setSuccess(data?.success);
+        startTransition(() => {
+            // Wrap the async operation in the transition
+            (async () => {
+                const { error } = await authClient.requestPasswordReset({
+                    email: values.email,
+                    redirectTo: "/reset-password",
+                });
 
-                
-                if (data?.success) {
-                    router.push('/auth');
+                if (error) {
+                    setError(error.message);
+                    toast.error(error.message);
+                } else {
+                    const successMessage = "Password reset email sent. Please check your inbox.";
+                    setSuccess(successMessage);
+                    toast.success(successMessage);
+                    form.reset();
                 }
-            });
-    });
+            })();
+        });
+    }
 
-    };
     return (
         <section className="flex items-center justify-center min-h-screen  w-full bg-gradient-to-b from-gray-100 to-white px-4 py-12">
             <Card className="w-full max-w-md shadow-2xl bg-white rounded-xl ">

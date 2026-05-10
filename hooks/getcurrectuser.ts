@@ -1,47 +1,9 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-"use client";
+import { createAuthClient } from "better-auth/react"
+import { lastLoginMethodClient, twoFactorClient,  adminClient } from "better-auth/client/plugins"
 
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
-import { getUserByEmail } from "@/server/data/user";
+export const authClient = createAuthClient({
+    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000" || "http://192.168.1.7:3000",
+    plugins: [ lastLoginMethodClient(), twoFactorClient({ onTwoFactorRedirect(){ window.location.href ="/two-factor" } }), adminClient()]
+})
 
-type User = {
-  id: number;
-  name: string;
-  surname: string;
-  email: string;
-  phone: string;
-  role: "USER" | "ADMIN";
-  image: string;
-  country: string;
-  status: "PENDING" | "REJECTED" | "APPROVED";
-  lastActivityDate: string;
-  createdAt: Date;
-};
-
-export const getCurrentUser = () => {
-  const { data: session, status } = useSession();
-  const [user, setUser] = useState<User | null>(null); // Add proper typing for `user`
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      if (status === "authenticated" && session?.user?.email) {
-        try {
-          const userData = await getUserByEmail(session.user.email);
-          setUser(userData);
-        } catch (error) {
-          console.error("Failed to fetch user details:", error);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, [session, status]);
-
-  return { user, loading };
-};
+export const { signIn, signOut, signUp, useSession } = authClient;

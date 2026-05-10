@@ -45,12 +45,10 @@ export async function saveSettings(formData: FormData) {
       }
   
       if (logo) {
-        console.log("Logo upload not implemented")
       }
   
       return { success: true }
     } catch (error) {
-      console.error("Error saving settings:", error)
       throw new Error("Failed to save settings")
     }
 }

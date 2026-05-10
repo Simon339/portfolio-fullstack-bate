@@ -2,44 +2,40 @@
 
 import { SettingsSchema } from "@/types";
 import * as z from "zod";
-import { getUserById } from "@/server/data/user";
 import { db } from "@/server/db";
-import { auditLogs, deletedUsers, users } from "@/server/schema";
+import { auditLogs,  user } from "@/server/schema";
 import { eq, lte } from "drizzle-orm";
-import { currentUser } from "@/lib/auth";
 import { headers } from "next/headers";
+import { auth } from "../auth";
 
 export const Settings = async (values: z.infer<typeof SettingsSchema>) => {
-  const user = await currentUser();
+  const session = await auth.api.getSession({
+    headers: await headers() // you need to pass the headers object.
+})
 
-  if (!user) {
+  if (!session?.user) {
     return { error: "Unauthorized!" };
   }
 
-  const dbUser = await getUserById(user.id);
-
-  if (!dbUser) {
-    return { error: "Unauthorized!" };
-  }
-
+  
   const headersList = await headers();
   const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';
 
   try {
     await db
-      .update(users)
+      .update(user)
       .set({
         ...values,
       })
-      .where(eq(users.id, dbUser.id))
+      .where(eq(user.id, session?.user?.id))
       .execute();
 
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
-      recordId: dbUser.id,
-      userId: dbUser.id,
+      recordId: session?.user?.id,
+      userId: session?.user?.id,
       details: JSON.stringify({ 
         action: "Settings updated", 
         updatedFields: Object.keys(values) 
@@ -50,7 +46,6 @@ export const Settings = async (values: z.infer<typeof SettingsSchema>) => {
 
     return { success: "Settings Updated" };
   } catch (error) {
-    console.error("Error updating settings:", error);
     return { error: "An error occurred while updating settings." };
   }
 };
@@ -64,7 +59,7 @@ export async function requestAccountDeletion(userId: string) {
 
   
   try {
-    await db.update(users).set({ deletionRequestedAt: now }).where(eq(users.id, userId))
+    await db.update(user).set({ deletionRequestedAt: now }).where(eq(user.id, userId))
 
     // Insert an audit log entry
     await db.insert(auditLogs).values({
@@ -79,14 +74,13 @@ export async function requestAccountDeletion(userId: string) {
 
     return { success: "Account deletion requested" }
   } catch (error) {
-    console.error("Error during account deletion request:", error)
     return { error: "Failed to request account deletion" }
   }    
 }
 
 export async function processAccountDeletions() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  const usersToDelete = await db.select().from(users).where(lte(users.deletionRequestedAt, thirtyDaysAgo))
+  const usersToDelete = await db.select().from(user).where(lte(user.deletionRequestedAt, thirtyDaysAgo))
   const headersList = await headers();
   const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
   const userAgent = headersList.get('user-agent') || 'unknown';

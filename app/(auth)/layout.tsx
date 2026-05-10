@@ -1,53 +1,29 @@
+
+
 import type React from "react"
-import { auth } from "@/server/auth"
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
-import { db } from "@/server/db"
-import { users } from "@/server/schema"
-import { eq } from "drizzle-orm"
 import { Suspense } from "react"
+import AuthContent from "../_component/AuthContect"
 
 export const metadata: Metadata = {
-  title: "Sign In | Sign Up",
-  description: "Sign in to your account or create a new one",
-}
+  title: "Authentication",
+  description: "Sign in, create an account, reset your password, and manage access",
+};
 
 function LoadingIndicator() {
   return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
+    <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <div className="w-5 h-5 border-t-2 border-gray-300 rounded-full animate-spin"></div>
+      <span className="text-gray-600 text-sm">
+        Please wait
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite]">.</span>
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite_0.2s]">.</span>
+        <span className="animate-[pulse_1.5s_ease-in-out_infinite_0.4s]">.</span>
+      </span>
     </div>
   )
 }
-
-async function AuthContent({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-
-  if (session) {
-    const user = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1)
-
-    if (user[0]) {
-      if (user[0].deletionRequestedAt) {
-        redirect("/account-deletion-requested")
-      }
-
-      const userStatus = user[0].status
-      const userRole = user[0].role
-
-      if (userStatus !== "APPROVED") {
-        redirect("/onboarding/current")
-      } else if (userRole === "USER") {
-        redirect("/onboarding/current")
-      } else if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-        redirect("/dashboard")
-      }
-    }
-  }
-
-  return <main className="flex items-center justify-center min-h-screen bg-white">{children}</main>
-}
-
-export default function Layout({
+export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode
@@ -56,5 +32,5 @@ export default function Layout({
     <Suspense fallback={<LoadingIndicator />}>
       <AuthContent>{children}</AuthContent>
     </Suspense>
-  )
+  );
 }

@@ -1,8 +1,8 @@
+@import url("https://fonts.googleapis.com/css2?family=Jost:wght@700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url("https://fonts.googleapis.com/css2?family=Jost:wght@700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap");
 
 @layer base {
   :root {
@@ -66,11 +66,161 @@
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 .dashboard {
   margin: 1rem 2rem;
+}
+
+@keyframes electric {
+    0%, 100% {
+      opacity: 0;
+      transform: translate(0, 0) scale(1);
+      filter: blur(0);
+    }
+    5% {
+      opacity: 0.9;
+      transform: translate(1px, -1px) scale(1.01);
+      filter: blur(0.5px);
+      text-shadow: 
+        0 0 5px #1E90FF,
+        0 0 10px #1E90FF,
+        0 0 15px #1E90FF;
+    }
+    6% {
+      opacity: 0;
+    }
+    15% {
+      opacity: 0.8;
+      transform: translate(-2px, 1px) scale(1.02);
+      filter: blur(0.3px);
+      text-shadow: 
+        0 0 8px #1E90FF,
+        0 0 12px #1E90FF;
+    }
+    16% {
+      opacity: 0;
+    }
+    48% {
+      opacity: 0;
+    }
+    49% {
+      opacity: 1;
+      transform: translate(2px, 2px) scale(1.03);
+      filter: blur(0.7px);
+      text-shadow: 
+        0 0 10px #1E90FF,
+        0 0 20px #1E90FF,
+        0 0 30px #1E90FF;
+    }
+    50% {
+      opacity: 0;
+    }
+    85% {
+      opacity: 0;
+    }
+    86% {
+      opacity: 0.7;
+      transform: translate(-3px, 0) scale(1.01);
+      filter: blur(0.4px);
+      text-shadow: 
+        0 0 6px #1E90FF,
+        0 0 12px #1E90FF;
+    }
+    87% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes electric2 {
+    0%, 100% {
+      opacity: 0;
+      transform: translate(0, 0);
+    }
+    8% {
+      opacity: 0.6;
+      transform: translate(3px, -2px);
+      filter: blur(0.6px);
+      text-shadow: 
+        0 0 4px cyan,
+        0 0 8px cyan;
+    }
+    9% {
+      opacity: 0;
+    }
+    32% {
+      opacity: 0.4;
+      transform: translate(-1px, 3px);
+      filter: blur(0.2px);
+      text-shadow: 
+        0 0 3px cyan,
+        0 0 6px cyan;
+    }
+    33% {
+      opacity: 0;
+    }
+    67% {
+      opacity: 0.8;
+      transform: translate(2px, 1px);
+      filter: blur(0.8px);
+      text-shadow: 
+        0 0 7px cyan,
+        0 0 14px cyan;
+    }
+    68% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes electric3 {
+    0%, 100% {
+      opacity: 0;
+      transform: translate(0, 0);
+    }
+    12% {
+      opacity: 0.5;
+      transform: translate(-2px, 2px);
+      filter: blur(0.4px);
+      text-shadow: 
+        0 0 6px white,
+        0 0 12px white;
+    }
+    13% {
+      opacity: 0;
+    }
+    42% {
+      opacity: 0.9;
+      transform: translate(1px, -1px);
+      filter: blur(1px);
+      text-shadow: 
+        0 0 8px white,
+        0 0 16px white;
+    }
+    43% {
+      opacity: 0;
+    }
+    78% {
+      opacity: 0.3;
+      transform: translate(-3px, -2px);
+      filter: blur(0.3px);
+      text-shadow: 
+        0 0 3px white,
+        0 0 6px white;
+    }
+    79% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes progressAnimation {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--target-width);
+  }
 }
 
 @layer utilities {
@@ -210,9 +360,14 @@
 }
 
 .about_img {
-  width: 350px;
-  border-radius: 1.5rem;
-  justify-self: center;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 1rem;
+  transition: transform 0.3s ease-in-out;
+}
+
+.about_img:hover {
+  transform: scale(1.05);
 }
 
 .about_info {
@@ -249,6 +404,7 @@
   margin-bottom: 1rem;
   font-size: medium;
 }
+
 
 .work_filters {
   display: flex;

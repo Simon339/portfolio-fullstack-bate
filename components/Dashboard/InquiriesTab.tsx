@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+"use client"
+
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, MailOpen, Trash2 } from 'lucide-react';
@@ -9,6 +11,16 @@ import Link from 'next/link';
 import InquiriesCard from './InquiriesCard';
 import { Tooltip } from '@heroui/react';
 import DeleteMessage from './modals/DeleteMessage';
+
+interface ServiceInquiry {
+    id: string;
+    name: string;
+    companyName: string;
+    service: string;
+    createdAt: Date;
+    isSelected?: boolean;
+    isRead?: boolean;
+}
 
 const InquiriesTab = () => {
     const [selectAll, setSelectAll] = React.useState(false);
@@ -79,7 +91,7 @@ const InquiriesTab = () => {
         await deleteRecords({ serviceInquiryIds: selectedIds });
         setIsDeleteDialogOpen(false);
         setIsDeleting(false);
-        fetchNotifications(); // Refresh the list after deletion
+        fetchNotifications();
     };
 
     return (
@@ -159,7 +171,7 @@ const InquiriesTab = () => {
                         <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
                             onClick={() => setCurrentPage(1)}
                             disabled={currentPage === 1}
                         >
@@ -168,7 +180,7 @@ const InquiriesTab = () => {
                         <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
                             onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                             disabled={currentPage === 1}
                         >
@@ -177,7 +189,7 @@ const InquiriesTab = () => {
                         <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
                             onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages}
                         >
@@ -186,7 +198,7 @@ const InquiriesTab = () => {
                         <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
                             onClick={() => setCurrentPage(totalPages)}
                             disabled={currentPage === totalPages}
                         >

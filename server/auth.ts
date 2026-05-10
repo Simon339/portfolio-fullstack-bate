@@ -1,60 +1,506 @@
-import NextAuth from "next-auth";
-import bcrypt from 'bcryptjs';
-import Credentials from "next-auth/providers/credentials";
-import { LoginSchema } from "@/types/vaildations/login";
-import { getUserByEmail } from "./data/user";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "@/server/db";
+import { nextCookies } from "better-auth/next-js";
+import { APIError } from "better-auth/api";
+import { lastLoginMethod, twoFactor, admin as adminPlugin, haveIBeenPwned } from "better-auth/plugins";
+import { transporter } from "@/lib/mail";
+import { ac, admin, user, owner } from "@/lib/permission";
+import * as schema from "@/server/schema";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  session: {
-    strategy: "jwt",
-    maxAge: 60 * 60,
+export const auth = betterAuth({
+  appName: "Malesela's Portfolio",
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user: schema.user,
+      session: schema.session,
+      account: schema.account,
+      verification: schema.verification,
+      twoFactor: schema.twoFactor,
+    },
+  }),
+
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+		expiresIn: 10800,
+    sendVerificationEmail: async ({ user, url, token }) => {
+      transporter.sendMail({
+        from: `"MS Portfolio Website" <${process.env.SMTP_EMAIL}>`,
+        to: user.email,
+        subject: "Verify your email address",
+        html: `
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>Verify Your Email</title>
+            </head>
+            <body style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 0;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <!-- Header -->
+                <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #eaeaea;">
+                  <img src="https://3842090645.imgdist.com/pub/bfra/xny8ibaj/r99/e2p/1sx/logo.png" alt="MS Portfolio Logo" style="max-width: 180px; height: auto;" />
+                </div>
+
+                <!-- Title Banner -->
+                <div style="background: linear-gradient(135deg, #000319 0%, #1a237e 100%); padding: 35px 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.5px;">
+                    Verify Your Email Address
+                  </h1>
+                </div>
+
+                <!-- Content -->
+                <div style="padding: 40px 30px; background-color: #ffffff;">
+                  <p style="font-size: 16px; margin-top: 0;">Hello ${user.name || "there"},</p>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    Thank you for signing up! To complete your registration and start using our services, please verify your
+                    email address by clicking the button below:
+                  </p>
+
+                  <div style="text-align: center; margin: 35px 0;">
+                    <a href="${url}" style="background-color: #000319; color: white; padding: 14px 28px; text-decoration: none; display: inline-block; border-radius: 6px; font-weight: 600; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.12);">
+                      Verify Email
+                    </a>
+                  </div>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    <strong>Important:</strong> This verification link will expire in 3 hours for security reasons.
+                  </p>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    If you did not create an account with us, please ignore this email or contact our support team if you have concerns.
+                  </p>
+
+                  <div style="border-top: 1px solid #eaeaea; padding-top: 25px; margin-top: 30px; font-size: 16px; color: #666;">
+                    <p style="margin: 0 0 10px 0;">We're excited to have you join us!</p>
+                    <p style="margin: 0; font-weight: 600;">The Support Team</p>
+                  </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="background-color: #000319; padding: 30px 20px; text-align: center; color: white;">
+                  <p style="font-size: 14px; margin: 0 0 15px 0;">Connect with us:</p>
+
+                  <div style="margin: 0 auto 20px auto;">
+                    <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/facebook@2x.png" width="32" height="32" alt="Facebook" style="display: block; border: 0;" />
+                    </a>
+                    <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/twitter@2x.png" width="32" height="32" alt="Twitter" style="display: block; border: 0;" />
+                    </a>
+                    <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/linkedin@2x.png" width="32" height="32" alt="LinkedIn" style="display: block; border: 0;" />
+                    </a>
+                  </div>
+
+                  <p style="font-size: 12px; margin: 0 0 10px 0; opacity: 0.8;">
+                    This is an automated message. Please do not reply to this email.
+                  </p>
+                  <p style="font-size: 12px; margin: 0; opacity: 0.8;">
+                    &copy; ${new Date().getFullYear()} MS Portfolio. All rights reserved.
+                  </p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+        text: `Verify your email address by visiting: ${url}\n\nThis link will expire in 3 hours.`,
+      });
+    },
   },
-  providers: [
-    Credentials({
-      async authorize(credentials) {
-        const validatedFields = LoginSchema.safeParse(credentials);
-        if (validatedFields.success) {
-          const { email, password } = validatedFields.data;
-          const user = await getUserByEmail(email);
-          if (!user) return null;
-          if (!user.password) return null;
-          if (!user.emailVerified) {
-            throw new Error("EMAIL_NOT_VERIFIED");
-          }
-          const passwordsMatch = await bcrypt.compare(password, user.password);
 
-          if (passwordsMatch) return user;
+  user: {
+    deleteUser: {
+      enabled: true,
+      sendDeleteAccountVerification: async ({ user, token }, request) => {
+        const deletionUrl = `${process.env.BETTER_AUTH_URL || "http://localhost:3000"}/accountdeleted?token=${token}`;
+        transporter.sendMail({
+          from: `"MS Portfolio Website" <${process.env.SMTP_EMAIL}>`,
+          to: user.email,
+          subject: "Confirm Account Deletion Request",
+          html: `
+            <html lang="en">
+              <head>
+                <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>Confirm Account Deletion</title>
+              </head>
+              <body style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 0;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                  <!-- Header -->
+                  <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #eaeaea;">
+                    <img src="https://3842090645.imgdist.com/pub/bfra/xny8ibaj/r99/e2p/1sx/logo.png" alt="MS Portfolio Logo" style="max-width: 180px; height: auto;" />
+                  </div>
+
+                  <!-- Title Banner -->
+                  <div style="background-color: #000319; padding: 35px 20px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.5px;">
+                      Confirm Account Deletion
+                    </h1>
+                  </div>
+
+                  <!-- Content -->
+                  <div style="padding: 40px 30px; background-color: #ffffff;">
+                    <p style="font-size: 16px; margin-top: 0;">Hello ${user.name || "there"},</p>
+
+                    <p style="font-size: 16px; margin-bottom: 25px;">
+                      We received a request to permanently delete your MS Portfolio account. This action cannot be undone, and all your data will be permanently removed from our systems.
+                    </p>
+
+
+                    <p style="font-size: 16px; margin-bottom: 25px;">
+                      If you understand the consequences and wish to proceed, click the button below to confirm the deletion of your account:
+                    </p>
+
+                    <div style="text-align: center; margin: 35px 0;">
+                      <a href="${deletionUrl}" style="background-color: #d32f2f; color: white; padding: 14px 28px; text-decoration: none; display: inline-block; border-radius: 6px; font-weight: 600; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.12);">
+                        Delete My Account
+                      </a>
+                    </div>
+
+                    <p style="font-size: 16px; margin-bottom: 25px;">
+                      <strong>Important:</strong> This confirmation link will expire in 1 hour for security reasons. You must be logged in to complete this action.
+                    </p>
+
+                    <p style="font-size: 16px; margin-bottom: 25px;">
+                      If you didn't request to delete your account, please secure your account immediately by changing your password and contact our support team.
+                    </p>
+
+                    <div style="border-top: 1px solid #eaeaea; padding-top: 25px; margin-top: 30px; font-size: 16px; color: #666;">
+                      <p style="margin: 0 0 10px 0;">We're sad to see you go,</p>
+                      <p style="margin: 0; font-weight: 600;">The Support Team</p>
+                    </div>
+                  </div>
+
+                  <!-- Footer -->
+                  <div style="background-color: #000319; padding: 30px 20px; text-align: center; color: white;">
+                    <p style="font-size: 14px; margin: 0 0 15px 0;">Connect with us:</p>
+
+                    <div style="margin: 0 auto 20px auto;">
+                      <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                        <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/facebook@2x.png" width="32" height="32" alt="Facebook" style="display: block; border: 0;" />
+                      </a>
+                      <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                        <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/twitter@2x.png" width="32" height="32" alt="Twitter" style="display: block; border: 0;" />
+                      </a>
+                      <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                        <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/linkedin@2x.png" width="32" height="32" alt="LinkedIn" style="display: block; border: 0;" />
+                      </a>
+                    </div>
+
+                    <p style="font-size: 12px; margin: 0 0 10px 0; opacity: 0.8;">
+                      This is an automated message. Please do not reply to this email.
+                    </p>
+                    <p style="font-size: 12px; margin: 0; opacity: 0.8;">
+                      &copy; ${new Date().getFullYear()} MS Portfolio. All rights reserved.
+                    </p>
+                  </div>
+                </div>
+              </body>
+            </html>
+          `,
+          text: `Confirm account deletion by visiting: ${deletionUrl}\n\nWarning: This action is permanent and cannot be undone. All your data will be deleted.\n\nThis link will expire in 1 hour. If you didn't request this, please secure your account immediately.`,
+        });
+      },
+      beforeDelete: async (user, request) => {
+        if (user.email.includes("admin")) {
+          throw new APIError("BAD_REQUEST", {
+            message: "Admin accounts can't be deleted",
+          });
         }
-        return null;
+      },
+      afterDelete: async (user, request) => {
+        // Perform any cleanup or additional actions here
+      },
+    },
+    modelName: "user",
+    tableName: "user",
+  },
+
+  session: {
+    modelName: "session",
+    tableName: "session",
+    expiresIn: 60 * 60 * 12,
+    updateAge: 60 * 60
+  },
+
+  account: {
+    modelName: "account",
+    tableName: "account",
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["email-password", "github", "google"],
+      allowDifferentEmails: false
+    },
+
+  },
+
+  emailAndPassword: {
+    enabled: true,
+    expiresIn: 10800,
+    sendResetPassword: async ({ user, url, token }) => {
+      // Create a frontend-specific URL
+      const frontendUrl = `${process.env.BETTER_AUTH_URL || "http://localhost:3000"}/new-password?token=${token}`;
+
+      // Don't await the email sending to prevent timing attacks
+      transporter.sendMail({
+        from: `"MS Portfolio Website" <${process.env.SMTP_EMAIL}>`,
+        to: user.email,
+        subject: "Reset your password",
+        html: `
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>Reset Your Password</title>
+            </head>
+            <body style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 0;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <!-- Header -->
+                <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #eaeaea;">
+                  <img src="https://3842090645.imgdist.com/pub/bfra/xny8ibaj/r99/e2p/1sx/logo.png" alt="MS Portfolio Logo" style="max-width: 180px; height: auto;" />
+                </div>
+
+                <!-- Title Banner -->
+                <div style="background: linear-gradient(135deg, #000319 0%, #1a237e 100%); padding: 35px 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.5px;">
+                    Reset Your Password
+                  </h1>
+                </div>
+
+                <!-- Content -->
+                <div style="padding: 40px 30px; background-color: #ffffff;">
+                  <p style="font-size: 16px; margin-top: 0;">Hello ${user.name || "there"},</p>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    We received a request to reset your password. Click the button below to create a new password:
+                  </p>
+
+                  <div style="text-align: center; margin: 35px 0;">
+                    <a href="${frontendUrl}" style="background-color: #000319; color: white; padding: 14px 28px; text-decoration: none; display: inline-block; border-radius: 6px; font-weight: 600; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.12);">
+                      Reset Password
+                    </a>
+                  </div>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    <strong>Important:</strong> This link will expire in 3 hours for security reasons.
+                  </p>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    If you didn't request a password reset, please ignore this email or contact our support team if you have concerns.
+                  </p>
+
+                  <div style="border-top: 1px solid #eaeaea; padding-top: 25px; margin-top: 30px; font-size: 16px; color: #666;">
+                    <p style="margin: 0 0 10px 0;">Best regards,</p>
+                    <p style="margin: 0; font-weight: 600;">The Support Team</p>
+                  </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="background-color: #000319; padding: 30px 20px; text-align: center; color: white;">
+                  <p style="font-size: 14px; margin: 0 0 15px 0;">Connect with us:</p>
+
+                  <div style="margin: 0 auto 20px auto;">
+                    <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/facebook@2x.png" width="32" height="32" alt="Facebook" style="display: block; border: 0;" />
+                    </a>
+                    <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/twitter@2x.png" width="32" height="32" alt="Twitter" style="display: block; border: 0;" />
+                    </a>
+                    <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/linkedin@2x.png" width="32" height="32" alt="LinkedIn" style="display: block; border: 0;" />
+                    </a>
+                  </div>
+
+                  <p style="font-size: 12px; margin: 0 0 10px 0; opacity: 0.8;">
+                    This is an automated message. Please do not reply to this email.
+                  </p>
+                  <p style="font-size: 12px; margin: 0; opacity: 0.8;">
+                    &copy; ${new Date().getFullYear()} MS Portfolio. All rights reserved.
+                  </p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+        text: `Reset your password by visiting: ${frontendUrl}\n\nThis link will expire in 3 hours.`,
+      });
+    },
+    customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
+      ...coreFields,
+      role: "user",
+      banned: false,
+      banReason: null,
+      banExpires: null,
+      ...additionalFields,
+      id,
+    }),
+    requireEmailVerification: true,
+  },
+
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
+
+  onAPIError: {
+		throw: true,
+		onError: (error, ctx) => {
+		},
+		errorURL: "/auth/error",
+		customizeDefaultErrorPage: {
+			colors: {
+				background: "#ffffff",
+				foreground: "#000000",
+				primary: "#0070f3",
+				primaryForeground: "#ffffff",
+				mutedForeground: "#666666",
+				border: "#e0e0e0",
+				destructive: "#ef4444",
+				titleBorder: "#0070f3",
+				titleColor: "#000000",
+				gridColor: "#f0f0f0",
+				cardBackground: "#ffffff",
+				cornerBorder: "#0070f3"
+			},
+			size: {
+				radiusSm: "0.25rem",
+				radiusMd: "0.5rem",
+				radiusLg: "1rem",
+				textSm: "0.875rem",
+				text2xl: "1.5rem",
+				text4xl: "2.25rem",
+				text6xl: "3.75rem"
+			},
+			font: {
+				defaultFamily: "system-ui, sans-serif",
+				monoFamily: "monospace"
+			},
+			disableTitleBorder: false,
+			disableCornerDecorations: false,
+			disableBackgroundGrid: false
+		}
+	},
+
+  plugins: [
+    twoFactor({
+      issuer: "Malesela's Portfolio",
+      otpOptions: {
+        async sendOTP({ user, otp }, ctx) {
+          await transporter.sendMail({
+            from: `"MS Portfolio Website" <${process.env.SMTP_EMAIL}>`,
+            to: user.email,
+            subject: "Your two-factor authentication code",
+            html: `
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>Your two-factor authentication code</title>
+            </head>
+            <body style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 0;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <!-- Header -->
+                <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #eaeaea;">
+                  <img src="https://3842090645.imgdist.com/pub/bfra/xny8ibaj/r99/e2p/1sx/logo.png" alt="MS Portfolio Logo" style="max-width: 180px; height: auto;" />
+                </div>
+
+                <!-- Title Banner -->
+                <div style="background: linear-gradient(135deg, #000319 0%, #1a237e 100%); padding: 35px 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.5px;">
+                    Two-Factor Authentication Code
+                  </h1>
+                </div>
+
+                <!-- Content -->
+                <div style="padding: 40px 30px; background-color: #ffffff;">
+                  <p style="font-size: 16px; margin-top: 0;">Hello ${user.name || "there"},</p>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    Use the code below to complete your two-factor authentication sign-in. This code will expire in 10 minutes.
+                  </p>
+
+                  <div style="text-align: center; margin: 35px 0;">
+                    <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; display: inline-block; min-width: 200px;">
+                      <span style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #000319;">${otp}</span>
+                    </div>
+                  </div>
+
+                  <p style="font-size: 16px; margin-bottom: 25px;">
+                    <strong>Important:</strong> If you did not attempt to sign in, please reset your password immediately and contact our support team.
+                  </p>
+
+                  <div style="border-top: 1px solid #eaeaea; padding-top: 25px; margin-top: 30px; font-size: 16px; color: #666;">
+                    <p style="margin: 0 0 10px 0;">Need help? Contact our support team anytime.</p>
+                    <p style="margin: 0; font-weight: 600;">The Security Team</p>
+                  </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="background-color: #000319; padding: 30px 20px; text-align: center; color: white;">
+                  <p style="font-size: 14px; margin: 0 0 15px 0;">Connect with us:</p>
+
+                  <div style="margin: 0 auto 20px auto;">
+                    <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/facebook@2x.png" width="32" height="32" alt="Facebook" style="display: block; border: 0;" />
+                    </a>
+                    <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/twitter@2x.png" width="32" height="32" alt="Twitter" style="display: block; border: 0;" />
+                    </a>
+                    <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin: 0 8px;">
+                      <img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/t-outline-circle-white/linkedin@2x.png" width="32" height="32" alt="LinkedIn" style="display: block; border: 0;" />
+                    </a>
+                  </div>
+
+                  <p style="font-size: 12px; margin: 0 0 10px 0; opacity: 0.8;">
+                    This is an automated message. Please do not reply to this email.
+                  </p>
+                  <p style="font-size: 12px; margin: 0; opacity: 0.8;">
+                    &copy; ${new Date().getFullYear()} MS Portfolio. All rights reserved.
+                  </p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+            text: `Your two-factor authentication code: ${otp}\n\nThis code will expire in 10 minutes.`,
+          });
+        },
       },
     }),
+    nextCookies(),
+    adminPlugin({
+      ac,
+      roles: {
+        admin,
+        user,
+        owner,
+      },
+    }),
+    lastLoginMethod(),
+    haveIBeenPwned({
+      customPasswordCompromisedMessage: "Please choose a more secure password.",
+    }),
   ],
-  pages: {
-    signIn: "/auth",
-    signOut: "/signout",
-  },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.name = user.name;
-        token.email = user.email;
-        token.role = user.role;
-        token.surname = user.surname;
-        token.phone = user.phone;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.name = token.name as string;
-        session.user.surname = token.surname as string;
-        session.user.role = token.role as string;
-        session.user.phone = token.phone as string;
-        session.user.status = token.status as string;
-      }
-      return session;
-    },
-  },
+
+  trustedOrigins: ["https://m-s-portfolio.vercel.app"],
 });
+
+/*
+pnpm drizzle-kit generate
+pnpm drizzle-kit migrate
+pnpm drizzle-kit push
+pnpm drizzle-kit pull
+pnpm drizzle-kit check
+pnpm drizzle-kit up
+pnpm drizzle-kit studio
+*/

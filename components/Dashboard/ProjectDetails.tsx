@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { ArrowLeft, Edit, ExternalLink, Globe, Trash2 } from "lucide-react"
 import Link from "next/link"
-
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CardContent } from "@/components/ui/card"
@@ -32,10 +31,7 @@ interface ProjectDetailsProps {
       name: string
       image: string
     }>
-    features: Array<{
-      name: string
-      description: string
-    }>
+    features: any // Changed from Array<{ name: string; description: string }>
   }
 }
 
@@ -44,9 +40,69 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<ProjectDetailsProps["project"] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [parsedFeatures, setParsedFeatures] = useState<Array<{ name: string; description: string }>>([])
+
+  // Helper function to parse features
+  const parseFeatures = (featuresValue: any): Array<{ name: string; description: string }> => {
+    let featuresArray: Array<{ name: string; description: string }> = []
+    
+    try {
+      if (typeof featuresValue === 'string') {
+        const featuresStr = featuresValue.trim()
+        
+        if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
+          // Parse as JSON array
+          const parsed = JSON.parse(featuresStr)
+          
+          // Handle both array of strings and array of objects
+          if (Array.isArray(parsed)) {
+            featuresArray = parsed.map(item => {
+              if (typeof item === 'string') {
+                return { name: item, description: '' }
+              } else if (typeof item === 'object' && item !== null) {
+                return {
+                  name: item.name || item.Name || 'Feature',
+                  description: item.description || item.Description || ''
+                }
+              }
+              return { name: 'Feature', description: '' }
+            })
+          }
+        } else if (featuresStr.includes(',')) {
+          // Comma-separated string
+          featuresArray = featuresStr.split(',').map(item => ({
+            name: item.trim(),
+            description: ''
+          }))
+        } else if (featuresStr !== '') {
+          // Single feature string
+          featuresArray = [{ name: featuresStr, description: '' }]
+        }
+      } else if (Array.isArray(featuresValue)) {
+        // Already an array
+        featuresArray = featuresValue.map(item => {
+          if (typeof item === 'string') {
+            return { name: item, description: '' }
+          } else if (typeof item === 'object' && item !== null) {
+            return {
+              name: item.name || item.Name || 'Feature',
+              description: item.description || item.Description || ''
+            }
+          }
+          return { name: 'Feature', description: '' }
+        })
+      }
+    } catch (error) {
+    }
+    
+    return featuresArray
+  }
 
   useEffect(() => {
     if (project) {
+      // Parse features when project data is available
+      const parsed = parseFeatures(project.features)
+      setParsedFeatures(parsed)
       setLoading(false)
     }
   }, [project])
@@ -80,7 +136,6 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
         toast.error(result.error || "Failed to delete project")
       }
     } catch (error) {
-      console.error("Error during deletion:", error)
       toast.error("An error occurred while deleting the project")
     } finally {
       setDeleteModalOpen(false)
@@ -88,8 +143,8 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50  md:p-6">
-      <div className=" mx-auto">
+    <div className="min-h-screen bg-gray-50 md:p-6">
+      <div className="mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Button
             variant="ghost"
@@ -199,12 +254,12 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
 
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Features</h3>
                 <div className="space-y-4">
-                  {project.features && project.features.length > 0 ? (
-                    project.features.map((feature, index) => (
+                  {parsedFeatures.length > 0 ? (
+                    parsedFeatures.map((feature, index) => (
                       <div key={index} className="bg-gray-50 border border-[#acc2ef]/20 rounded-lg p-4">
                         <h4 className="text-sm font-medium text-gray-800 mb-2">{feature.name}</h4>
                         <p className="text-sm text-gray-600 whitespace-pre-line leading-relaxed">
-                          {feature.description}
+                          {feature.description || "No description provided"}
                         </p>
                       </div>
                     ))
@@ -233,4 +288,3 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
 }
 
 export default ProjectDetailsClient
-

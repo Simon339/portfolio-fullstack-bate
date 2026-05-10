@@ -25,6 +25,7 @@ interface ProjectData extends z.infer<typeof ProjectSchema> {
   id: string
   category?: { id: string; name: string }
   techstacks?: Array<{ id: string; name: string; image?: string | null }>
+
 }
 
 interface Feature {
@@ -76,63 +77,121 @@ const ProjectEditPage = () => {
 
   useEffect(() => {
     const fetchAllData = async () => {
-      if (!projectId || typeof projectId !== "string") {
-        notFound()
-        return
-      }
+  if (!projectId || typeof projectId !== "string") {
+    notFound()
+    return
+  }
 
-      setLoading(true)
-      try {
-        const [projectResult, categoriesData, techstacksData] = await Promise.all([
-          fetchProjectById(projectId),
-          fetchCategories(),
-          fetchTechstacks(),
-        ])
+  setLoading(true)
+  try {
+    const [projectResult, categoriesData, techstacksData] = await Promise.all([
+      fetchProjectById(projectId),
+      fetchCategories(),
+      fetchTechstacks(),
+    ])
 
-        if (!projectResult.success || !projectResult.data) {
-          setError("Failed to load project data")
-          return
-        }
-
-        const project = projectResult.data
-        const formattedProjectData = {
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          demo: project.demo,
-          image: project.image || "",
-          categories: project.category ? [project.category.id] : [],
-          techStack: project.techstacks ? project.techstacks.map((tech) => tech.id) : [],
-          features: project.features || [],
-          category: project.category,
-          techstacks: project.techstacks,
-        }
-
-        setProjectData(formattedProjectData)
-        setImage(formattedProjectData.image)
-        setFeatures(formattedProjectData.features || [])
-        setSelectedCategories(formattedProjectData.categories || [])
-        setSelectedTechstacks(formattedProjectData.techStack || [])
-        setCategories(categoriesData)
-        setTechstacks(techstacksData)
-
-        form.reset({
-          name: formattedProjectData.name,
-          description: formattedProjectData.description,
-          demo: formattedProjectData.demo,
-          features: formattedProjectData.features,
-          techStack: formattedProjectData.techStack,
-          categories: formattedProjectData.categories,
-          image: formattedProjectData.image,
-        })
-      } catch (error) {
-        console.error("Error fetching data:", error)
-        setError("Failed to load project data. Please try again.")
-      } finally {
-        setLoading(false)
-      }
+    if (!projectResult.success || !projectResult.data) {
+      setError("Failed to load project data")
+      return
     }
 
+    const project = projectResult.data
+    
+    // Helper function to parse features
+    const parseFeatures = (featuresValue: any): Array<{ name: string; description: string }> => {
+      let featuresArray: Array<{ name: string; description: string }> = []
+      
+      try {
+        if (typeof featuresValue === 'string') {
+          const featuresStr = featuresValue.trim()
+          
+          if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
+            // Parse as JSON array
+            const parsed = JSON.parse(featuresStr)
+            
+            // Handle both array of strings and array of objects
+            if (Array.isArray(parsed)) {
+              featuresArray = parsed.map(item => {
+                if (typeof item === 'string') {
+                  return { name: item, description: '' }
+                } else if (typeof item === 'object' && item !== null) {
+                  return {
+                    name: item.name || item.Name || 'Feature',
+                    description: item.description || item.Description || ''
+                  }
+                }
+                return { name: 'Feature', description: '' }
+              })
+            }
+          } else if (featuresStr.includes(',')) {
+            // Comma-separated string
+            featuresArray = featuresStr.split(',').map(item => ({
+              name: item.trim(),
+              description: ''
+            }))
+          } else if (featuresStr !== '') {
+            // Single feature string
+            featuresArray = [{ name: featuresStr, description: '' }]
+          }
+        } else if (Array.isArray(featuresValue)) {
+          // Already an array
+          featuresArray = featuresValue.map(item => {
+            if (typeof item === 'string') {
+              return { name: item, description: '' }
+            } else if (typeof item === 'object' && item !== null) {
+              return {
+                name: item.name || item.Name || 'Feature',
+                description: item.description || item.Description || ''
+              }
+            }
+            return { name: 'Feature', description: '' }
+          })
+        }
+      } catch (error) {
+        throw new Error("Something went worng")
+      }
+      
+      return featuresArray
+    }
+    
+    const parsedFeatures = parseFeatures(project.features)
+
+    const formattedProjectData = {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      demo: project.demo,
+      image: project.image || "",
+      categories: project.category ? [project.category.id] : [],
+      techStack: project.techstacks ? project.techstacks.map((tech) => tech.id) : [],
+      features: parsedFeatures,
+      category: project.category,
+      techstacks: project.techstacks,
+    }
+
+    setProjectData(formattedProjectData)
+    setImage(formattedProjectData.image)
+    setFeatures(formattedProjectData.features || [])
+    setSelectedCategories(formattedProjectData.categories || [])
+    setSelectedTechstacks(formattedProjectData.techStack || [])
+    setCategories(categoriesData)
+    setTechstacks(techstacksData)
+
+    form.reset({
+      name: formattedProjectData.name,
+      description: formattedProjectData.description,
+      demo: formattedProjectData.demo,
+      features: formattedProjectData.features,
+      techStack: formattedProjectData.techStack,
+      categories: formattedProjectData.categories,
+      image: formattedProjectData.image,
+    })
+  } catch (error) {
+    setError("Failed to load project data. Please try again.")
+  } finally {
+    setLoading(false)
+  }
+}
     fetchAllData()
   }, [projectId, form])
 
@@ -224,16 +283,12 @@ const ProjectEditPage = () => {
         if (imageFile) {
           data.append("image", imageFile)
         } else if (image) {
-          // If we have a string image URL but no file (like from initialData)
-          // Create a blob from the base64 string and append it
           try {
             const response = await fetch(image)
             const blob = await response.blob()
             const file = new File([blob], "image.jpg", { type: blob.type })
             data.append("image", file)
           } catch (error) {
-            console.error("Error converting image URL to file:", error)
-            // Just pass the image string if conversion fails
             data.append("image", image)
           }
         }
@@ -255,7 +310,6 @@ const ProjectEditPage = () => {
           toast.error(typeof result.error === "string" ? result.error : "There was an error updating your project")
         }
       } catch (error) {
-        console.error("Error submitting form:", error)
         toast.error("An unexpected error occurred")
       }
     })

@@ -1,105 +1,193 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Chip } from "@heroui/react"
-import { format } from "date-fns"
+'use client'
 
-interface UsersCardProps {
-    id: string
-    name: string
-    surname: string
-    image: string
-    email: string
-    role: "USER" | "SUPER_USER" | "ADMIN"
-    status: "Verified" | "Not Verified"
-    approval: "PENDING" | "APPROVED" | "REJECTED"
-    color?: string
-    createdAt: Date
-    isSelected: boolean
-    onSelect: (id: string, checked: boolean) => void
+import * as React from 'react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ColumnDef, ColumnFiltersState, SortingState, VisibilityState, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table';
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Search, Filter, ChevronDown, Trash2, Loader2 } from 'lucide-react'
+
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[]
+  data: TData[]
+  searchPlaceholder?: string
+  onDelete?: (rows: TData[]) => Promise<void>
+  isDeleting?: boolean
 }
 
-const approvalColorMap = {
-    APPROVED: 'success',
-    REJECTED: 'destructive',
-    PENDING: 'warning',
-    default: 'secondary',
-  };
+export function DataTable<TData extends { id: string; isSelected?: boolean }, TValue>({
+  columns,
+  data,
+  searchPlaceholder = 'Search...',
+  onDelete,
+  isDeleting = false,
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [rowSelection, setRowSelection] = React.useState({})
 
-  const roleColor = {
-    USER: 'warning',
-    SUPER_USER: 'success',
-    ADMIN: 'success',
-    default: 'secondary',
+  const table = useReactTable({
+    data,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  })
+
+  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+  const selectedCount = selectedRows.length
+
+  const handleDelete = async () => {
+    if (onDelete && selectedRows.length > 0) {
+      await onDelete(selectedRows)
+      setRowSelection({})
+    }
   }
 
-
-  const UsersCard = ({ id, name, surname, email, image, role, createdAt, status, isSelected, onSelect, approval }: UsersCardProps) => {
-
-    
-    const getApprovalColor = (approval: "PENDING" | "APPROVED" | "REJECTED") => {
-        return approvalColorMap[approval] || approvalColorMap.default;
-    };
-    
-    const getRoleColor = (role: "USER" | "SUPER_USER" | "ADMIN") => {
-        return roleColor[role] || roleColor.default;
-    };
-
-    const formatApproval = (text: string) => {
-        return text.charAt(0) + text.slice(1).toLowerCase()
-    }
-
-    const handleSelectChange = (checked: boolean) => {
-        onSelect(id, checked)
-    }
-
-    return (
-        <div className="group relative flex items-center gap-4 rounded-lg border border-[#acc2ef] p-4 text-gray-800 transition-all hover:bg-accent/5">
-            <div className="flex items-center gap-4">
-                <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={handleSelectChange}
-                    className="h-4 w-4"
-                    onClick={(e) => e.stopPropagation()}
-                />
-                <Avatar className="h-10 w-10 ring-1 ring-[#acc2ef]">
-                    <AvatarImage
-                        src={image || `https://api.dicebear.com/6.x/initials/svg?seed=${email}`}
-                        alt={`${name} ${surname}`}
-                    />
-                    <AvatarFallback>
-                        {name.slice(0, 1)}
-                        {surname.slice(0, 1)}
-                    </AvatarFallback>
-                </Avatar>
-            </div>
-
-            <div className="flex flex-1 flex-col">
-                <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-800 text-foreground">
-                        {name} {surname}
-                    </h3>
-                    <div className="flex gap-2 border-[#acc2ef]">
-                        <Chip color={status === 'Verified' ? 'success' : 'warning'} variant="flat" className="text-xs font-normal border-[#acc2ef]">
-                            {status}
-                        </Chip>
-                        <Chip variant="flat" color={getApprovalColor(approval)} className="text-xs font-normal border-[#acc2ef]">
-                            {formatApproval(approval)}
-                        </Chip>
-                    </div>
-                </div>
-
-                <div className="mt-1 text-sm text-muted-foreground">{email}</div>
-
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground border-[#acc2ef]">
-                    <Chip variant="flat" color={getRoleColor(role)} className="px-2 py-0 text-xs font-normal border-[#acc2ef] text-gray-800">
-                    {formatApproval(role)}
-                    </Chip>
-                    <span className="text-muted-foreground">•</span>
-                    <span>Joined {format(new Date(createdAt), "MMM d, yyyy")}</span>
-                </div>
-            </div>
+  return (
+    <div className="w-full space-y-4">
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="relative flex-1 w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={searchPlaceholder}
+            value={(table.getState().globalFilter || '') as string}
+            onChange={(event) => table.setGlobalFilter(event.target.value)}
+            className="pl-10 h-10 w-full bg-gray-50 border-[#acc2ef] text-sm focus-visible:ring-[#1E56A0]"
+          />
         </div>
-    )
-}
 
-export default UsersCard
+        <div className="flex gap-2">
+          {selectedCount > 0 && onDelete && (
+            <Button
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-red-600 hover:text-red-700 bg-gray-50  rounded-xl hover:bg-red-50 border-red-200"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete ({selectedCount})
+            </Button>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 bg-gray-50 border-[#acc2ef] rounded-xl">
+                <Filter className="h-4 w-4" />
+                View
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="border-[#acc2ef]">
+              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border bg-gray-50 border-[#acc2ef]">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between space-x-2 py-4">
+        <div className="text-sm text-muted-foreground">
+          {selectedCount > 0 && (
+            <span>{selectedCount} of {table.getFilteredRowModel().rows.length} row(s) selected.</span>
+          )}
+        </div>
+        <div className="space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className='bg-gray-50 border-[#acc2ef] rounded-xl'
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            className='bg-gray-50 border-[#acc2ef] rounded-xl'
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -21,6 +21,7 @@ interface ServiceFormProps {
 const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
   const [error, setError] = useState<string | undefined>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
   const form = useForm<z.infer<typeof ServiceSchema>>({
     resolver: zodResolver(ServiceSchema),
     defaultValues: {
@@ -29,6 +30,14 @@ const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
       service: service,
       email: "",
       phoneNumber: "",
+      address: {
+        unit: "",
+        street: "",
+        subdivision: "",
+        city: "",
+        province: "",
+        postalCode: ""
+      }
     },
   })
 
@@ -55,6 +64,7 @@ const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* Name & Company */}
         <div className="grid grid-cols-2 gap-3">
           <FormField
             control={form.control}
@@ -93,6 +103,7 @@ const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
           />
         </div>
 
+        {/* Service Selection (Disabled) */}
         <FormField
           control={form.control}
           name="service"
@@ -111,6 +122,7 @@ const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
           )}
         />
 
+        {/* Email & Phone */}
         <div className="grid grid-cols-2 gap-3">
           <FormField
             control={form.control}
@@ -149,6 +161,132 @@ const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
           />
         </div>
 
+        {/* Address Section - Better Organized */}
+        <div className="space-y-3 pt-2 border-t border-[#685189]/20">
+          <p className="text-xs text-white/70 mb-2">Address Information</p>
+          
+          {/* Street Address Line 1: Unit & Street */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-1">
+              <FormField
+                control={form.control}
+                name="address.unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        placeholder="Unit/Apt"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={isSubmitting}
+                        className="bg-transparent border border-[#685189]/50 focus:border-[#685189] rounded-none px-3 py-1 text-xs text-white focus:ring-0"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="col-span-2">
+              <FormField
+                control={form.control}
+                name="address.street"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        placeholder="Street Address*"
+                        {...field}
+                        disabled={isSubmitting}
+                        className="bg-transparent border border-[#685189]/50 focus:border-[#685189] rounded-none px-3 py-1 text-xs text-white focus:ring-0"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Subdivision */}
+          <FormField
+            control={form.control}
+            name="address.subdivision"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input
+                    placeholder="Subdivision / Barangay"
+                    {...field}
+                    value={field.value || ""}
+                    disabled={isSubmitting}
+                    className="bg-transparent border border-[#685189]/50 focus:border-[#685189] rounded-none px-3 py-1 text-xs text-white focus:ring-0"
+                  />
+                </FormControl>
+                <FormMessage className="text-[10px]" />
+              </FormItem>
+            )}
+          />
+
+          {/* City, Province, Postal Code */}
+          <div className="grid grid-cols-3 gap-3">
+            <FormField
+              control={form.control}
+              name="address.city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      placeholder="City*"
+                      {...field}
+                      disabled={isSubmitting}
+                      className="bg-transparent border border-[#685189]/50 focus:border-[#685189] rounded-none px-3 py-1 text-xs text-white focus:ring-0"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[10px]" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="address.province"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      placeholder="Province*"
+                      {...field}
+                      disabled={isSubmitting}
+                      className="bg-transparent border border-[#685189]/50 focus:border-[#685189] rounded-none px-3 py-1 text-xs text-white focus:ring-0"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[10px]" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="address.postalCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      placeholder="Postal Code*"
+                      {...field}
+                      disabled={isSubmitting}
+                      className="bg-transparent border border-[#685189]/50 focus:border-[#685189] rounded-none px-3 py-1 text-xs text-white focus:ring-0"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[10px]" />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
         <FormError message={error} />
 
         <Button
@@ -164,4 +302,3 @@ const ServiceForm = ({ service, setIsOpen }: ServiceFormProps) => {
 }
 
 export default ServiceForm
-

@@ -43,8 +43,6 @@ const CategoriesModal = () => {
       toast.success("Category Created successfully!", {
         duration: 3000,
       })
-
-      // Reset form after successful submission
       resetForm()
 
       setTimeout(() => {
@@ -55,6 +53,7 @@ const CategoriesModal = () => {
       toast.error("Failed to create Category", {
         duration: 3000,
       })
+      console.log(error)
     } finally {
       setIsSubmitting(false)
     }

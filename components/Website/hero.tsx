@@ -1,25 +1,13 @@
 import React from 'react'
-// import { Spotlight } from '@/components/ui/spotlight';
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect';
 import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
 
-export default function Hero (){
+export default function Hero () {
   return (
     <div className="pb-1 pt-3 sm:pb-0 sm:pt-1">
-      {/* <div>
-        <Spotlight
-          className="-top-40 -left-10 md:-left-32 md:-top-20 h-screen"
-          fill="white"
-        />
-        <Spotlight
-          className="h-[80vh] w-[50vw] top-10 left-full"
-          fill="purple"
-        />
-        <Spotlight className="left-80 top-28 h-[80vh] w-[50vw]" fill="blue" />
-      </div> */}
-
       <div
-        className="h-screen w-full dark:bg-black-100 bg-white dark:bg-grid-white/[0.03] bg-grid-black-100/[0.2]
+        className="h-screen w-full bg-black-100  bg-grid-white/[0.09] bg-repeat bg-center
        absolute top-0 left-0 flex items-center justify-center"
       >
         
@@ -30,7 +18,7 @@ export default function Hero (){
       </div>
 
 
-      <div className="flex justify-center items-center  relative mt-5 mb-4 z-10">
+      <div className="flex justify-center items-center relative mt-5 mb-4 z-10">
         <div className="max-w-[89vw] md:max-w-3xl lg:max-w-[60vw] flex flex-col items-center justify-center">
           <p className="uppercase tracking-widest mb-8 text-xs text-center text-blue-100 max-w-80">
             Malesela&rsquo;s Portfolio
@@ -47,9 +35,24 @@ export default function Hero (){
 
                 <a href='/contact'>
                   <Button
-              className='bg-[#000B58] text-white font-bold mb-3 hover:bg-[#685189]'
+                    className="group relative overflow-hidden px-6 py-3 bg-[#000B58] text-white font-bold mb-3 
+                      hover:bg-[#685189] transition-all duration-300 ease-out
+                      hover:scale-105 hover:shadow-lg hover:shadow-[#000B58]/40
+                      border border-transparent hover:border-white/20"
                   >
-                   Hire Me
+                    {/* Glow effect - behind the text */}
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#000B58] via-[#685189] to-[#000B58] 
+                      opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    {/* Button content */}
+                    <span className="relative z-10 flex items-center gap-2">
+                      Hire Me
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                    </span>
+                    
+                    {/* Shine effect - moves across */}
+                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
+                      translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-out" />
                   </Button>
                 </a>
             </div> 
