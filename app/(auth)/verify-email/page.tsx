@@ -85,7 +85,7 @@ const Page: React.FC = () => {
     try {
       await authClient.sendVerificationEmail({
         email: userEmail,
-        callbackURL: window.location.origin + "/verify-email" // Use current verification page
+        callbackURL: window.location.origin + "/verify-email"
       })
       
       setSuccess("A new verification email has been sent to your email address.")
