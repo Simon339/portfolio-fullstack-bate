@@ -56,7 +56,6 @@ export async function ContactFormAction(data: z.infer<typeof ContactFormSchema>)
 
     return { success: "Your message has been successfully sent!" };
   } catch (error) {
-    console.error("Error occurred during form submission:", error);
 
     if (error instanceof z.ZodError) {
       return { error: error.errors.map((e) => e.message).join(", ") };

@@ -10,7 +10,7 @@ import { FormError } from "@/components/Auth/FormError"
 import { motion } from "framer-motion"
 import { authClient } from "@/hooks/getcurrectuser"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input" // Import Input component
+import { Input } from "@/components/ui/input"
 
 const Page: React.FC = () => {
   const currentYear = new Date().getFullYear()

@@ -12,15 +12,14 @@ type Role = "admin" | "member" | "owner";
 export async function RegisterAccount(data: z.infer<typeof SignUpSchema>) {
   try {
     const validatedData = SignUpSchema.parse(data);
-    const fullname = validatedData.name + " " + validatedData.surname;
 
     // Make sure you're using the correct auth library
     const result = await auth.api.signUpEmail({
       body: {
         email: validatedData.email,
         password: validatedData.password,
-        image: `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(fullname)}`,
-        name: fullname
+        image: `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(validatedData.name)}`,
+        name: validatedData.name 
       },
     });
      
@@ -55,6 +54,7 @@ export async function LoginAccount(data: z.infer<typeof SignInSchema>) {
       body: {
         email: validatedData.email,
         password: validatedData.password,
+        callbackURL: "/dashboard"
       },
     });
 
@@ -169,7 +169,6 @@ export async function LogoutAccount() {
     });
     return { success: true, redirect: "/" };
   } catch (error) {
-    console.error("Logout error:", error);
     return {
       success: false,
       error: "Failed to logout. Please try again.",

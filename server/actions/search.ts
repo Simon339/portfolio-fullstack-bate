@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/server/db"
-import { projects, categories, techstacks, serviceInquiries, contactForms, user } from "@/server/schema"
+import { projects, categories, techstacks, serviceInquiries, contactForms, user } from "@/server/schemasql"
 import { sql } from "drizzle-orm"
 
 export type SearchResult = {

@@ -311,7 +311,6 @@ const serviceInquiriesData: Omit<typeof serviceInquiries.$inferInsert, 'id'>[] =
 // Function to seed database
 export async function seedDatabase() {
   try {
-    console.log("🌱 Starting database seeding...");
 
     // Check if data already exists
     const existingContacts = await db.select().from(contactForms).limit(1);
@@ -323,25 +322,20 @@ export async function seedDatabase() {
       };
     }
 
-    // Insert contact messages
-    console.log(`📧 Inserting ${contactMessages.length} contact messages...`);
     for (const message of contactMessages) {
       await db.insert(contactForms).values({
         id: uuidv4(),
         ...message,
       });
     }
-    console.log(`✅ Inserted ${contactMessages.length} contact messages`);
 
     // Insert service inquiries
-    console.log(`🔧 Inserting ${serviceInquiriesData.length} service inquiries...`);
     for (const inquiry of serviceInquiriesData) {
       await db.insert(serviceInquiries).values({
         id: uuidv4(),
         ...inquiry,
       });
     }
-    console.log(`✅ Inserted ${serviceInquiriesData.length} service inquiries`);
 
    //revalidatePath("/dashboard/mails");
     
@@ -350,7 +344,6 @@ export async function seedDatabase() {
       message: `Successfully seeded ${contactMessages.length} contact messages and ${serviceInquiriesData.length} service inquiries` 
     };
   } catch (error) {
-    console.error("❌ Error seeding database:", error);
     return { 
       success: false, 
       message: "Failed to seed database. Check console for details." 
@@ -361,12 +354,10 @@ export async function seedDatabase() {
 // Function to clear database
 export async function clearDatabase() {
   try {
-    console.log("🗑️ Clearing database...");
     
     await db.delete(serviceInquiries);
     await db.delete(contactForms);
     
-    console.log("✅ Database cleared successfully");
     
    //revalidatePath("/dashboard/mails");
     
@@ -375,7 +366,6 @@ export async function clearDatabase() {
       message: "Database cleared successfully" 
     };
   } catch (error) {
-    console.error("❌ Error clearing database:", error);
     return { 
       success: false, 
       message: "Failed to clear database" 
@@ -409,7 +399,6 @@ export async function seedOnlyContactForms() {
       message: `Successfully seeded ${contactMessages.length} contact messages` 
     };
   } catch (error) {
-    console.error("Error seeding contact forms:", error);
     return { 
       success: false, 
       message: "Failed to seed contact forms" 
@@ -442,7 +431,6 @@ export async function seedOnlyServiceInquiries() {
       message: `Successfully seeded ${serviceInquiriesData.length} service inquiries` 
     };
   } catch (error) {
-    console.error("Error seeding service inquiries:", error);
     return { 
       success: false, 
       message: "Failed to seed service inquiries" 

@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { AlertCircle, HelpCircle } from "lucide-react"
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
+export default function Error({ error, reset }: { error: Error & { digest?: string }, reset: () => void }) {
   const router = useRouter()
   const [countdown, setCountdown] = useState(30) // Increased from 5 to 30 seconds
   const [isProd, setIsProd] = useState(false)

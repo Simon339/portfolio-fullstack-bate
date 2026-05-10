@@ -8,7 +8,7 @@ import bcrypt from "bcryptjs";
 import { AddNewUserSchema } from "@/types";
 import { revalidatePath } from "next/cache";
 import { user, auditLogs, contactForms, serviceInquiries, projects, session, account, ratings } from "../schema"; 
-import { eq, desc, and, gte, lt, count, inArray, sql, placeholder } from "drizzle-orm";
+import { eq, desc, and, gte, lt, count, inArray, sql, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "../auth";
 import { randomBytes } from "crypto";
@@ -27,7 +27,7 @@ function generateSecureLogId() {
 export async function getUsers() {
   try {
     const Users = await db.select().from(user);
-    revalidatePath("/users");
+    revalidatePath("/dashboard");
     return { count: Users.length, success: true };
   } catch (error) {
     return { count: 0, success: false };
@@ -215,7 +215,6 @@ export async function impersonateUser(userId: string): Promise<ServerActionRespo
       message: `Now impersonating ${userData.name || userData.email}`,
     };
   } catch (error) {
-    console.error("Failed to impersonate user:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to impersonate user",
@@ -269,7 +268,6 @@ export async function stopImpersonating(): Promise<ServerActionResponse> {
       message: "Stopped impersonating user",
     };
   } catch (error) {
-    console.error("Failed to stop impersonating:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to stop impersonating",
@@ -335,7 +333,6 @@ export async function getbyUserDetails(userIds?: string[]) {
 
     return usersWithStats;
   } catch (error) {
-    console.error("Error fetching users:", error);
     return [];
   }
 }
@@ -407,7 +404,6 @@ export async function deleteUser(formData: FormData,): Promise<{ success: boolea
     revalidatePath("/users");
     return { success: true, message: "User deleted successfully" };
   } catch (error) {
-    console.error("Error deleting user:", error);
     return { error: "Failed to delete user", success: false };
   }
 }
@@ -453,7 +449,6 @@ export async function getUserSignupAnalytics() {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching user signup analytics:", error);
     return {
       currentYearSignups: 0,
       lastYearSignups: 0,
@@ -475,14 +470,13 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
     }
 
     // Step 1: Handle image URL
-    const imageUrl = data.image ? URL.createObjectURL(data.image) : undefined;
+    // const imageUrl = data.image ? URL.createObjectURL(data.image) : undefined;
 
     // Step 2: Insert the new user into the database
     const newuser = await auth.api.createUser({
       body: {
         email: data.email.toLowerCase(),
         name: data.firstname + " " + data.surname,
-        image: `https://api.dicebear.com/6.x/initials/svg?seed=${data.firstname + " " + data.surname || "user"}`,
         role: data.role || "user",
         password: await bcrypt.hash("defaultPassword", 10), // Hash the default password
       },
@@ -516,11 +510,10 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
     });
 
     // Step 6: Revalidate the users page
-    revalidatePath("/users");
+    revalidatePath("/dashboard/users");
 
     return { success: true, message: "User added successfully" };
   } catch (error) {
-    console.error("Error adding user:", error);
 
     if (error instanceof z.ZodError) {
       return {
@@ -577,7 +570,6 @@ export async function updateUserRole(
 
     return { success: true, message: "User role updated successfully" };
   } catch (error) {
-    console.error("Failed to update user role:", error);
     return {
       success: false,
       error:
@@ -606,8 +598,8 @@ export async function updateUserEmail(
 
     const data = await auth.api.adminUpdateUser({
     body: {
-        userId: "user-id", // required
-        data: { email: "John Doe" }, // required
+        userId: userId, // required
+        data: { email: newEmail }, // required
     },
     // This endpoint requires session cookies.
     headers: await headers(),
@@ -630,7 +622,6 @@ export async function updateUserEmail(
 
     return { success: true, message: "User email updated successfully" };
   } catch (error) {
-    console.error("Failed to update user email:", error);
     return {
       success: false,
       error:
@@ -692,7 +683,6 @@ export async function deleteUserPermanently(
 
     return { success: true, message: "User permanently deleted" };
   } catch (error) {
-    console.error("Failed to delete user:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete user",
@@ -720,10 +710,9 @@ export async function getUserAuditLogs(userId: string): Promise<AuditLog[]> {
       .from(auditLogs)
       .where(eq(auditLogs.recordId, userId))
       .orderBy(desc(auditLogs.timestamp));
-
+    revalidatePath("/dashboard");
     return logs;
   } catch (error) {
-    console.error("Failed to fetch user audit logs:", error);
     return [];
   }
 }
@@ -740,8 +729,8 @@ export async function getTotalUsers() {
 
 export async function getStaffCount() {
   try {
-    const staff = await db.select().from(user);
-
+    const staff = await db.select().from(user).where(or(eq(user.role, "admin"), eq(user.role, "owner")));
+    revalidatePath("/dashboard");
     return staff.length;
   } catch (error) {
     return 0;
@@ -759,7 +748,7 @@ export async function getTotalRequests() {
       .select()
       .from(serviceInquiries)
       .where(eq(serviceInquiries.read, false));
-
+    revalidatePath("/dashboard");
     return unreadContactForms.length + unreadServiceInquiries.length;
   } catch (error) {
     return 0;
@@ -769,6 +758,7 @@ export async function getTotalRequests() {
 export async function getTotalProjects() {
   try {
     const totalProjects = await db.select().from(projects);
+    revalidatePath("/dashboard");
     return totalProjects.length;
   } catch (error) {
     return 0;

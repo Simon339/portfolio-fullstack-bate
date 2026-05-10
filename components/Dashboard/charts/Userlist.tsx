@@ -117,7 +117,7 @@ const Userlist = (props: UserlistProps) => {
     <div className="relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => { setIsHovered(false); setExpanded(false); }}>
       <div className={cn("relative rounded-xl transition-all duration-300 overflow-hidden bg-white border border-[#acc2ef]", isHovered && "bg-gray-50 shadow-md", expanded && "bg-gray-50 shadow-lg", banned && "bg-red-50/50 border-red-500/20")}>
         <div className={cn("absolute left-0 top-3 bottom-3 w-0.5 rounded-full transition-all duration-300", banned ? "bg-red-500" : isVerified ? "bg-emerald-500" : "bg-gray-300", isHovered && "h-auto")} />
-        <div className="p-4 pl-5">
+        <div className="p-4 pl-3">
           <div className="flex items-center gap-4">
             <div className="relative flex-shrink-0">
               <Avatar className={cn("h-11 w-11 ring-2 transition-all duration-300 ring-[#acc2ef]", isHovered && "ring-emerald-500/30")}>
@@ -138,7 +138,7 @@ const Userlist = (props: UserlistProps) => {
               </div>
               <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1.5 truncate"><Mail className="w-3 h-3 flex-shrink-0" /><span className="truncate">{email}</span></span>
-                <span className="hidden sm:flex items-center gap-1.5"><Clock className="w-3 h-3" />{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+                <span className="hidden sm:flex items-center gap-1"><Clock className="w-3 h-3" />{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
               </div>
             </div>
             <div className="hidden md:flex items-center gap-2">

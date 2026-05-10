@@ -50,6 +50,8 @@ export const SkillsCard = () => {
         { name: "Vite", level: 80 },
         { name: "Node.js", level: 70 },
         { name: "Api Development", level: 65 },
+        { name: "MongoDB", level: 60 },
+        { name: "Django", level: 55 },
       ],
     },
   ]
@@ -82,15 +84,15 @@ export const SkillsCard = () => {
                       </span>
                     </div>
                     <div className="h-[1px] w-full bg-white/10 relative">
-                     
+
                       <div
-  className="absolute top-0 left-0 h-[1px] animate-[progressAnimation_1s_ease-out_forwards]"
-  style={{
-    '--target-width': `${skill.level}%`,
-    backgroundColor: skillColor,
-    animationDelay: `${skillIndex * 100}ms`,
-  } as React.CSSProperties}
-></div>
+                        className="absolute top-0 left-0 h-[1px] animate-[progressAnimation_1s_ease-out_forwards]"
+                        style={{
+                          '--target-width': `${skill.level}%`,
+                          backgroundColor: skillColor,
+                          animationDelay: `${skillIndex * 100}ms`,
+                        } as React.CSSProperties}
+                      ></div>
                     </div>
                   </div>
                 )

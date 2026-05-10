@@ -18,7 +18,7 @@ export default function Header() {
   const [mounted, setMounted] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
-  const { data: session, isPending, refetch } = authClient.useSession()
+  const { data: session, isPending, refetch } = authClient.useSession();
 
   const handleLogout = async () => {
     await authClient.signOut()
@@ -107,7 +107,6 @@ export default function Header() {
 
         {/* Right section */}
         <div className="flex items-center gap-3">
-
           {session?.user ? (
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
@@ -118,38 +117,42 @@ export default function Header() {
                         session.user.image ||
                         `https://api.dicebear.com/6.x/initials/svg?seed=${session.user.email}`
                       }
+                      alt={session.user.name || "User avatar"}
+                      className="object-cover"
                     />
-                    <AvatarFallback className="bg-blue-600 text-white">
-                      {session.user.name?.slice(0, 1)}
+                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white font-medium">
+                      {session.user.name?.slice(0, 2) || session.user.email?.slice(0, 2) || "U"}
                     </AvatarFallback>
                   </Avatar>
 
-                  <ChevronDown className="w-4 h-4 text-white/60" />
+                  <ChevronDown className="w-4 h-4 text-white/70" />
                 </button>
               </DropdownTrigger>
 
               <DropdownMenu
-                className="bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl min-w-[220px]"
+                className="bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl min-w-[240px]"
               >
                 <DropdownItem
                   key="profile"
-                  className="cursor-default hover:bg-transparent"
+                  className="cursor-default hover:bg-transparent opacity-100"
+                  isReadOnly
                 >
-                  <div className="flex flex-col">
-                    <p className="text-sm text-white font-semibold truncate">
+                  <div className="flex flex-col gap-0.5 py-1">
+                    <p className="text-sm text-white font-semibold truncate max-w-[180px]">
                       {session.user.name || "User"}
                     </p>
-                    <p className="text-xs text-white/50 truncate">
+                    <p className="text-xs text-white/60 truncate max-w-[180px]">
                       {session.user.email}
                     </p>
                   </div>
                 </DropdownItem>
 
-                <DropdownSection className="border-t border-white/5 pt-2">
+                <DropdownSection className="border-t border-white/10 pt-2 mt-1">
                   <DropdownItem
                     key="dashboard"
                     href="/dashboard"
-                    startContent={<Home className="w-4 h-4 text-yellow-200" />}
+                    startContent={<Home className="w-4 h-4 text-[#FFF4B7]" />}
+                    className="text-white/80 hover:text-white"
                   >
                     Dashboard
                   </DropdownItem>
@@ -157,17 +160,18 @@ export default function Header() {
                   <DropdownItem
                     key="settings"
                     href="/dashboard/settings"
-                    startContent={<UserCog className="w-4 h-4 text-yellow-200" />}
+                    startContent={<UserCog className="w-4 h-4 text-[#FFF4B7]" />}
+                    className="text-white/80 hover:text-white"
                   >
                     Settings
                   </DropdownItem>
                 </DropdownSection>
 
-                <DropdownSection className="border-t border-white/5 pt-2">
+                <DropdownSection className="border-t border-white/10 pt-2 mt-1">
                   <DropdownItem
                     key="logout"
                     onClick={handleLogout}
-                    className="text-red-400 hover:bg-red-500/10"
+                    className="text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
                     startContent={<LogOut className="w-4 h-4" />}
                   >
                     Logout
@@ -185,7 +189,6 @@ export default function Header() {
           )}
 
           <Mobnav />
-
         </div>
       </nav>
     </header>

@@ -8,7 +8,6 @@ export async function seedDatabaseAction() {
     const result = await seedDatabase();
     return result;
   } catch (error) {
-    console.error('Error in seed action:', error);
     return { 
       success: false, 
       message: 'Failed to seed database' 

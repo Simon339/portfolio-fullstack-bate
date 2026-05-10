@@ -32,18 +32,19 @@ export const AddNewUserSchema = z.object({
   surname: z.string().min(2, { message: "Surname must be at least 2 characters." }),
   role: z.enum(["user", "admin", "owner"], { message: "Role must be either user , admin or super admin" }),
   email: z.string().email({ message: "Invalid email address." }),
-  image: z
-    .instanceof(File)
-    .refine((file) => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
-    .refine(
-      (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
-      "Only .jpg, .png, and .webp formats are supported."
-    )
-    .optional(),
+  // image: z
+  //   .instanceof(File)
+  //   .refine((file) => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+  //   .refine(
+  //     (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
+  //     "Only .jpg, .png, and .webp formats are supported."
+  //   )
+  //   .optional(),
 });
 
 export const RatingSchema = z.object({
   rating: z.number().min(1).max(5, "Rating must be between 1 and 5."),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
   feedback: z.string().optional()
 });
 

@@ -1622,8 +1622,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           techstackMap.set(techName, techstackId)
           results.techstacksCreated++
           
-          // Log the icon URL for debugging
-          console.log(`Created tech stack: ${techName} -> ${techIconUrl}`)
         }
       } catch (error) {
         const errorMsg = `Failed to create tech stack "${techName}": ${error instanceof Error ? error.message : String(error)}`

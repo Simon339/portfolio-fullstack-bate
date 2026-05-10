@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { ArrowLeft, Edit, ExternalLink, Globe, Trash2 } from "lucide-react"
 import Link from "next/link"
-
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CardContent } from "@/components/ui/card"

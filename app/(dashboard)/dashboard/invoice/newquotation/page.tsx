@@ -220,72 +220,83 @@ export default function AddQuotation() {
         setEditingCell(null)
     }
 
-    const onSubmit = async (data: QuotationFormData) => {
-        // Validate items
-        if (items.length === 0) {
-            toast.error("Please add at least one item")
-            return
-        }
-
-        // Validate all items have required fields
-        const invalidItems = items.filter(item => !item.description.trim() || !item.unit.trim())
-        if (invalidItems.length > 0) {
-            toast.error("Please fill in all required item fields (description and unit)")
-            return
-        }
-
-        try {
-            setSaving(true)
-
-            // Prepare data for server action
-            const quotationData = {
-                name: data.name.trim(),
-                email: data.email.trim(),
-                phone: data.phone.trim(),
-                companyName: data.companyName.trim(),
-                address: data.address.street?.trim()
-                    ? {
-                          unit: data.address.unit?.trim() || undefined,
-                          street: data.address.street.trim(),
-                          subdivision: data.address.subdivision?.trim() || undefined,
-                          city: data.address.city?.trim(),
-                          province: data.address.province?.trim(),
-                          postalCode: data.address.postalCode?.trim(),
-                      }
-                    : undefined,
-
-                // Quotation details
-                service: data.service.trim(),
-                notes: data.notes?.trim() || undefined,
-                terms: data.terms?.trim() || undefined,
-
-                // Quotation items
-                items: items.map((item) => ({
-                    description: item.description.trim(),
-                    quantity: item.quantity,
-                    unit: item.unit.trim() || "units",
-                    unitPrice: parseFloat(item.unitPrice).toFixed(2),
-                    total: parseFloat(item.total).toFixed(2),
-                })),
-
-                // Financials
-                subtotal: totals.subtotal,
-                taxRate: parseFloat(taxRate).toFixed(2),
-                total: totals.total,
-            }
-
-            const response = await createNewQuotation(quotationData)
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-
-            toast.success("Quotation created successfully!")
-            router.push("/dashboard/invoice")
-        } catch (error: unknown) {
-            console.error("Error creating quotation:", error)
-            toast.error(error instanceof Error ? error.message : "Failed to create quotation")
-        } finally {
-            setSaving(false)
-        }
+const onSubmit = async (data: QuotationFormData) => {
+    // Validate items
+    if (items.length === 0) {
+        toast.error("Please add at least one item")
+        return
     }
+
+    // Validate all items have required fields
+    const invalidItems = items.filter(item => !item.description.trim() || !item.unit.trim())
+    if (invalidItems.length > 0) {
+        toast.error("Please fill in all required item fields (description and unit)")
+        return
+    }
+
+    try {
+        setSaving(true)
+
+        // Prepare data for server action
+        const quotationData = {
+            name: data.name.trim(),
+            email: data.email.trim(),
+            phone: data.phone.trim(),
+            companyName: data.companyName.trim(),
+            // Ensure address is properly formatted as an object
+            address: {
+                unit: data.address.unit?.trim() || "",
+                street: data.address.street?.trim() || "",
+                subdivision: data.address.subdivision?.trim() || "",
+                city: data.address.city?.trim() || "",
+                province: data.address.province?.trim() || "",
+                postalCode: data.address.postalCode?.trim() || "",
+            },
+
+            // Quotation details
+            service: data.service.trim(),
+            notes: data.notes?.trim() || "",
+            terms: data.terms?.trim() || "",
+
+            // Quotation items
+            items: items.map((item) => ({
+                description: item.description.trim(),
+                quantity: item.quantity,
+                unit: item.unit.trim() || "units",
+                unitPrice: parseFloat(item.unitPrice).toFixed(2),
+                total: parseFloat(item.total).toFixed(2),
+            })),
+
+            // Financials
+            subtotal: totals.subtotal,
+            taxRate: parseFloat(taxRate).toFixed(2),
+            total: totals.total,
+        }
+
+        console.log("Sending quotation data:", quotationData) // For debugging
+
+        const response = await createNewQuotation(quotationData)
+        
+        if (response.error) {
+            toast.error(response.error)
+            return
+        }
+
+        toast.success("Quotation created successfully!")
+        
+        // Use the redirect path from the response if available
+        if (response.redirect) {
+            router.push(response.redirect)
+        } else {
+            router.push("/dashboard/invoice")
+        }
+    } catch (error: unknown) {
+        console.error("Error creating quotation:", error)
+        toast.error(error instanceof Error ? error.message : "Failed to create quotation")
+    } finally {
+        setSaving(false)
+    }
+}
 
     const handleCancel = () => {
         router.back()
@@ -629,7 +640,7 @@ export default function AddQuotation() {
                                                                                 updatedItems[index] = {
                                                                                     ...item,
                                                                                     quantity: value,
-                                                                                    total: (value * parseFloat(item.unitPrice || 0)).toFixed(2)
+                                                                                    total: (value * parseFloat(item.unitPrice || "0")).toFixed(2)
                                                                                 };
                                                                                 setItems(updatedItems);
                                                                             }}
@@ -701,7 +712,7 @@ export default function AddQuotation() {
                                                                             className="text-sm p-1 rounded hover:bg-slate-100 cursor-pointer min-h-[32px] flex items-center justify-center"
                                                                             onClick={() => setEditingCell({ rowIndex: index, column: 'unitPrice' })}
                                                                         >
-                                                                            {formatCurrency(parseFloat(item.unitPrice || 0))}
+                                                                            {formatCurrency(parseFloat(item.unitPrice || "0"))}
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -709,7 +720,7 @@ export default function AddQuotation() {
 
                                                             {/* Total Column - Calculated (Read-only) */}
                                                             <TableCell className="text-center font-semibold text-sm text-slate-800">
-                                                                {formatCurrency(parseFloat(item.total || 0))}
+                                                                {formatCurrency(parseFloat(item.total || "0"))}
                                                             </TableCell>
 
                                                             {/* Actions Column */}

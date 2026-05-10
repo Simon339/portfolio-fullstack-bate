@@ -3,7 +3,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
 import Userlist from "./Userlist";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { AlertCircle, TrendingDown, TrendingUp, Users, UserPlus } from "lucide-react";
 import { getbyUserDetails, getUserSignupAnalytics } from "@/server/data/alldata";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -35,7 +35,7 @@ const SkeletonUser = () => (
 );
 
 const RecentUsers = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState({
@@ -50,17 +50,27 @@ const RecentUsers = () => {
       try {
         setLoading(true);
         const [usersData, analyticsData] = await Promise.all([getbyUserDetails(), getUserSignupAnalytics()]);
-        setUsers(usersData as User[]);
+        setAllUsers(usersData as User[]);
         setAnalytics(analyticsData);
       } catch (err) {
         setError("Failed to fetch data. Please try again later.");
-        console.error("Error fetching users:", err);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, []);
+
+  // Filter users to show only those created within the last week
+  const recentUsers = useMemo(() => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    return allUsers.filter(user => {
+      const createdAt = new Date(user.createdAt);
+      return createdAt >= oneWeekAgo;
+    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [allUsers]);
 
   const isPositiveChange = analytics.percentageChange >= 0;
   const TrendIcon = isPositiveChange ? TrendingUp : TrendingDown;
@@ -109,10 +119,10 @@ const RecentUsers = () => {
               <CardDescription className="text-gray-500 text-sm">New users who joined recently</CardDescription>
             </div>
           </div>
-          {!loading && users.length > 0 && (
+          {!loading && recentUsers.length > 0 && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 border border-[#acc2ef]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-medium text-gray-600">{users.length}</span>
+              <span className="text-xs font-medium text-gray-600">{recentUsers.length}</span>
             </div>
           )}
         </div>
@@ -122,10 +132,10 @@ const RecentUsers = () => {
           <div className="space-y-1 px-2">
             {[...Array(4)].map((_, i) => <SkeletonUser key={i} />)}
           </div>
-        ) : users.length > 0 ? (
+        ) : recentUsers.length > 0 ? (
           <ScrollArea className="h-[300px] px-2">
             <div className="space-y-1">
-              {users.map((user, index) => (
+              {recentUsers.map((user, index) => (
                 <div key={user.id} className="animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
                   <Userlist id={user.id} name={user.name} email={user.email} image={user.image || ''} role={user.role || 'user'} banned={user.banned || false} twofactorenabled={user.twoFactorEnabled || false} status={user.emailVerified ? 'Verified' : 'Not Verified'} createdAt={user.createdAt} />
                 </div>
@@ -146,7 +156,7 @@ const RecentUsers = () => {
         )}
         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none" />
       </CardContent>
-      {analytics.success && users.length > 0 && (
+      {analytics.success && recentUsers.length > 0 && (
         <CardFooter className="relative border-t border-[#acc2ef] bg-gray-100/50 px-6 py-4">
           <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0,0,0) 1px, transparent 0)`, backgroundSize: '16px 16px' }} aria-hidden="true" />
           <div className="relative space-y-2 w-full">

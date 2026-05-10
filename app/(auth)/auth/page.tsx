@@ -1,256 +1,435 @@
-// app/(auth)/page.tsx
-"use client";
+"use client"
 
-import type React from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import Signinform from "@/components/Auth/Signinform";
-import Signupform from "@/components/Auth/Signupform";
-import TwoFactorForm from "@/components/Auth/TwoFactorForm";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { authClient } from "@/hooks/getcurrectuser";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import type React from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { useEffect, useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
+import Signinform from "@/components/Auth/Signinform"
+import Signupform from "@/components/Auth/Signupform"
+import TwoFactorForm from "@/components/Auth/TwoFactorForm"
+import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import { authClient } from "@/hooks/getcurrectuser"
+import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, AlertCircle } from "lucide-react"
+
+// Google Icon Component
+const GoogleIcon = () => (
+  <svg 
+    width="18" 
+    height="18" 
+    viewBox="0 0 24 24" 
+    className="flex-shrink-0"
+    aria-hidden="true"
+  >
+    <path 
+      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" 
+      fill="#4285F4"
+    />
+    <path 
+      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" 
+      fill="#34A853"
+    />
+    <path 
+      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" 
+      fill="#FBBC05"
+    />
+    <path 
+      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" 
+      fill="#EA4335"
+    />
+  </svg>
+)
+
+// GitHub Icon Component
+const GitHubIcon = () => (
+  <svg 
+    width="18" 
+    height="18" 
+    viewBox="0 0 24 24" 
+    className="flex-shrink-0"
+    aria-hidden="true"
+    fill="currentColor"
+  >
+    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+  </svg>
+)
 
 const SignIn: React.FC = () => {
-  const currentYear = new Date().getFullYear();
-  const lastMethod = authClient.getLastUsedLoginMethod();
-  const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
-  const [oauthError, setOauthError] = useState<string | null>(null);
-  const [showTwoFactor, setShowTwoFactor] = useState(false);
-  const [twoFactorEmail, setTwoFactorEmail] = useState("");
+  const currentYear = new Date().getFullYear()
+  const [isLoading, setIsLoading] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin")
+  const [oauthError, setOauthError] = useState<string | null>(null)
+  const [showTwoFactor, setShowTwoFactor] = useState(false)
+  const [twoFactorEmail, setTwoFactorEmail] = useState("")
+  const [lastMethod, setLastMethod] = useState<string | null>(null)
 
-  const handleOAuthSignIn = async (provider: "google" | "github") => {
-    setIsLoading(provider);
-    setOauthError(null);
+  useEffect(() => {
+    setLastMethod(authClient.getLastUsedLoginMethod())
+  }, [])
+
+  const handleGoogle = async () => {
+    setIsLoading("google")
+    setOauthError(null)
     
     try {
-      const data = await authClient.signIn.social({
-        provider: provider,
-      });
-      setIsLoading(null);
-    } catch (error) {
-      setIsLoading(null);
-      setOauthError(error instanceof Error ? error.message : "An error occurred during sign in");
-      toast.error("Sign in failed");
-    }
-  };
+      // await authClient.signIn.social({
+      //   provider: "google",
+      //   callbackURL: "/dashboard",
+      // })
+      setIsLoading(null)
 
+      await new Promise(resolve => setTimeout(resolve, 1500)) // Simulate network delay
+      
+      toast.info("Feature Not Available", {
+        description: "Google sign-in is coming soon. Please use email/password for now.",
+      })
+    } catch (error) {
+      setIsLoading(null)
+      toast.error("Sign in failed", {
+        description: "Unable to sign in with Google. Please try again.",
+      })
+    }
+  }
+
+ const handleGithubSignIn = async () => {
+    setIsLoading("github")
+    
+    try {
+      // await authClient.signIn.social({
+      //   provider: "github",
+      //   callbackURL: "/dashboard",
+      // })
+      setIsLoading(null)
+      // Simulate oAuth - Feature not yet available
+      await new Promise(resolve => setTimeout(resolve, 1500)) // Simulate network delay
+      
+      toast.info("Feature Not Available", {
+        description: "GitHub sign-in is coming soon. Please use email/password for now.",
+      })
+
+      setIsLoading(null)
+    } catch (error) {
+      setIsLoading(null)
+      toast.error("Sign in failed", {
+        description: "Unable to sign in with GitHub. Please try again.",
+      })
+    }
+  }
+  
   const handleTwoFactorBack = () => {
-    setShowTwoFactor(false);
-    setTwoFactorEmail("");
-  };
+    setShowTwoFactor(false)
+    setTwoFactorEmail("")
+  }
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as "signin" | "signup")
+    setOauthError(null)
+  }
 
   return (
-    <section className="flex items-center justify-center min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 px-4 py-8">
-      <Card className="w-full max-w-md border border-[#acc2ef] shadow-2xl rounded-3xl overflow-hidden backdrop-blur-sm bg-white/95 transition-all duration-300">
-        <CardContent className="p-0">
-          {/* Header with Logo */}
-          <div className="p-8 pb-6 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center shadow-lg shadow-[#000B58]/10">
-                <Image
-                  src="/logo.png"
-                  alt="Company Logo"
-                  width={38}
-                  height={38}
-                  className="rounded-lg"
-                  priority
-                />
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-              {showTwoFactor ? "Two-Factor Authentication" : (activeTab === "signin" ? "Welcome Back" : "Create Account")}
-            </h1>
-            <p className="text-sm text-gray-600 mt-1.5">
-              {showTwoFactor 
-                ? "Enter the verification code to continue" 
-                : (activeTab === "signin"
-                  ? "Sign in to your account to continue"
-                  : "Join us and start your journey")
-              }
-            </p>
-          </div>
-
-          {!showTwoFactor ? (
-            <>
-              {/* OAuth Error Message */}
-              {oauthError && (
-                <div className="px-8 pt-2">
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg animate-in slide-in-from-top-2 duration-200">
-                    <p className="text-center">{oauthError}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* OAuth Buttons Section */}
-              <div className="px-8 pt-6 pb-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleOAuthSignIn("google")}
-                    disabled={isLoading !== null}
-                    aria-label="Sign in with Google"
-                    className="h-11 border-[#acc2ef] hover:border-[#000B58] hover:bg-[#000B58]/5 transition-all duration-200 rounded-xl font-medium text-slate-700 hover:text-[#000B58] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#000B58]/50 focus:ring-offset-2"
-                  >
-                    {isLoading === "google" ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 262" className="mr-2" aria-hidden="true">
-                        <path fill="#4285F4" d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622l38.755 30.023l2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"></path>
-                        <path fill="#34A853" d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055c-34.523 0-63.824-22.773-74.269-54.25l-1.531.13l-40.298 31.187l-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"></path>
-                        <path fill="#FBBC05" d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82c0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602z"></path>
-                        <path fill="#EB4335" d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0C79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"></path>
-                      </svg>
-                    )}
-                    Google
-                    {lastMethod === "google" && !isLoading && (
-                      <Badge variant="secondary" className="ml-2 text-[10px] h-5 bg-[#000B58]/10 text-[#000B58] border-[#acc2ef]">
-                        Last used
-                      </Badge>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleOAuthSignIn("github")}
-                    disabled={isLoading !== null}
-                    aria-label="Sign in with GitHub"
-                    className="h-11 border-[#acc2ef] hover:border-[#000B58] hover:bg-[#000B58]/5 transition-all duration-200 rounded-xl font-medium text-slate-700 hover:text-[#000B58] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#000B58]/50 focus:ring-offset-2"
-                  >
-                    {isLoading === "github" ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        className="mr-2"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fill="currentColor"
-                          d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.60c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2" />
-                      </svg>
-                    )}
-                    GitHub
-                    {lastMethod === "github" && !isLoading && (
-                      <Badge variant="secondary" className="ml-2 text-[10px] h-5 bg-[#000B58]/10 text-[#000B58] border-[#acc2ef]">
-                        Last used
-                      </Badge>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Divider */}
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <Separator className="w-full border-[#acc2ef]" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-3 text-slate-500 font-medium tracking-wide">Or continue with email</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tabs for Sign In / Sign Up */}
-              <div className="px-8">
-                <Tabs
-                  value={activeTab}
-                  onValueChange={(value) => setActiveTab(value as "signin" | "signup")}
-                  className="w-full"
-                >
-                  <div className="relative">
-                    <TabsList className="grid w-full grid-cols-2 rounded-lg border border-[#acc2ef] bg-gray-50/50 p-1">
-                      <TabsTrigger
-                        value="signin"
-                        className="relative rounded-md data-[state=active]:bg-[#acc2ef] data-[state=active]:text-[#000B58] data-[state=active]:font-semibold data-[state=active]:shadow-sm py-3 text-sm font-medium transition-all duration-200"
-                      >
-                        Sign In
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="signup"
-                        className="relative rounded-md data-[state=active]:bg-[#acc2ef] data-[state=active]:text-[#000B58] data-[state=active]:font-semibold data-[state=active]:shadow-sm py-3 text-sm font-medium transition-all duration-200"
-                      >
-                        Sign Up
-                      </TabsTrigger>
-                    </TabsList>
-                    {/* Last used badge positioned at top left of TabsList */}
-                    {lastMethod === "email" && (
-                      <Badge 
-                        variant="secondary" 
-                        className="absolute -top-2 -left-1 text-[10px] h-5 bg-[#000B58]/10 text-[#000B58] border-[#acc2ef] z-10"
-                      >
-                        Last used
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="pt-6 pb-4">
-                    <TabsContent value="signin" className="mt-0 space-y-4 animate-in fade-in duration-300">
-                      <Signinform 
-                        setActiveTab={setActiveTab}
-                      />
-                    </TabsContent>
-                    <TabsContent value="signup" className="mt-0 animate-in fade-in duration-300">
-                      <Signupform setActiveTab={setActiveTab} />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-
-                {/* Terms and Footer */}
-                <div className="pt-6 border-t border-gray-200/80">
-                  <p className="text-xs text-gray-500 text-center leading-relaxed">
-                    By continuing, you agree to our{" "}
-                    <Link
-                      href="/terms"
-                      className="text-[#000B58] hover:text-[#000B58]/80 transition-colors font-semibold focus:outline-none focus:underline"
-                    >
-                      Terms
-                    </Link>{" "}
-                    and{" "}
-                    <Link
-                      href="/privacy"
-                      className="text-[#000B58] hover:text-[#000B58]/80 transition-colors font-semibold focus:outline-none focus:underline"
-                    >
-                      Privacy Policy
-                    </Link>
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="px-8 py-6">
-              <TwoFactorForm 
-                onBack={handleTwoFactorBack}
-              />
-            </div>
-          )}
-
-          {/* Footer */}
-          <footer className="px-8 py-6 text-center bg-gray-50/40 border-t border-[#acc2ef]">
-            <p className="text-xs text-gray-400">
-              &copy; {currentYear}{" "}
-              <Link
-                href="/"
-                className="text-gray-600 hover:text-gray-800 transition-colors font-semibold focus:outline-none focus:underline"
+    <section className="flex items-center justify-center min-h-screen w-full bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-6 sm:py-8 md:py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-[440px] sm:max-w-lg"
+      >
+        <Card className="w-full border border-slate-200 shadow-xl rounded-xl sm:rounded-2xl overflow-hidden bg-white">
+          <CardContent className="p-0">
+            {/* Header */}
+            <div className="p-6 sm:p-8 pb-4 sm:pb-6 text-center">
+              <motion.div 
+                className="flex justify-center mb-4 sm:mb-5"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
               >
-                Simon339 Inc.
-              </Link>
-              . All rights reserved.
-            </p>
-          </footer>
-        </CardContent>
-      </Card>
-    </section>
-  );
-};
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center shadow-lg shadow-[#000B58]/10">
+                  <Image
+                    src="/logo.png"
+                    alt="Company Logo"
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 sm:w-[38px] sm:h-[38px] rounded-lg"
+                    priority
+                  />
+                </div>
+              </motion.div>
+              
+              <motion.h1 
+                className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight"
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.25 }}
+              >
+                {showTwoFactor 
+                  ? "Two-Factor Authentication" 
+                  : (activeTab === "signin" ? "Welcome Back" : "Create Account")
+                }
+              </motion.h1>
+              
+              <motion.p 
+                className="text-xs sm:text-sm text-gray-500 mt-2"
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                {showTwoFactor 
+                  ? "Enter the verification code to continue" 
+                  : (activeTab === "signin"
+                    ? "Sign in to your account to continue"
+                    : "Join us and start your journey")
+                }
+              </motion.p>
+            </div>
 
-export default SignIn;
+            {!showTwoFactor ? (
+              <>
+                {/* OAuth Error Message */}
+                <AnimatePresence>
+                  {oauthError && (
+                    <div className="px-6 sm:px-8 pt-2">
+                      <motion.div 
+                        className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm rounded-lg"
+                        initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                        transition={{ duration: 0.3 }}
+                        role="alert"
+                      >
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                          <p className="leading-snug">{oauthError}</p>
+                        </div>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
+
+                {/* OAuth Buttons Section */}
+                <motion.div 
+                  className="px-6 sm:px-8 pt-4 pb-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.35 }}
+                >
+                  <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+                    {/* Google Sign-In Button */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isLoading !== null}
+                      onClick={handleGoogle}
+                      aria-label="Sign in with Google"
+                      className={`flex-1 h-11 border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 rounded-xl font-medium text-slate-700 hover:text-slate-900 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-2 ${ 
+                        lastMethod === "google" ? "border-blue-300 bg-blue-50/30" : ""
+                      }`}
+                    >
+                      {isLoading === "google" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
+                          <GoogleIcon />
+                          <span className="text-sm font-medium">
+                            Google
+                          </span>
+                          {lastMethod === "google" && (
+                            <Badge 
+                              variant="secondary" 
+                              className="text-[10px] h-5 px-1.5 bg-blue-100 text-blue-700 border-0 font-medium hidden sm:inline-flex"
+                            >
+                              Last used
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </Button>
+                    
+                    {/* GitHub Sign-In Button */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleGithubSignIn}
+                      disabled={isLoading !== null}
+                      aria-label="Sign in with GitHub"
+                      className={`flex-1 h-11 border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 rounded-xl font-medium text-slate-700 hover:text-slate-900 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-500/30 focus:ring-offset-2 ${ 
+                        lastMethod === "github" ? "border-slate-400 bg-slate-50" : ""
+                      }`}
+                    >
+                      {isLoading === "github" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
+                          <GitHubIcon />
+                          <span className="text-sm font-medium">
+                            GitHub
+                          </span>
+                          {lastMethod === "github" && (
+                            <Badge 
+                              variant="secondary" 
+                              className="text-[10px] h-5 px-1.5 bg-slate-200 text-slate-700 border-0 font-medium hidden sm:inline-flex"
+                            >
+                              Last used
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="relative my-5 sm:my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <Separator className="w-full" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-3 text-slate-400 font-medium tracking-wide">
+                        Or continue with email
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Tabs for Sign In / Sign Up */}
+                <motion.div 
+                  className="px-6 sm:px-8"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Tabs
+                    value={activeTab}
+                    onValueChange={handleTabChange}
+                    className="w-full"
+                  >
+                    <div className="relative">
+                      <TabsList className="grid w-full grid-cols-2 rounded-lg bg-slate-100 p-1">
+                        <TabsTrigger
+                          value="signin"
+                          className="relative rounded-md data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:font-semibold data-[state=active]:shadow-sm py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 text-slate-600"
+                        >
+                          Sign In
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="signup"
+                          className="relative rounded-md data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:font-semibold data-[state=active]:shadow-sm py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 text-slate-600"
+                        >
+                          Sign Up
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      {/* Last used badge for email */}
+                      {lastMethod === "email" && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.6, type: "spring", stiffness: 500 }}
+                          className="absolute -top-2 -left-1"
+                        >
+                          <Badge 
+                            variant="secondary" 
+                            className="text-[10px] h-5 px-1.5 bg-slate-200 text-slate-700 border-0 font-medium z-10"
+                          >
+                            Last used
+                          </Badge>
+                        </motion.div>
+                      )}
+                    </div>
+                    
+                    <div className="pt-5 sm:pt-6 pb-4">
+                      <AnimatePresence mode="wait">
+                        {activeTab === "signin" ? (
+                          <motion.div
+                            key="signin-tab"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-0"
+                          >
+                            <Signinform setActiveTab={setActiveTab} />
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="signup-tab"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-0"
+                          >
+                            <Signupform setActiveTab={setActiveTab} />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </Tabs>
+
+                  {/* Terms and Footer */}
+                  <motion.div 
+                    className="pt-5 sm:pt-6 border-t border-slate-100"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <p className="text-[11px] sm:text-xs text-slate-400 text-center leading-relaxed">
+                      By continuing, you agree to our{" "}
+                      <Link
+                        href="/terms"
+                        className="text-slate-600 hover:text-slate-900 transition-colors font-medium underline-offset-2 hover:underline"
+                      >
+                        Terms
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/privacy"
+                        className="text-slate-600 hover:text-slate-900 transition-colors font-medium underline-offset-2 hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                    </p>
+                  </motion.div>
+                </motion.div>
+              </>
+            ) : (
+              <motion.div 
+                className="px-6 sm:px-8 py-6"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <TwoFactorForm onBack={handleTwoFactorBack} email={twoFactorEmail} />
+              </motion.div>
+            )}
+
+            {/* Footer */}
+            <motion.footer 
+              className="px-6 sm:px-8 py-4 sm:py-5 text-center bg-slate-50/50 border-t border-slate-100"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              <p className="text-[10px] sm:text-xs text-slate-400">
+                &copy; {currentYear}{" "}
+                <Link
+                  href="/"
+                  className="text-slate-500 hover:text-slate-700 transition-colors font-medium"
+                >
+                  Simon339 Inc
+                </Link>
+                . All rights reserved.
+              </p>
+            </motion.footer>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </section>
+  )
+}
+
+export default SignIn

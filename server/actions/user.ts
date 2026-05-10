@@ -182,9 +182,7 @@ export async function getUserDetails(userId: string) {
 }
 
 // Impersonate user
-export async function impersonateUser(
-  userId: string,
-): Promise<ServerActionResponse> {
+export async function impersonateUser(userId: string): Promise<ServerActionResponse> {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -201,9 +199,23 @@ export async function impersonateUser(
       throw new Error("Cannot impersonate yourself");
     }
 
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
+    // Check if user has permission to issue
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: loggedInUserId,
+        permissions: {
+          project: ["impersonate"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return {
+        error: "You don't have permission to impersonate users",
+        success: false,
+      };
+    }
 
     // Get user data before impersonation
     const [userData] = await db
@@ -244,7 +256,6 @@ export async function impersonateUser(
       message: `Now impersonating ${userData.name || userData.email}`,
     };
   } catch (error) {
-    console.error("Failed to impersonate user:", error);
     return {
       success: false,
       error:
@@ -297,7 +308,6 @@ export async function stopImpersonating(): Promise<ServerActionResponse> {
       message: "Stopped impersonating user",
     };
   } catch (error) {
-    console.error("Failed to stop impersonating:", error);
     return {
       success: false,
       error:
@@ -307,9 +317,7 @@ export async function stopImpersonating(): Promise<ServerActionResponse> {
 }
 
 // DeleteUser function
-export async function deleteUser(
-  formData: FormData,
-): Promise<{ success: boolean; error?: string; message?: string }> {
+export async function deleteUser(formData: FormData,): Promise<{ success: boolean; error?: string; message?: string }> {
   const userId = formData.get("userId") as string;
 
   if (!userId) {
@@ -328,9 +336,20 @@ export async function deleteUser(
       return { error: "Not authenticated", success: false };
     }
 
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
+    // Check if user has permission to issue
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: userId,
+        permissions: {
+          project: ["delete"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return { error: "You don't have permission to delete", success: false };
+    }
 
     // Get user data before deletion
     const [userData] = await db.select().from(user).where(eq(user.id, userId));
@@ -374,7 +393,6 @@ export async function deleteUser(
 
     return { success: true, message: "User deleted successfully" };
   } catch (error) {
-    console.error("Error deleting user:", error);
     return { error: "Failed to delete user", success: false };
   }
 }
@@ -389,6 +407,21 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
 
     if (!userId) {
       throw new Error("User not authenticated");
+    }
+
+    // Check if user has permission to issue
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: userId,
+        permissions: {
+          project: ["create"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return { error: "You don't have permission to create" };
     }
 
     // Step 1: Handle image URL
@@ -407,7 +440,7 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
 
     // Step 3: Generate a verification token and send a verification email
     // const verificationToken = await generateVerificationToken(data.email.toLowerCase());
-    const password = "defaultPassword";
+    const password = "DefaultPassword@2";
     const email = data.email.toLowerCase();
     // await sendVerificationEmailForAddedUser(
     //   email,
@@ -438,7 +471,6 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
 
     return { success: true, message: "User added successfully" };
   } catch (error) {
-    console.error("Error adding user:", error);
 
     if (error instanceof z.ZodError) {
       return {
@@ -452,45 +484,61 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
 }
 
 // Update user role function
-export async function updateUserRole(
-  userId: string,
-  newRole: "admin" | "owner" | "user",
-): Promise<ServerActionResponse> {
+export async function updateUserRole(userId: string, newRole: "admin" | "owner" | "user" ): Promise<ServerActionResponse> {
   try {
     const session = await auth.api.getSession({
-      headers: await headers(), // you need to pass the headers object.
+      headers: await headers(),
     });
-    const userId = session?.user?.id;
+    const loggedInUserId = session?.user?.id;
 
-    if (!userId) {
-      throw new Error("User not authenticated");
+    if (!loggedInUserId) {
+      return { error: "User not authenticated", success: false };
     }
 
-    // Update the user role in the database
-    const data = await auth.api.setRole({
+    // Check if user has permission to update roles
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: loggedInUserId,
+        permissions: {
+          project: ["update"],
+        },
+      },
+    });
+
+    if (!permissionCheck.success) {
+      return {
+        error: "You don't have permission to update roles",
+        success: false,
+      };
+    }
+
+    // Update the user's role
+    await auth.api.setRole({
       body: {
         userId: userId,
         role: newRole,
       },
-      // This endpoint requires session cookies.
       headers: await headers(),
     });
 
-    // Log the action in the audit logs
+    // Log the action
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
       timestamp: new Date(),
       recordId: generateSecureLogId(),
-      userId: userId,
-      details: JSON.stringify({ action: "User role updated", newRole }),
+      userId: loggedInUserId,
+      details: JSON.stringify({
+        action: "User role updated",
+        newRole,
+        targetUserId: userId,
+      }),
       ipAddress: session?.session?.ipAddress || "unknown",
       userAgent: session?.session?.userAgent || "unknown",
     });
 
     return { success: true, message: "User role updated successfully" };
   } catch (error) {
-    console.error("Failed to update user role:", error);
     return {
       success: false,
       error:
@@ -499,11 +547,8 @@ export async function updateUserRole(
   }
 }
 
-// Update user email
-export async function updateUserEmail(
-  userId: string,
-  newEmail: string,
-): Promise<ServerActionResponse> {
+// Update user email - FIXED logic
+export async function updateUserEmail(userId: string, newEmail: string ): Promise<ServerActionResponse> {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -511,12 +556,29 @@ export async function updateUserEmail(
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
-      throw new Error("User not authenticated");
+      return { error: "User not authenticated", success: false };
     }
 
-    // Check if user is trying to update their own email
-    if (loggedInUserId === userId) {
-      throw new Error("Cannot update your own email through this endpoint");
+    // Check if user is updating their own email OR has admin permission
+    const isOwnEmail = loggedInUserId === userId;
+
+    if (!isOwnEmail) {
+      // If not their own email, check for admin permissions
+      const permissionCheck = await auth.api.userHasPermission({
+        body: {
+          userId: loggedInUserId,
+          permissions: {
+            project: ["update"],
+          },
+        },
+      });
+
+      if (!permissionCheck.success) {
+        return {
+          error: "You don't have permission to update other users' emails",
+          success: false,
+        };
+      }
     }
 
     // Get user data before updating
@@ -526,21 +588,21 @@ export async function updateUserEmail(
       .where(eq(user.id, userId));
 
     if (!userData) {
-      throw new Error("User not found");
+      return { error: "User not found", success: false };
     }
 
-    // Check if email is already taken
+    // Check if email is already taken (by a different user)
     const [existingUser] = await db
       .select({ id: user.id })
       .from(user)
       .where(eq(user.email, newEmail.toLowerCase()));
 
-    if (existingUser) {
-      throw new Error("Email already in use by another user");
+    if (existingUser && existingUser.id !== userId) {
+      return { error: "Email already in use by another user", success: false };
     }
 
     // Update the user's email
-    const data = await auth.api.adminUpdateUser({
+    await auth.api.adminUpdateUser({
       body: {
         userId: userId,
         data: { email: newEmail.toLowerCase() },
@@ -548,7 +610,7 @@ export async function updateUserEmail(
       headers: await headers(),
     });
 
-    // Log the action in the audit logs
+    // Log the action
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
@@ -561,6 +623,7 @@ export async function updateUserEmail(
         newEmail: newEmail.toLowerCase(),
         targetUserId: userId,
         targetUserName: userData.name,
+        isSelfUpdate: isOwnEmail,
       }),
       ipAddress: session?.session?.ipAddress || "unknown",
       userAgent: session?.session?.userAgent || "unknown",
@@ -568,10 +631,11 @@ export async function updateUserEmail(
 
     return {
       success: true,
-      message: `Email updated from ${userData.email} to ${newEmail.toLowerCase()}`,
+      message: isOwnEmail
+        ? `Email updated successfully`
+        : `Email updated from ${userData.email} to ${newEmail.toLowerCase()}`,
     };
   } catch (error) {
-    console.error("Failed to update user email:", error);
     return {
       success: false,
       error:
@@ -580,11 +644,8 @@ export async function updateUserEmail(
   }
 }
 
-// Update user name
-export async function updateUserName(
-  userId: string,
-  newName: string,
-): Promise<ServerActionResponse> {
+// Update user name - FIXED logic
+export async function updateUserName( userId: string, newName: string ): Promise<ServerActionResponse> {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -592,7 +653,28 @@ export async function updateUserName(
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
-      throw new Error("User not authenticated");
+      return { error: "User not authenticated", success: false };
+    }
+
+    // Allow users to update their own name or admins to update others
+    const isOwnName = loggedInUserId === userId;
+
+    if (!isOwnName) {
+      const permissionCheck = await auth.api.userHasPermission({
+        body: {
+          userId: loggedInUserId,
+          permissions: {
+            project: ["update"],
+          },
+        },
+      });
+
+      if (!permissionCheck.success) {
+        return {
+          error: "You don't have permission to update other users' names",
+          success: false,
+        };
+      }
     }
 
     // Get user data before updating
@@ -601,13 +683,12 @@ export async function updateUserName(
       .from(user)
       .where(eq(user.id, userId));
 
-    // Check if user is trying to update their own email
-    if (loggedInUserId === userId) {
-      throw new Error("Cannot update your own email through this endpoint");
+    if (!userData) {
+      return { error: "User not found", success: false };
     }
 
-    // Update the user's email
-    const data = await auth.api.adminUpdateUser({
+    // Update the user's name
+    await auth.api.adminUpdateUser({
       body: {
         userId: userId,
         data: { name: newName },
@@ -615,7 +696,7 @@ export async function updateUserName(
       headers: await headers(),
     });
 
-    // Log the action in the audit logs
+    // Log the action
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
@@ -627,7 +708,7 @@ export async function updateUserName(
         oldName: userData.name,
         newName: newName,
         targetUserId: userId,
-        targetUserName: newName,
+        isSelfUpdate: isOwnName,
       }),
       ipAddress: session?.session?.ipAddress || "unknown",
       userAgent: session?.session?.userAgent || "unknown",
@@ -635,10 +716,11 @@ export async function updateUserName(
 
     return {
       success: true,
-      message: `Name updated from ${userData.name} to ${newName}`,
+      message: isOwnName
+        ? `Name updated successfully`
+        : `Name updated from ${userData.name} to ${newName}`,
     };
   } catch (error) {
-    console.error("Failed to update user name:", error);
     return {
       success: false,
       error:
@@ -667,6 +749,24 @@ export async function banUser(
     // Check if user is trying to ban themselves
     if (loggedInUserId === userId) {
       throw new Error("Cannot ban yourself");
+    }
+
+    // Check if user has permission to issue
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: loggedInUserId,
+        permissions: {
+          project: ["ban"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return {
+        error: "You don't have permission to ban users",
+        success: false,
+      };
     }
 
     // Get user data before banning
@@ -712,7 +812,6 @@ export async function banUser(
       message: `User ${userData.name || userData.email} has been banned`,
     };
   } catch (error) {
-    console.error("Failed to ban user:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to ban user",
@@ -731,6 +830,24 @@ export async function unbanUser(userId: string): Promise<ServerActionResponse> {
 
     if (!loggedInUserId) {
       throw new Error("User not authenticated");
+    }
+
+    // Check if user has permission to issue
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: loggedInUserId,
+        permissions: {
+          project: ["unban"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return {
+        error: "You don't have permission to unban users",
+        success: false,
+      };
     }
 
     // Get user data before unbanning
@@ -772,7 +889,6 @@ export async function unbanUser(userId: string): Promise<ServerActionResponse> {
       message: `User ${userData.name || userData.email} has been unbanned`,
     };
   } catch (error) {
-    console.error("Failed to unban user:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to unban user",
@@ -793,6 +909,24 @@ export async function revokeUserSession(
 
     if (!loggedInUserId) {
       throw new Error("User not authenticated");
+    }
+
+    // Check if user has permission to issue
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: loggedInUserId,
+        permissions: {
+          project: ["revoke"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return {
+        error: "You don't have permission to revoke sessions",
+        success: false,
+      };
     }
 
     // Revoke the session
@@ -823,7 +957,6 @@ export async function revokeUserSession(
       message: "Session revoked successfully",
     };
   } catch (error) {
-    console.error("Failed to revoke session:", error);
     return {
       success: false,
       error:
@@ -850,6 +983,24 @@ export async function revokeAllUserSessions(
     // Check if user is trying to revoke their own sessions
     if (loggedInUserId === userId) {
       throw new Error("Cannot revoke your own sessions while logged in");
+    }
+
+    // Check if user has permission to issue
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: loggedInUserId,
+        permissions: {
+          project: ["revoke"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return {
+        error: "You don't have permission to revoke sessions",
+        success: false,
+      };
     }
 
     // Get user data before revoking sessions
@@ -891,7 +1042,6 @@ export async function revokeAllUserSessions(
       message: `All sessions revoked for ${userData.name || userData.email}`,
     };
   } catch (error) {
-    console.error("Failed to revoke all sessions:", error);
     return {
       success: false,
       error:
@@ -912,6 +1062,23 @@ export async function autoGenerateUsers() {
     const userId = session?.user?.id;
     if (!userId) {
       throw new Error("User not authenticated");
+    }
+
+    const permissionCheck = await auth.api.userHasPermission({
+      body: {
+        userId: userId,
+        permissions: {
+          project: ["create"],
+        },
+      },
+    });
+
+    // Check permission first before proceeding with other operations
+    if (!permissionCheck.success) {
+      return {
+        error: "You don't have permission to create users",
+        success: false,
+      };
     }
 
     const firstNames = [
@@ -1002,7 +1169,6 @@ export async function autoGenerateUsers() {
       users: generatedUsers,
     };
   } catch (error) {
-    console.error("Error auto-generating users:", error);
 
     if (error instanceof z.ZodError) {
       return {

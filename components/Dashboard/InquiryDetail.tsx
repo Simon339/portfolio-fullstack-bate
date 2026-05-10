@@ -157,38 +157,53 @@ const InquiryDetail = ({ inquiry: initialInquiry, quotationItems: initialItems }
     }).format(numAmount)
   }
 
-  const formatAddress = (address: ServiceInquiry['address']): string => {
-    if (!address) return "No address provided"
+const formatAddress = (address: ServiceInquiry['address']): string => {
+  if (!address) return "No address provided"
 
-    try {
-      let addressObj = address
-      if (typeof address === 'string') {
+  try {
+    // If address is already a string (from database)
+    if (typeof address === 'string') {
+      // Check if it looks like JSON (starts with { and ends with })
+      if (address.trim().startsWith('{') && address.trim().endsWith('}')) {
         try {
-          addressObj = JSON.parse(address)
+          const addressObj = JSON.parse(address)
+          const parts = [
+            addressObj.unit,
+            addressObj.street,
+            addressObj.subdivision,
+            addressObj.city,
+            addressObj.province,
+            addressObj.postalCode
+          ].filter(Boolean)
+          return parts.length > 0 ? parts.join(", ") : "No address provided"
         } catch {
-          return address
+          // If JSON parsing fails, clean up the string by removing quotes
+          return address.replace(/["']/g, '').trim()
         }
       }
-
-      if (typeof addressObj === 'object' && addressObj !== null) {
-        const parts = [
-          (addressObj as { unit?: string }).unit,
-          (addressObj as { street: string }).street,
-          (addressObj as { subdivision?: string }).subdivision,
-          (addressObj as { city: string }).city,
-          (addressObj as { province: string }).province,
-          (addressObj as { postalCode: string }).postalCode
-        ].filter(Boolean)
-
-        return parts.join(", ")
-      }
-
-      return "No address provided"
-    } catch {
-      return "No address provided"
+      // It's a plain string, remove any quotes and return
+      return address.replace(/["']/g, '').trim()
     }
-  }
 
+    // If address is an object (from props), format it
+    if (typeof address === 'object' && address !== null) {
+      const parts = [
+        address.unit,
+        address.street,
+        address.subdivision,
+        address.city,
+        address.province,
+        address.postalCode
+      ].filter(Boolean)
+
+      return parts.length > 0 ? parts.join(", ") : "No address provided"
+    }
+
+    return "No address provided"
+  } catch (error) {
+    return "No address provided"
+  }
+}
   const handleSave = async () => {
     if (!inquiry || !editedInquiry) return
 
@@ -421,12 +436,12 @@ const InquiryDetail = ({ inquiry: initialInquiry, quotationItems: initialItems }
 
               <div className="flex items-center gap-2">
                 {isEditing ? (
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={handleCancel}
-                      className="text-zinc-500 hover:bg-zinc-100"
+                      className="text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
                     >
                       Cancel
                     </Button>
@@ -435,20 +450,21 @@ const InquiryDetail = ({ inquiry: initialInquiry, quotationItems: initialItems }
                       size="sm"
                       onClick={handleSave}
                       disabled={!hasChanges}
-                      className="bg-emerald-600 text-white hover:bg-emerald-700"
+                      className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow"
                     >
                       <Save className="h-4 w-4 mr-1.5" />
                       Save All
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {/* Copy Action */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 text-zinc-400 hover:text-zinc-200 hover:bg-white/10"
+                          className="h-9 w-9 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
                           onClick={() =>
                             handleCopyToClipboard(
                               `${inquiry.name}\n${inquiry.email}\n${inquiry.phoneNumber}`
@@ -458,52 +474,62 @@ const InquiryDetail = ({ inquiry: initialInquiry, quotationItems: initialItems }
                           <Copy className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent className="bg-zinc-900 text-zinc-100 border-zinc-700">
+                      <TooltipContent side="bottom" className="bg-zinc-900 text-zinc-100 border-zinc-700 text-xs">
                         Copy details
                       </TooltipContent>
                     </Tooltip>
 
-                    {quotationItems.length === 0 ? (
-                      <Button
-                        size="sm"
-                        onClick={handleCreateQuoteWithItems}
-                        className="bg-sky-600 text-white hover:bg-sky-500"
-                      >
-                        <FileText className="h-4 w-4 mr-1.5" />
-                        Create Quote
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsEditing(true)}
-                        className="border-white/15 text-zinc-200 hover:bg-white/10 hover:text-white"
-                      >
-                        <Edit className="h-4 w-4 mr-1.5" />
-                        Edit
-                      </Button>
-                    )}
+                    {/* Edit Action */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setIsEditing(true)}
+                          className="h-9 w-9 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-zinc-900 text-zinc-100 border-zinc-700 text-xs">
+                        Edit inquiry
+                      </TooltipContent>
+                    </Tooltip>
 
-                    {isQuoteRequest && quotationItems.length > 0 && (
-                      <Button
-                        size="sm"
-                        onClick={handleGenerateQuotation}
-                        disabled={isGenerating}
-                        className="
-                          bg-sky-600 text-white
-                          hover:bg-sky-500
-                          disabled:bg-sky-600/50
-                          disabled:text-white/70
-                        "
-                      >
-                        {isGenerating ? (
-                          <Loader className="h-4 w-4 mr-1.5 animate-spin" />
-                        ) : (
+                    {/* Conditional Primary Actions */}
+                    <div className="ml-1">
+                      {quotationItems.length === 0 ? (
+                        <Button
+                          size="sm"
+                          onClick={handleCreateQuoteWithItems}
+                          className="bg-sky-600 text-white hover:bg-sky-500 shadow-sm hover:shadow transition-all"
+                        >
                           <FileText className="h-4 w-4 mr-1.5" />
-                        )}
-                        Create Quote
-                      </Button>
-                    )}
+                          Create Quote
+                        </Button>
+                      ) : (
+                        isQuoteRequest && (
+                          <Button
+                            size="sm"
+                            onClick={handleGenerateQuotation}
+                            disabled={isGenerating}
+                            className="bg-sky-600 text-white hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow"
+                          >
+                            {isGenerating ? (
+                              <>
+                                <Loader className="h-4 w-4 mr-1.5 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="h-4 w-4 mr-1.5" />
+                                Create Quote
+                              </>
+                            )}
+                          </Button>
+                        )
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -968,8 +994,8 @@ const InquiryDetail = ({ inquiry: initialInquiry, quotationItems: initialItems }
                       <div className="flex flex-col items-center">
                         <div
                           className={`h-2.5 w-2.5 rounded-full ring-4 ${hasQuotationNumber
-                              ? 'bg-emerald-500 ring-emerald-100'
-                              : 'bg-zinc-300 ring-zinc-100'
+                            ? 'bg-emerald-500 ring-emerald-100'
+                            : 'bg-zinc-300 ring-zinc-100'
                             }`}
                         />
                         <div className="w-px h-8 bg-zinc-200" />
@@ -992,8 +1018,8 @@ const InquiryDetail = ({ inquiry: initialInquiry, quotationItems: initialItems }
                       <div className="flex flex-col items-center">
                         <div
                           className={`h-2.5 w-2.5 rounded-full ring-4 ${isFullyQuoted
-                              ? 'bg-emerald-500 ring-emerald-100'
-                              : 'bg-zinc-300 ring-zinc-100'
+                            ? 'bg-emerald-500 ring-emerald-100'
+                            : 'bg-zinc-300 ring-zinc-100'
                             }`}
                         />
                       </div>

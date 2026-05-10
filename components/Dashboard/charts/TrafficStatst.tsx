@@ -3,20 +3,14 @@
 "use client";
 
 import * as React from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, ArrowDownRight, LineChart, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, LineChart, TrendingUp, TrendingDown, AlertCircle, Activity } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { getTrafficStats, getYearlyAuditLogAnalytics } from "@/server/actions/audit-log";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export default function TrafficStats() {
   const [trafficStats, setTrafficStats] = useState({
@@ -63,68 +57,138 @@ export default function TrafficStats() {
   const TrendIcon = isPositiveChange ? TrendingUp : TrendingDown;
   const trendColor = isPositiveChange ? "text-emerald-500" : "text-red-500";
 
+  if (error) {
+    return (
+      <Card className="relative overflow-hidden bg-gray-50 text-gray-900 border-[#acc2ef] shadow-md w-full">
+        <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-xl bg-red-500/20 blur-sm" />
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-600/20 border border-red-500/30">
+                <Activity className="w-5 h-5 text-red-600" />
+              </div>
+            </div>
+            <div>
+              <CardTitle className="text-lg font-semibold text-gray-900">Traffic Stats</CardTitle>
+              <CardDescription className="text-gray-500">Website visitor analytics</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center h-[300px] w-full text-center px-6">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 mb-4">
+            <AlertCircle className="w-7 h-7 text-red-500" />
+          </div>
+          <p className="text-sm font-medium text-gray-700 mb-1">Something went wrong</p>
+          <p className="text-xs text-gray-500 max-w-[240px]">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="bg-white border border-[#acc2ef] shadow-sm overflow-hidden">
-      <CardHeader>
+    <Card className="relative overflow-hidden bg-gray-50 text-gray-900 border-[#acc2ef] shadow-md w-full group">
+      <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-10 transition-opacity duration-500 group-hover:opacity-20" style={{ background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3), transparent)' }} aria-hidden="true" />
+      <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+      <CardHeader className="pb-4 relative">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-medium">Traffic Stats</CardTitle>
-          {!loading && !error && (
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-xl bg-purple-500/20 blur-sm" />
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-violet-600/20 border border-purple-500/30">
+                <Activity className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+            <div>
+              <CardTitle className="text-lg font-semibold text-gray-900 tracking-tight">Traffic Stats</CardTitle>
+              <CardDescription className="text-gray-500 text-sm">Website visitor analytics</CardDescription>
+            </div>
+          </div>
+          {!loading && trafficStats.totalVisits > 0 && (
             <Badge
-              variant={trafficStats.isPositive ? "outline" : "destructive"}
-              className={`ml-2 flex items-center gap-1 border-[#acc2ef] ${
+              variant="outline"
+              className={cn(
+                "ml-2 flex items-center gap-1 border",
                 trafficStats.isPositive
-                  ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
-                  : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
-              }`}
+                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                  : "bg-red-500/10 text-red-600 border-red-500/20"
+              )}
             >
               {trafficStats.isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
               {Math.abs(analytics.percentageChange).toFixed(1)}%
             </Badge>
           )}
         </div>
-        <CardDescription>Website visitor analytics</CardDescription>
       </CardHeader>
 
-      <CardContent className="h-[300px]">
+      <CardContent className="h-[300px] px-6 relative">
         {loading ? (
-          <LoadingState />
-        ) : error ? (
-          <ErrorState message={error} />
+          <div className="space-y-6 h-[300px] py-4">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <div className="space-y-4 mt-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-8" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
         ) : trafficStats.totalVisits === 0 ? (
-          <EmptyState />
+          <div className="flex flex-col items-center justify-center h-[300px] text-center">
+            <div className="relative mb-4">
+              <div className="absolute inset-0 rounded-2xl bg-gray-200 blur-lg" />
+              <div className="relative flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 border border-[#acc2ef]">
+                <LineChart className="w-8 h-8 text-gray-400" />
+              </div>
+            </div>
+            <p className="text-sm font-medium text-gray-700 mb-1">No traffic data available</p>
+            <p className="text-xs text-gray-500 max-w-[200px]">Start tracking visitors to see analytics here</p>
+          </div>
         ) : (
           <div className="space-y-4">
             <div className="flex items-baseline justify-between">
               <div>
                 <p className="text-2xl font-bold">{trafficStats.totalVisits.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Total visits this month</p>
+                <p className="text-xs text-gray-500">Total visits this month</p>
               </div>
-              <LineChart className="h-10 w-10 text-muted-foreground opacity-70" />
+              <LineChart className="h-10 w-10 text-purple-400 opacity-50" />
             </div>
 
-            <div className="space-y-2 mt-6">
+            <div className="space-y-3 mt-6">
               {trafficStats.breakdown.map((item) => (
-                <div key={item.label} className="space-y-1">
+                <div key={item.label} className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
-                    <span>{item.label}</span>
-                    <span className="font-medium">{item.value}%</span>
+                    <span className="text-gray-600">{item.label}</span>
+                    <span className="font-medium text-gray-900">{item.value}%</span>
                   </div>
-                  <Progress value={item.value} className="h-1.5" />
+                  <Progress 
+                    value={item.value} 
+                    className="h-1.5 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-violet-600" 
+                  />
                 </div>
               ))}
             </div>
           </div>
         )}
+        <div className="absolute bottom-0 left-6 right-6 h-8 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none" />
       </CardContent>
 
-      {!loading && !error && analytics.success && (
-        <CardFooter className="border-t border-[#acc2ef] bg-gray-50/50 px-6 py-4">
-          <div className="space-y-2 w-full">
-            <div className={`flex items-center gap-2 text-sm font-medium ${trendColor}`}>
+      {!loading && analytics.success && trafficStats.totalVisits > 0 && (
+        <CardFooter className="relative border-t border-[#acc2ef] bg-gray-100/50 px-6 py-4">
+          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0,0,0) 1px, transparent 0)`, backgroundSize: '16px 16px' }} aria-hidden="true" />
+          <div className="relative space-y-2 w-full">
+            <div className={cn("flex items-center gap-2 text-sm font-medium", trendColor)}>
               Audit logs {changeText} by {Math.abs(analytics.percentageChange).toFixed(1)}% this year
               <TrendIcon className="h-4 w-4" />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-500">
               {analytics.currentYearLogs.toLocaleString()} audit logs this year, compared to{" "}
               {analytics.lastYearLogs.toLocaleString()} last year
             </p>
@@ -132,52 +196,5 @@ export default function TrafficStats() {
         </CardFooter>
       )}
     </Card>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="space-y-6 h-[300px] py-4">
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-4 w-32" />
-      </div>
-
-      <div className="space-y-4 mt-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-2">
-            <div className="flex justify-between">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-8" />
-            </div>
-            <Skeleton className="h-2 w-full" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-[300px] text-center px-6">
-      <div className="rounded-full bg-red-100 p-3 mb-4">
-        <AlertCircle className="h-6 w-6 text-red-600" />
-      </div>
-      <p className="text-sm font-medium text-muted-foreground mb-1">{message}</p>
-      <p className="text-xs text-muted-foreground max-w-[250px] mt-2">
-        Check your connection and try refreshing the page
-      </p>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center h-[300px] text-center px-6">
-      <LineChart className="h-10 w-10 text-muted-foreground  mb-3 opacity-40" />
-      <p className="text-sm font-medium text-muted-foreground mb-1">No traffic data available</p>
-      <p className="text-xs text-muted-foreground max-w-[250px]">Start tracking visitors to see analytics here</p>
-    </div>
   );
 }

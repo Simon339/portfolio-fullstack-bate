@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from "@/server/db";
 import { getReviewInvitationTokenByEmail, getVerificationTokenByEmail } from '@/server/data/token';
-import { verification } from '@/server/schema';
+import { verification } from '@/server/schemasql';
 import { eq } from 'drizzle-orm';
 
 export const generateVerificationToken = async (email: string) => {

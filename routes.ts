@@ -9,7 +9,6 @@ export const publicRoutes = [
     "/coming-soon",
     "/feedback",
     "/projects/[id]",
-    "/dashboard/surveys",
   ]
   
   export const authRoutes = ["/auth", "/sign-up", "/verify-email", "/reset", "/new-password", "/two-factor"]
@@ -20,9 +19,6 @@ export const publicRoutes = [
   
   export const dashboardRoutes = [
     "/dashboard",
-    "/dashboard/mails",
-    "/dashboard/reports",
-    // "/dashboard/surveys",
   ]
   
   

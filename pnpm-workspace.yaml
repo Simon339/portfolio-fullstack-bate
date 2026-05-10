@@ -1,6 +1,6 @@
 allowBuilds:
-  '@heroui/shared-utils': set this to true or false
-  core-js: set this to true or false
+  '@heroui/shared-utils': true
+  core-js: true
   esbuild: true
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+  sharp: true
+  unrs-resolver: true

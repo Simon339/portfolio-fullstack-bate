@@ -102,7 +102,6 @@ export async function fetchLogs(page = 1, userFilter = "", actionFilter = "all",
       totalLogs,
     }
   } catch (error) {
-    console.error("Error fetching logs:", error)
     return { 
       success: false, 
       logs: [], 
@@ -168,8 +167,60 @@ export async function exportLogs(format: "json" | "csv", userFilter = "", action
         throw new Error(`Unsupported export format: ${format}`)
     }
   } catch (error) {
-    console.error("Error exporting logs:", error)
     throw new Error("Failed to export logs")
+  }
+}
+
+// NEW: Get a single log entry by ID
+export async function getLogEntry(id: string) {
+  try {
+    const result = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.id, id))
+      .limit(1)
+
+    if (!result || result.length === 0) {
+      throw new Error(`Log entry with id ${id} not found`)
+    }
+
+    const log = result[0]
+
+    // Helper function to safely convert to ISO string
+    const safeToISOString = (dateValue: any): string => {
+      try {
+        if (!dateValue) return new Date().toISOString()
+        if (dateValue instanceof Date) return dateValue.toISOString()
+        if (typeof dateValue === 'string') {
+          const parsedDate = new Date(dateValue)
+          if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString()
+        }
+        if (typeof dateValue === 'number') {
+          const dateFromTimestamp = new Date(dateValue)
+          if (!isNaN(dateFromTimestamp.getTime())) return dateFromTimestamp.toISOString()
+        }
+        return new Date().toISOString()
+      } catch {
+        return new Date().toISOString()
+      }
+    }
+
+    // Return formatted log entry
+    return {
+      id: log.id,
+      timestamp: safeToISOString(log.timestamp),
+      userId: log.userId || null,
+      action: log.action?.toLowerCase() || "",
+      details: log.details ? 
+        (typeof log.details === 'string' ? log.details : JSON.stringify(log.details)) : 
+        null,
+      tableName: log.tableName || null,
+      recordId: log.recordId || null,
+      ipAddress: log.ipAddress || null,
+      userAgent: log.userAgent || null,
+    }
+  } catch (error) {
+    throw new Error(`Failed to fetch log entry: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 
@@ -256,7 +307,6 @@ export async function getTrafficStats() {
       breakdown,
     }
   } catch (error) {
-    console.error("Error getting traffic stats:", error)
     // Return default values instead of throwing
     return {
       totalVisits: 0,
@@ -318,7 +368,6 @@ export async function getYearlyAuditLogAnalytics() {
       isPositiveChange,
     }
   } catch (error) {
-    console.error("Error getting yearly analytics:", error)
     // Return default values instead of throwing
     return {
       success: false,
@@ -359,7 +408,6 @@ export async function getUserActivities() {
       iconType: getActionIconType(activity.action),
     }))
   } catch (error) {
-    console.error("Error getting user activities:", error)
     return [] // Return empty array instead of throwing
   }
 }

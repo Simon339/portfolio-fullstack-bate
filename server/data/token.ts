@@ -17,7 +17,7 @@ export const getVerificationTokenByEmail = async (email: string) => {
     revalidatePath('/tokens');
     return verificationToken[0];
   } catch (error) {
-    console.log(error);
+    throw new Error("Failed to fetch verification token");
   }
 }
 
@@ -32,7 +32,7 @@ export const getVerificationTokenByToken = async (token: string) => {
     revalidatePath('/tokens');
     return verificationToken[0];
   } catch (error) {
-    console.log(error);
+    throw new Error("Failed to fetch verification token");
   }
 }
 
@@ -48,6 +48,6 @@ export const getReviewInvitationTokenByEmail = async (email: string) => {
     revalidatePath('/tokens');
     return reviewInvitationToken[0];
   } catch {
-    return null;
+    throw new Error("Failed to fetch review invitation token");
   }
 }

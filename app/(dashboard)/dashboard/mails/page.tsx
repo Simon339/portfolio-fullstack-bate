@@ -9,58 +9,58 @@ import InquiriesTab from '@/components/Dashboard/InquiriesTab';
 import { seedDatabaseAction, clearDatabaseAction } from '@/server/data/seed-actions';
 
 const Page = () => {
-  // const [isLoading, setIsLoading] = useState(false);
-  // const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // const handleSeed = async () => {
-  //   setIsLoading(true);
-  //   setMessage(null);
+  const handleSeed = async () => {
+    setIsLoading(true);
+    setMessage(null);
     
-  //   try {
-  //     const result = await seedDatabaseAction();
+    try {
+      const result = await seedDatabaseAction();
       
-  //     if (result.success) {
-  //       setMessage({ type: 'success', text: result.message });
-  //       // Refresh the page to show new data
-  //       window.location.reload();
-  //     } else {
-  //       setMessage({ type: 'error', text: result.message });
-  //     }
-  //   } catch (error) {
-  //     console.error('Error seeding database:', error);
-  //     setMessage({ type: 'error', text: 'Failed to seed database' });
-  //   }
+      if (result.success) {
+        setMessage({ type: 'success', text: result.message });
+        // Refresh the page to show new data
+        window.location.reload();
+      } else {
+        setMessage({ type: 'error', text: result.message });
+      }
+    } catch (error) {
+      console.error('Error seeding database:', error);
+      setMessage({ type: 'error', text: 'Failed to seed database' });
+    }
     
-  //   setIsLoading(false);
+    setIsLoading(false);
     
-  //   // Auto-hide message after 3 seconds
-  //   setTimeout(() => setMessage(null), 3000);
-  // };
+    // Auto-hide message after 3 seconds
+    setTimeout(() => setMessage(null), 3000);
+  };
 
-  // const handleClear = async () => {
-  //   setIsLoading(true);
-  //   setMessage(null);
+  const handleClear = async () => {
+    setIsLoading(true);
+    setMessage(null);
     
-  //   try {
-  //     const result = await clearDatabaseAction();
+    try {
+      const result = await clearDatabaseAction();
       
-  //     if (result.success) {
-  //       setMessage({ type: 'success', text: result.message });
-  //       // Refresh the page to show empty state
-  //       window.location.reload();
-  //     } else {
-  //       setMessage({ type: 'error', text: result.message });
-  //     }
-  //   } catch (error) {
-  //     console.error('Error clearing database:', error);
-  //     setMessage({ type: 'error', text: 'Failed to clear database' });
-  //   }
+      if (result.success) {
+        setMessage({ type: 'success', text: result.message });
+        // Refresh the page to show empty state
+        window.location.reload();
+      } else {
+        setMessage({ type: 'error', text: result.message });
+      }
+    } catch (error) {
+      console.error('Error clearing database:', error);
+      setMessage({ type: 'error', text: 'Failed to clear database' });
+    }
     
-  //   setIsLoading(false);
+    setIsLoading(false);
     
-  //   // Auto-hide message after 3 seconds
-  //   setTimeout(() => setMessage(null), 3000);
-  // };
+    // Auto-hide message after 3 seconds
+    setTimeout(() => setMessage(null), 3000);
+  };
   
   return (
     <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
@@ -86,7 +86,7 @@ const Page = () => {
           <InquiriesTab />
         </TabsContent>
       </Tabs>
-{/* 
+
       <div className="space-y-4">
         <div className="flex gap-3">
           <button
@@ -126,7 +126,7 @@ const Page = () => {
             {message.text}
           </div>
         )}
-      </div> */}
+      </div>
     </section>
   );
 };

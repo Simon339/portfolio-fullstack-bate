@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { exportLogs, fetchLogs } from "@/server/actions/audit-log"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 type LogEntry = {
   id: string
@@ -472,6 +473,7 @@ const Report = () => {
                   </TableRow>
                 </TableHeader>
 
+
                 <TableBody>
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
@@ -547,14 +549,13 @@ const Report = () => {
                             </div>
                           </TableCell>
                           <TableCell className="py-4 text-center">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 border-gray-200 bg-white hover:bg-gray-50"
-                              onClick={() => openLogDetails(log)}
+                            <Link
+                              href={`/dashboard/manage/${log.id}`}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                              aria-label={`View details for log ${log.id}`}
                             >
                               <Eye className="h-4 w-4" />
-                            </Button>
+                            </Link>
                           </TableCell>
                         </TableRow>
                       )

@@ -9,7 +9,7 @@ import Footer from "@/components/Dashboard/Footer";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect, useCallback } from "react";
-import { countUnreadNotifications, markAllNotificationsAsRead, markNotificationAsRead, getNotificationCounts, getSimpleNotifications } from "@/server/actions/notification";
+import { countUnreadNotifications, markAllNotificationsAsRead, markNotificationAsRead, getNotificationCounts, getNotifications } from "@/server/actions/notification";
 import SearchInput from "@/components/Dashboard/SearchInput";
 import { toast } from "sonner";
 import { authClient } from "@/hooks/getcurrectuser";
@@ -67,6 +67,7 @@ interface User {
   email: string;
   image: string;
   role?: string;
+  impersonatedBy?: string | null;
 }
 
 interface NotificationDetails {
@@ -112,6 +113,7 @@ const NOTIFICATION_TYPES = {
     iconColor: 'text-green-500',
   },
 } as const;
+
 // NotificationItem component with ring animation on hover
 const NotificationItem = ({ notification, onClick, onMarkAsRead }: { notification: DashboardNotification; onClick: (id: string) => void; onMarkAsRead?: (id: string, type: "contact" | "service" | "access") => void; }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -143,30 +145,11 @@ const NotificationItem = ({ notification, onClick, onMarkAsRead }: { notificatio
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Ring animation on hover */}
-      <div className="absolute inset-0 overflow-hidden rounded pointer-events-none">
-        <div className={cn(
-          "absolute inset-0 border-2 border-[#acc2ef] rounded-lg transition-all duration-500",
-          isHovered ? "scale-100 opacity-30" : "scale-0 opacity-0"
-        )} />
-        <div className={cn(
-          "absolute inset-0 border-2 border-[#8aa5e0] rounded-lg transition-all duration-700 delay-75",
-          isHovered ? "scale-110 opacity-20" : "scale-0 opacity-0"
-        )} />
-        <div className={cn(
-          "absolute inset-0 border-2 border-[#6b8bcc] rounded-lg transition-all duration-1000 delay-150",
-          isHovered ? "scale-125 opacity-10" : "scale-0 opacity-0"
-        )} />
-      </div>
+      
 
       <div className="flex items-start w-full gap-3 relative z-10">
         <div className="relative">
           <Icon className={cn("h-4 w-4 shrink-0 mt-1", notificationType.iconColor)} />
-          
-          {/* Small ring around icon for unread notifications */}
-          {!notification.read && (
-            <span className="absolute -inset-1 rounded-full border-2 border-blue-400 animate-ping opacity-75" />
-          )}
         </div>
         
         <div className="flex-1 min-w-0 space-y-2">
@@ -174,12 +157,7 @@ const NotificationItem = ({ notification, onClick, onMarkAsRead }: { notificatio
             <p className="text-sm font-semibold text-gray-900 truncate">
               {notification.title}
             </p>
-            {!notification.read && (
-              <div className="relative">
-                <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 ml-2" />
-                <div className="absolute inset-0 w-2 h-2 bg-blue-500 rounded-full animate-ping opacity-75" />
-              </div>
-            )}
+            
           </div>
           <p className="text-xs text-gray-600 line-clamp-2">
             {notification.message}
@@ -247,22 +225,6 @@ const NotificationItem = ({ notification, onClick, onMarkAsRead }: { notificatio
   );
 };
 
-// EmptyState component with ring animation (already has it, keeping as is)
-const EmptyState = ({ message = "No notifications yet", submessage = "Check back later for updates" }) => (
-  <div className="py-8 text-center">
-    <div className="relative inline-flex items-center justify-center mb-4">
-      {/* Multiple ring waves */}
-      <div className="absolute h-12 w-12 rounded-full border-2 border-[#acc2ef] opacity-0 animate-[ring_2s_ease-out_infinite]" />
-      <div className="absolute h-12 w-12 rounded-full border-2 border-[#acc2ef] opacity-0 animate-[ring_2s_ease-out_0.5s_infinite]" />
-      <div className="absolute h-12 w-12 rounded-full border-2 border-[#acc2ef] opacity-0 animate-[ring_2s_ease-out_1s_infinite]" />
-      
-      <Bell className="relative h-8 w-8 text-muted-foreground opacity-40" />
-    </div>
-    <p className="text-sm text-muted-foreground font-medium">{message}</p>
-    <p className="text-xs text-muted-foreground mt-1">{submessage}</p>
-  </div>
-);
-
 // NotificationsDropdown component with ring animation on the bell icon when there are notifications
 const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificationsOpen, unreadNotificationsCount, notificationDetails, handleNotificationClick, handleMarkAllAsRead }: { notifications: DashboardNotification[]; notificationsOpen: boolean; setNotificationsOpen: (open: boolean) => void; unreadNotificationsCount: number; notificationDetails?: NotificationDetails; handleNotificationClick: (id: string) => void; handleMarkAllAsRead: () => void }) => {
   const router = useRouter();
@@ -280,35 +242,8 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
           onMouseEnter={() => setIsBellHovered(true)}
           onMouseLeave={() => setIsBellHovered(false)}
         >
-          {/* Ring animation on bell hover */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className={cn(
-              "absolute h-10 w-10 rounded-full border-2 border-[#acc2ef] transition-all duration-500",
-              isBellHovered ? "scale-100 opacity-30" : "scale-0 opacity-0"
-            )} />
-            <div className={cn(
-              "absolute h-12 w-12 rounded-full border-2 border-[#8aa5e0] transition-all duration-700 delay-75",
-              isBellHovered ? "scale-100 opacity-20" : "scale-0 opacity-0"
-            )} />
-            <div className={cn(
-              "absolute h-14 w-14 rounded-full border-2 border-[#6b8bcc] transition-all duration-1000 delay-150",
-              isBellHovered ? "scale-100 opacity-10" : "scale-0 opacity-0"
-            )} />
-          </div>
 
-          {/* Ring animation when there are unread notifications (pulsing) */}
-          {unreadNotificationsCount > 0 && (
-            <>
-              <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-20" />
-              <div className="absolute -inset-1 rounded-full border-2 border-red-400 animate-pulse opacity-50" />
-            </>
-          )}
-
-          <Bell className={cn(
-            "h-4 w-4 text-gray-600 transition-transform duration-300 relative z-10",
-            isBellHovered && "scale-110",
-            unreadNotificationsCount > 0 && "text-red-600"
-          )} />
+          <Bell className="h-4 w-4 text-gray-600 transition-transform duration-300 relative z-10" />
           
           {unreadNotificationsCount > 0 && (
             <span
@@ -325,7 +260,7 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
         className="w-96 shadow-lg border border-[#acc2ef]"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <DropdownMenuLabel className="flex items-center justify-between p-4 bg-gray-50 border-b border-[#acc2ef]">
+        <DropdownMenuLabel className="flex items-center justify-between p-4 bg-gray-50 border-b border-[#acc2ef] sticky top-0 z-30">
           <div className="space-y-2">
             <span className="font-semibold text-gray-900">Notifications</span>
             {notificationDetails && notifications.length > 0 && (
@@ -360,7 +295,7 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
           />
         ) : (
           <>
-            <ScrollArea className="max-h-[350px]">
+            <ScrollArea className="h-[350px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
@@ -376,7 +311,7 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
             </ScrollArea>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="justify-center py-3 text-sm text-blue-600 cursor-pointer hover:text-blue-800 hover:bg-blue-50 relative overflow-hidden group"
+              className="justify-center py-3 text-sm text-blue-600 cursor-pointer hover:text-blue-800 hover:bg-blue-50 relative overflow-hidden group sticky bottom-0 bg-white z-30"
               onClick={() => {
                 setNotificationsOpen(false);
                 router.push("/dashboard/mails");
@@ -392,6 +327,22 @@ const NotificationsDropdown = ({ notifications, notificationsOpen, setNotificati
   );
 };
 
+// EmptyState component with ring animation (already has it, keeping as is)
+const EmptyState = ({ message = "No notifications yet", submessage = "Check back later for updates" }) => (
+  <div className="py-8 text-center">
+    <div className="relative inline-flex items-center justify-center mb-4">
+      {/* Multiple ring waves */}
+      <div className="absolute h-12 w-12 rounded-full border-2 border-[#acc2ef] opacity-0 animate-[ring_2s_ease-out_infinite]" />
+      <div className="absolute h-12 w-12 rounded-full border-2 border-[#acc2ef] opacity-0 animate-[ring_2s_ease-out_0.5s_infinite]" />
+      <div className="absolute h-12 w-12 rounded-full border-2 border-[#acc2ef] opacity-0 animate-[ring_2s_ease-out_1s_infinite]" />
+      
+      <Bell className="relative h-8 w-8 text-muted-foreground opacity-40" />
+    </div>
+    <p className="text-sm text-muted-foreground font-medium">{message}</p>
+    <p className="text-xs text-muted-foreground mt-1">{submessage}</p>
+  </div>
+);
+
 export default function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -404,6 +355,53 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
   const router = useRouter();
   const { data: session, isPending: sessionLoading, error: sessionError, refetch: refetchSession } = authClient.useSession();
 
+  // Fetch notifications and counts on mount
+  useEffect(() => {
+    const fetchNotificationsAndCounts = async () => {
+      try {
+        // Fetch notifications
+        const fetchedNotifications = await getNotifications({ limit: 50 });
+        setNotifications(fetchedNotifications);
+        
+        // Fetch notification counts
+        const counts = await getNotificationCounts();
+        setNotificationDetails({
+          unreadContacts: counts.unreadContacts,
+          unreadServices: counts.unreadServices,
+        });
+        
+        // Set total unread count
+        setUnreadNotificationsCount(counts.total);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    };
+
+    fetchNotificationsAndCounts();
+  }, []);
+
+  // Refresh notifications when dropdown opens
+  useEffect(() => {
+    if (notificationsOpen) {
+      const refreshNotifications = async () => {
+        try {
+          const fetchedNotifications = await getNotifications({ limit: 50 });
+          setNotifications(fetchedNotifications);
+          
+          const counts = await getNotificationCounts();
+          setNotificationDetails({
+            unreadContacts: counts.unreadContacts,
+            unreadServices: counts.unreadServices,
+          });
+          setUnreadNotificationsCount(counts.total);
+        } catch (error) {
+          console.error('Error refreshing notifications:', error);
+        }
+      };
+      
+      refreshNotifications();
+    }
+  }, [notificationsOpen]);
 
 
   useEffect(() => {
@@ -420,7 +418,7 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
         email: session.user.email,
         image: session.user.image || "",
         role: session.user.role || userWithCustomFields.role,
-        // impersonatedBy: session.user.userid
+        impersonatedBy: session.user.id || null
       });
     }
 
