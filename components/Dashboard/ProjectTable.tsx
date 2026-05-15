@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from "react"
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -48,6 +48,7 @@ export type Project = {
   description: string
   demo: string
   features: Array<{ name: string; description: string }>
+  status: string
 }
 
 interface FetchProjectResponse {
@@ -155,7 +156,6 @@ const ProjectTable = () => {
         toast.error(`Failed to delete ${failCount} project(s)`)
       }
     } catch (error) {
-      console.error("Error during bulk deletion:", error)
       toast.error("An error occurred while deleting projects")
     } finally {
       setBulkDeleteModalOpen(false)
@@ -336,34 +336,37 @@ const ProjectTable = () => {
       },
     },
     {
-      accessorKey: "features",
-      header: "Features",
+      accessorKey: "status",
+      header: ({ column }) => (
+        <div className="flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            <span>Status</span>
+            <ArrowUpDown className="ml-1 size-4" />
+          </Button>
+        </div>
+      ),
       cell: ({ row }) => {
-        const features = row.getValue("features") as Array<{ name: string; description: string }>
-
-        if (!features || features.length === 0) {
-          return <span className="text-muted-foreground text-xs">No features</span>
-        }
-
-        // Only show the first 3 features
-        const displayFeatures = features.slice(0, 2)
-        const remainingCount = features.length - 3
+        const status = row.getValue("status") as string;
+        const isPublished = status?.toLowerCase() === "published" || status?.toLowerCase() === "publied";
+        const isDraft = status?.toLowerCase() === "draft";
 
         return (
-          <div className="flex flex-col gap-1 max-w-[200px]">
-            {displayFeatures.map((feature, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center rounded-full bg-muted/60 px-1.5 py-0.5 text-xs font-medium truncate"
-                title={feature.name}
-              >
-                {feature.name}
-              </span>
-            ))}
-            {remainingCount > 0 && <span className="text-xs text-muted-foreground">+{remainingCount} more</span>}
+          <div className="capitalize">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPublished
+                ? "bg-green-100 text-green-700"
+                : isDraft
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-gray-100 text-gray-700"
+              }`}>
+              {status}
+            </span>
           </div>
         )
-      },
+      }
     },
     {
       id: "actions",
@@ -452,7 +455,7 @@ const ProjectTable = () => {
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-between mb-4">
-        <div className="relative w-72">
+        <div className="relative w-full pr-1">
           <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search projects..."
@@ -492,7 +495,7 @@ const ProjectTable = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border-[#acc2ef]"
+              className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border border-[#acc2ef]"
             >
               <Plus className="h-4 w-4 mr-1" />
             </Button>

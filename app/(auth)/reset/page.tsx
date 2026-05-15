@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link';
-import {  Loader2, FacebookIcon, GithubIcon, InstagramIcon, LinkedinIcon } from "lucide-react"
+import { Loader2, ArrowLeft } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState, useTransition } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
-import { ResetPasswordAction } from '@/server/actions/reset';
 import { FormError } from '@/components/Auth/FormError';
 import { FormSuccess } from '@/components/Auth/FormSuccess';
 import { ResetSchema } from '@/types/vaildations/resetP';
-
+import { toast } from 'sonner';
+import { authClient } from '@/hooks/getcurrectuser';
+import Image from 'next/image';
 
 const PasswordRest: React.FC = () => {
     const currentYear = new Date().getFullYear()
@@ -36,119 +37,143 @@ const PasswordRest: React.FC = () => {
         },
     });
 
-    const onSubmit = (values: z.infer<typeof ResetSchema>) => {
+    async function onSubmit(values: z.infer<typeof ResetSchema>) {
         setError("");
         setSuccess("");
-        form.reset();
-        // console.log(values)
+        
         startTransition(() => {
-            ResetPasswordAction(values)
-                .then((data) => {
-                    setError(data?.error);
-                    setSuccess(data?.success);
+            (async () => {
+                const { error } = await authClient.requestPasswordReset({
+                    email: values.email,
+                    redirectTo: "/auth",
                 });
+
+                if (error) {
+                    setError(error.message);
+                    toast.error(error.message);
+                } else {
+                    const successMessage = "Password reset email sent. Please check your inbox.";
+                    setSuccess(successMessage);
+                    toast.success(successMessage);
+                    form.reset();
+                }
+            })();
         });
+    }
 
-    };
     return (
-        <section className="flex items-center justify-center min-h-screen  w-full bg-gradient-to-b from-gray-100 to-white px-4 py-12">
-            <Card className="w-full max-w-md shadow-2xl bg-white rounded-xl ">
-                <CardContent className="p-2">
-                    <Header />
+        <section className="flex items-center justify-center min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 px-4 py-8">
+            <Card className="w-full max-w-md border border-gray-200/80 shadow-2xl rounded-3xl overflow-hidden backdrop-blur-sm bg-white/95">
+                <CardContent className="p-0">
+                    {/* Header with Logo and Back Button */}
+                    <div className="p-8 pb-6">
+                        <div className="mb-4">
+                            <Link
+                                href="/auth"
+                                className="inline-flex items-center text-sm text-gray-600 hover:text-[#000B58] transition-colors"
+                            >
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Back to login
+                            </Link>
+                        </div>
 
-                    <Form {...form}>
-                        <form
-                            onSubmit={form.handleSubmit(onSubmit)}
-                            className="space-y-6"
-                        >
-                            <FormField
-                                control={form.control}
-                                name="email"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-sm font-medium text-gray-700">
-                                            Email
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isPending}
-                                                className="w-full px-3 py-2 border bg-slate-50 border-gray-400 text-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                                placeholder="Enter your email"
-                                                type="email"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormError message={error} />
-                            <FormSuccess message={success} />
-
-                            <div className="flex pr-3 items-center justify-between">
-                                <Link href="/auth" className="text-sm text-gray-700 hover:text-blue-500">
-                                Remember your password?
-                                </Link>
+                        <div className="text-center">
+                            <div className="flex justify-center mb-4">
+                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center shadow-lg shadow-[#000B58]/10">
+                                    <Image
+                                        src="/logo.png"
+                                        alt="Logo"
+                                        width={38}
+                                        height={38}
+                                        className="rounded-lg"
+                                    />
+                                </div>
                             </div>
+                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                                Reset Password
+                            </h1>
+                            <p className="text-sm text-gray-600 mt-1.5">
+                                Enter your email to receive a password reset link
+                            </p>
+                        </div>
+                    </div>
 
+                    {/* Form Section */}
+                    <div className="px-8 pb-8">
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-sm font-medium text-gray-700">
+                                                Email Address
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-[#000B58] focus:ring-1 focus:ring-[#000B58] bg-white transition-colors"
+                                                    placeholder="you@example.com"
+                                                    type="email"
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-xs mt-1.5" />
+                                        </FormItem>
+                                    )}
+                                />
 
-                            <Button disabled={isPending} className="w-full bg-[#000B58] border-[#0179FE] font-semibold  rounded-md py-2 text-white transition duration-200 ease-in-out hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                                {isPending ? (
-                                    <>
-                                        <Loader2 size={20} className="mr-2 animate-spin" />
-                                        Resetting...
-                                    </>
-                                ) : (
-                                    "Send Reset Link"
-                                )}
-                            </Button>
+                                <FormError message={error} />
+                                <FormSuccess message={success} />
 
-                        </form>
-                    </Form>
-                    <Footer currentYear={currentYear} />
+                                <Button
+                                    disabled={isPending}
+                                    className="w-full bg-[#000B58] hover:bg-[#000B58]/90 text-white font-semibold h-12 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
+                                    type="submit"
+                                >
+                                    {isPending ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin mr-2" />
+                                            Sending...
+                                        </>
+                                    ) : (
+                                        "Send Reset Link"
+                                    )}
+                                </Button>
+
+                                <div className="text-center pt-4">
+                                    <p className="text-sm text-gray-600">
+                                        Remember your password?{" "}
+                                        <Link
+                                            href="/auth"
+                                            className="text-[#000B58] hover:text-[#000B58]/80 font-semibold transition-colors"
+                                        >
+                                            Sign in
+                                        </Link>
+                                    </p>
+                                </div>
+                            </form>
+                        </Form>
+                    </div>
+
+                    {/* Footer */}
+                    <footer className="px-8 py-6 text-center bg-gray-50/40 border-t border-gray-100">
+                        <p className="text-xs text-gray-400">
+                            &copy; {currentYear}{" "}
+                            <Link
+                                href="/"
+                                className="text-gray-600 hover:text-gray-800 transition-colors font-semibold"
+                            >
+                                Simon339 Inc.
+                            </Link>
+                            . All rights reserved.
+                        </p>
+                    </footer>
                 </CardContent>
             </Card>
         </section>
     )
 }
-
-const Header: React.FC = () => (
-    <header className="p-6 bg-white rounded-t-xl">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">Reset Password</h1>
-        <p className="text-center text-gray-600 mb-6">Enter your email to receive a password reset link</p>
-    </header>
-)
-
-const Footer: React.FC<{ currentYear: number }> = ({ currentYear }) => (
-    <footer className="mt-8 text-center">
-        <nav className="mb-4 flex justify-center space-x-4">
-            <SocialLink href="#" icon={FacebookIcon} label="Facebook" />
-            <SocialLink href="#" icon={InstagramIcon} label="Instagram" />
-            <SocialLink href="#" icon={LinkedinIcon} label="LinkedIn" />
-            <SocialLink href="#" icon={GithubIcon} label="GitHub" />
-        </nav>
-        <p className="text-xs text-gray-500">
-            &copy; {currentYear}{" "}
-            <Link href="/" className="text-indigo-600 hover:underline">
-                Simon339 Inc.
-            </Link>{" "}
-            All rights reserved.
-        </p>
-    </footer>
-)
-
-const SocialLink: React.FC<{ href: string; icon: React.ElementType; label: string }> = ({
-    href,
-    icon: Icon,
-    label,
-}) => (
-    <Link
-        href={href}
-        className="text-gray-400 transition duration-200 ease-in-out hover:text-gray-600"
-        aria-label={label}
-    >
-        <Icon className="h-5 w-5" />
-    </Link>
-)
 
 export default PasswordRest

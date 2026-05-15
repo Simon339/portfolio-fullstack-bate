@@ -12,7 +12,6 @@ import CategoryCard from "../CategoryCard";
 import CategoriesDeleteModal from "../modals/CategoriesDelet";
 import { deleteCategories, editCategory, fetchCategories } from "@/server/data/projectactions";
 
-
 interface Category {
   id: string;
   name: string;
@@ -104,12 +103,14 @@ const Categories = () => {
   const handleEdit = async (id: string, data: FormData) => {
     try {
       const result = await editCategory(id, data);
-      setCategories(prev =>
-        prev.map(cat =>
-          cat.id === id ? { ...cat, ...result.category } : cat
-        )
-      );
-      toast.success("Category updated successfully");
+      if (result) {
+        setCategories(prev =>
+          prev.map(cat =>
+            cat.id === id ? { ...cat, ...result.category } : cat
+          )
+        );
+        toast.success("Category updated successfully");
+      }
     } catch (error) {
       console.error("Error updating Category:", error);
       toast.error("Failed to update Category");
@@ -188,7 +189,7 @@ const Categories = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
             >
@@ -197,7 +198,7 @@ const Categories = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
             >
@@ -206,7 +207,7 @@ const Categories = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
             >
@@ -215,7 +216,7 @@ const Categories = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-gray-50 border-[#acc2ef]"
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage === totalPages}
             >

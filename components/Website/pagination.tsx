@@ -175,7 +175,7 @@ const Pagination = () => {
         {/* Category Filter - Centered */}
         {categories.length > 0 && (
           <div className="mb-8 flex justify-center">
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="flex flex-wrap gap-2 justify-center text-white">
               <Badge
                 variant={selectedCategory === null ? "default" : "outline"}
                 className={`cursor-pointer px-4 py-2 text-sm ${
@@ -221,17 +221,15 @@ const Pagination = () => {
             >
               <div className="relative h-48 overflow-hidden">
                 {project.image ? (
-                  <Image
+                  <img
                     src={project.image}
                     alt={project.name}
-                    fill
                     className="object-cover transition-transform duration-500 hover:scale-105"
                   />
                 ) : (
-                  <Image
+                  <img
                     src="/coming-soonplaceholder.png"
                     alt={project.name}
-                    fill
                     className="object-cover transition-transform duration-500 hover:scale-105"
                   />
                 )}
@@ -260,7 +258,7 @@ const Pagination = () => {
                         style={{ transform: `translateX(-${4 * index}px)` }}
                       >
                         {tech.image ? (
-                          <Image
+                          <img
                             width={20}
                             height={20}
                             src={tech.image || "/placeholder.svg"}

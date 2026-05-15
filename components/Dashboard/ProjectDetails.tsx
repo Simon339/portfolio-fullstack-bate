@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { ArrowLeft, Edit, ExternalLink, Globe, Trash2 } from "lucide-react"
 import Link from "next/link"
-
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CardContent } from "@/components/ui/card"
@@ -32,10 +30,8 @@ interface ProjectDetailsProps {
       name: string
       image: string
     }>
-    features: Array<{
-      name: string
-      description: string
-    }>
+    features: any
+    status: string
   }
 }
 
@@ -44,9 +40,69 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<ProjectDetailsProps["project"] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [parsedFeatures, setParsedFeatures] = useState<Array<{ name: string; description: string }>>([])
+
+  // Helper function to parse features
+  const parseFeatures = (featuresValue: any): Array<{ name: string; description: string }> => {
+    let featuresArray: Array<{ name: string; description: string }> = []
+
+    try {
+      if (typeof featuresValue === 'string') {
+        const featuresStr = featuresValue.trim()
+
+        if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
+          // Parse as JSON array
+          const parsed = JSON.parse(featuresStr)
+
+          // Handle both array of strings and array of objects
+          if (Array.isArray(parsed)) {
+            featuresArray = parsed.map(item => {
+              if (typeof item === 'string') {
+                return { name: item, description: '' }
+              } else if (typeof item === 'object' && item !== null) {
+                return {
+                  name: item.name || item.Name || 'Feature',
+                  description: item.description || item.Description || ''
+                }
+              }
+              return { name: 'Feature', description: '' }
+            })
+          }
+        } else if (featuresStr.includes(',')) {
+          // Comma-separated string
+          featuresArray = featuresStr.split(',').map(item => ({
+            name: item.trim(),
+            description: ''
+          }))
+        } else if (featuresStr !== '') {
+          // Single feature string
+          featuresArray = [{ name: featuresStr, description: '' }]
+        }
+      } else if (Array.isArray(featuresValue)) {
+        // Already an array
+        featuresArray = featuresValue.map(item => {
+          if (typeof item === 'string') {
+            return { name: item, description: '' }
+          } else if (typeof item === 'object' && item !== null) {
+            return {
+              name: item.name || item.Name || 'Feature',
+              description: item.description || item.Description || ''
+            }
+          }
+          return { name: 'Feature', description: '' }
+        })
+      }
+    } catch (error) {
+    }
+
+    return featuresArray
+  }
 
   useEffect(() => {
     if (project) {
+      // Parse features when project data is available
+      const parsed = parseFeatures(project.features)
+      setParsedFeatures(parsed)
       setLoading(false)
     }
   }, [project])
@@ -80,7 +136,6 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
         toast.error(result.error || "Failed to delete project")
       }
     } catch (error) {
-      console.error("Error during deletion:", error)
       toast.error("An error occurred while deleting the project")
     } finally {
       setDeleteModalOpen(false)
@@ -88,8 +143,8 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50  md:p-6">
-      <div className=" mx-auto">
+    <div className="min-h-screen bg-gray-50 md:p-6">
+      <div className="mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Button
             variant="ghost"
@@ -124,11 +179,28 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
               <div>
                 <h1 className="text-2xl font-medium text-gray-900 mb-2">{project.name}</h1>
+                <div className="flex flex-wrap gap-2">
                 {project.category?.name && (
                   <Badge variant="outline" className="bg-[#acc2ef]/10 border-[#acc2ef] text-gray-700">
                     {project.category.name}
                   </Badge>
                 )}
+
+                {project.status && (
+                  <Badge
+                    variant="outline"
+                    className={
+                      project.status.toLowerCase() === "published"
+                        ? "bg-green-100 text-green-700 border-green-200"
+                        : project.status.toLowerCase() === "draft"
+                          ? "bg-blue-100 text-blue-700 border-blue-200"
+                          : "bg-gray-100 text-gray-700 border-gray-200"
+                    }
+                  >
+                    {project.status}
+                  </Badge>
+                )}
+                </div>
               </div>
 
               {project.demo && (
@@ -152,7 +224,7 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
             <div className="grid md:grid-cols-[280px_1fr] gap-8">
               <div className="space-y-6">
                 <div className="rounded-lg overflow-hidden border border-[#acc2ef]/30 bg-white">
-                  <Image
+                  <img
                     src={project.image || "/coming-soonplaceholder.png"}
                     alt={project.name || "Project Image"}
                     width={280}
@@ -171,12 +243,12 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
                           className="flex items-center gap-2 bg-gray-50 border border-[#acc2ef]/30 px-3 py-1.5 rounded-md"
                         >
                           {tech.image && (
-                            <Image
+                            <img
                               src={tech.image || "/placeholder.svg?height=16&width=16"}
                               alt={tech.name || "Tech Image"}
                               width={16}
                               height={16}
-                              className="rounded-sm"
+                              className="rounded-sm object-cover"
                             />
                           )}
                           <span className="text-sm text-gray-700">{tech.name}</span>
@@ -199,12 +271,12 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
 
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Features</h3>
                 <div className="space-y-4">
-                  {project.features && project.features.length > 0 ? (
-                    project.features.map((feature, index) => (
+                  {parsedFeatures.length > 0 ? (
+                    parsedFeatures.map((feature, index) => (
                       <div key={index} className="bg-gray-50 border border-[#acc2ef]/20 rounded-lg p-4">
                         <h4 className="text-sm font-medium text-gray-800 mb-2">{feature.name}</h4>
                         <p className="text-sm text-gray-600 whitespace-pre-line leading-relaxed">
-                          {feature.description}
+                          {feature.description || "No description provided"}
                         </p>
                       </div>
                     ))
@@ -233,4 +305,3 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
 }
 
 export default ProjectDetailsClient
-

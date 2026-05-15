@@ -1,5 +1,10 @@
 import Reviewform from '@/components/surveys&reviwe/Reviewform'
-import React from 'react'
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Malesela Portfolio's surveys",
+  description: "This dashboard is for customer reviews and ratings for all services provided",
+};
 
 const page = () => {
   return (

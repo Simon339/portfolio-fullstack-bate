@@ -6,9 +6,9 @@ import { educationData } from "@/data"
 
 export default function QualificationsPage() {
   return (
-    <section className="py-12 mb-4">
-      <div className="flex flex-col items-center mb-12">
-        <h2 className="text-3xl font-bold mb-2 text-white">Qualifications</h2>
+    <section className="py-12 mb-2">
+      <div className="flex flex-col items-center mb-12 mt-8">
+        <h2 className="text-3xl font-bold mb-1 text-white">Qualifications</h2>
         <div className="w-12 h-1 bg-white/20 mx-auto mb-3"></div>
         <span className="text-white/50 text-sm">My Personal Journey</span>
       </div>

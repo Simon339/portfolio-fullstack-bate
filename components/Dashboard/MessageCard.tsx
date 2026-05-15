@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import React from 'react'
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Checkbox } from '../ui/checkbox';
@@ -21,12 +19,12 @@ interface MessageCardProps {
   const MessageCard = ({ id,name, email, topic, message, createdAt, isSelected, isRead, onSelect, onToggleRead }: MessageCardProps) => {
   
       function formatDate(createdAt: Date) {
+          if (!createdAt) return '';
           const now = new Date();
           const timeDiff = now.getTime() - createdAt.getTime();
           const secondsInMinute = 60;
           const secondsInHour = 60 * secondsInMinute;
           const secondsInDay = 24 * secondsInHour;
-          const secondsInYear = 365 * secondsInDay;
   
   
           if (timeDiff < secondsInMinute * 1000) {

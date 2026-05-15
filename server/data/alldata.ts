@@ -1,51 +1,411 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-'use server'
+"use server";
 
 import { z } from "zod";
 import { db } from "../db";
 import bcrypt from "bcryptjs";
 import { AddNewUserSchema } from "@/types";
 import { revalidatePath } from "next/cache";
-import { generateVerificationToken } from "@/lib/token";
-import { sendVerificationEmail, sendVerificationEmailForAddedUser } from "@/lib/mail";
-import { users, auditLogs, deletedUsers, contactForms, serviceInquiries, projects } from "../schema"; 
-import { eq, desc, and, gte, lt, count, inArray } from "drizzle-orm";
+import { user, auditLogs, contactForms, serviceInquiries, projects, session, account, ratings } from "../schema"; 
+import { eq, desc, and, gte, lt, count, inArray, sql, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "../auth";
+import { randomBytes } from "crypto";
+import { twoFactor } from "@/auth-schema";
+import { sendVerificationEmailForAddedUser } from "@/lib/mail";
 
+function generateSecureLogId() {
+  // Add timestamp to ensure uniqueness even with same random value
+  const timestamp = Date.now().toString(36).slice(-4);
+  const randomValue = randomBytes(4).toString("base64").toUpperCase();
+  const logid = `log-${timestamp}-${randomValue}`;
+
+  return logid;
+}
 
 export async function getUsers() {
   try {
-    const user = await db.select().from(users);
-    revalidatePath('/users');
-    return { count: user.length, success: true };
+    const Users = await db.select().from(user);
+    revalidatePath("/dashboard");
+    return { count: Users.length, success: true };
   } catch (error) {
     return { count: 0, success: false };
   }
 }
 
-export async function getbyUserDetails() {
-  const Users = await db.select({
-    id: users.id,
-    name: users.name,
-    surname: users.surname,
-    email: users.email,
-    phone: users.phone,
-    country: users.country,
-    image: users.image,
-    role: users.role,
-    createdAt: users.createdAt,
-    emailVerified: users.emailVerified,
-    approval: users.status,
-  }).from(users);
+export async function getUserDetails(userId: string) {
+  // Get basic user info
+  const [userData] = await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      role: user.role,
+      banned: user.banned,
+      twoFactorEnabled: user.twoFactorEnabled,
+      banReason: user.banReason,
+      banExpires: user.banExpires,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      emailVerified: user.emailVerified,
+    })
+    .from(user)
+    .where(eq(user.id, userId));
 
-  revalidatePath('/users');
-  return Users.map(user => ({
-    ...user,
-    status: user.emailVerified ? 'Verified' : 'Not Verified',
-    isSelected: false,
-  }));
+  if (!userData) {
+    throw new Error("User not found");
+  }
+
+  // Get user sessions
+  const userSessions = await db
+    .select({
+      id: session.id,
+      expiresAt: session.expiresAt,
+      ipAddress: session.ipAddress,
+      userAgent: session.userAgent,
+      createdAt: session.createdAt,
+      impersonatedBy: session.impersonatedBy,
+    })
+    .from(session)
+    .where(eq(session.userId, userId))
+    .orderBy(desc(session.createdAt));
+
+  // Get linked accounts
+  const linkedAccounts = await db
+    .select({
+      id: account.id,
+      providerId: account.providerId,
+      accountId: account.accountId,
+      password: account.password,
+      createdAt: account.createdAt,
+      scope: account.scope,
+    })
+    .from(account)
+    .where(eq(account.userId, userId));
+
+  // Get user audit logs
+  const userAuditLogs = await db
+    .select({
+      id: auditLogs.id,
+      action: auditLogs.action,
+      tableName: auditLogs.tableName,
+      recordId: auditLogs.recordId,
+      timestamp: auditLogs.timestamp,
+      ipAddress: auditLogs.ipAddress,
+      userAgent: auditLogs.userAgent,
+      details: auditLogs.details,
+    })
+    .from(auditLogs)
+    .where(eq(auditLogs.userId, userId))
+    .orderBy(desc(auditLogs.timestamp))
+    .limit(100);
+
+  // Get current active session
+  const currentSession = userSessions.find(
+    (session) => new Date(session.expiresAt) > new Date(),
+  );
+
+  // Calculate derived stats
+  const stats = {
+    sessionCount: userSessions.length,
+    activeSessionCount: userSessions.filter(
+      (s) => new Date(s.expiresAt) > new Date(),
+    ).length,
+    linkedAccountCount: linkedAccounts.length,
+    auditLogCount: userAuditLogs.length,
+    lastActive: userAuditLogs[0]?.timestamp || userData.updatedAt,
+  };
+
+  // Get verification status
+  const verification = {
+    email: userData.emailVerified,
+    accounts: linkedAccounts.length > 0,
+    hasPassword: linkedAccounts.some((acc) => acc.providerId === "email"),
+  };
+
+  // Build complete user profile
+  const userDetails = {
+    ...userData,
+    status: userData.emailVerified ? "Verified" : "Not Verified",
+    verification,
+    sessions: {
+      all: userSessions,
+      current: currentSession,
+      stats: {
+        total: stats.sessionCount,
+        active: stats.activeSessionCount,
+      },
+    },
+    accounts: linkedAccounts,
+    activity: {
+      auditLogs: userAuditLogs,
+      stats: {
+        totalActions: stats.auditLogCount,
+        lastActive: stats.lastActive,
+      },
+    },
+    stats,
+  };
+
+  return userDetails;
+}
+
+// Impersonate user
+export async function impersonateUser(userId: string): Promise<ServerActionResponse> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    });
+    
+    const loggedInUserId = session?.user?.id;
+    
+    if (!loggedInUserId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Check if user is trying to impersonate themselves
+    if (loggedInUserId === userId) {
+      throw new Error("Cannot impersonate yourself");
+    }
+
+    const headersList = await headers();
+    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
+    const userAgent = headersList.get("user-agent") || "unknown";
+
+    // Get user data before impersonation
+    const [userData] = await db
+      .select({ email: user.email, name: user.name })
+      .from(user)
+      .where(eq(user.id, userId));
+
+    if (!userData) {
+      throw new Error("User not found");
+    }
+
+    // Impersonate the user
+    const impersonationData = await auth.api.impersonateUser({
+      body: {
+        userId: userId,
+      },
+      headers: await headers(),
+    });
+
+    // Log the impersonation
+    await db.insert(auditLogs).values({
+      action: "IMPERSONATE",
+      tableName: "users",
+      timestamp: new Date(),
+      recordId: generateSecureLogId(),
+      userId: loggedInUserId,
+      details: JSON.stringify({
+        action: "User impersonation started",
+        impersonatedUserId: userId,
+        impersonatedUserEmail: userData.email,
+      }),
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    revalidatePath("/users");
+
+    return {
+      success: true,
+      message: `Now impersonating ${userData.name || userData.email}`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to impersonate user",
+    };
+  }
+}
+
+// Stop impersonating
+export async function stopImpersonating(): Promise<ServerActionResponse> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    });
+    
+    // Check if currently impersonating
+    if (!session?.session?.impersonatedBy) {
+      throw new Error("Not currently impersonating anyone");
+    }
+
+    const headersList = await headers();
+    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
+    const userAgent = headersList.get("user-agent") || "unknown";
+
+    const originalUserId = session.user.id;
+    const impersonatedUserId = session.session.impersonatedBy;
+
+    // Stop impersonating
+    await auth.api.stopImpersonating({
+      headers: await headers(),
+    });
+
+    // Log the stop impersonation
+    await db.insert(auditLogs).values({
+      action: "STOP_IMPERSONATE",
+      tableName: "users",
+      timestamp: new Date(),
+      recordId: generateSecureLogId(),
+      userId: originalUserId,
+      details: JSON.stringify({
+        action: "User impersonation stopped",
+        impersonatedUserId: impersonatedUserId,
+      }),
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    revalidatePath("/users");
+
+    return {
+      success: true,
+      message: "Stopped impersonating user",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to stop impersonating",
+    };
+  }
+}
+
+
+export async function getbyUserDetails(userIds?: string[]) {
+  try {
+    // Build the base query
+    let query = db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        role: user.role,
+        banned: user.banned,
+        twoFactorEnabled: user.twoFactorEnabled,
+        banReason: user.banReason,
+        banExpires: user.banExpires,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        emailVerified: user.emailVerified,
+      })
+      .from(user);
+
+    // Apply userIds filter if provided
+    if (userIds && userIds.length > 0) {
+      query = query.where(inArray(user.id, userIds));
+    }
+
+    // Execute the query
+    const users = await query;
+
+    // Get session counts and last active for each user
+    const usersWithStats = await Promise.all(
+      users.map(async (u) => {
+        // Get session count - use proper SQL aggregation
+        const sessionCountResult = await db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(session)
+          .where(eq(session.userId, u.id));
+
+        const sessionCount = Number(sessionCountResult[0]?.count) || 0;
+
+        // Get last active timestamp from audit logs for this specific user
+        const lastActiveResult = await db
+          .select({ timestamp: auditLogs.timestamp })
+          .from(auditLogs)
+          .where(eq(auditLogs.userId, u.id))
+          .orderBy(desc(auditLogs.timestamp))
+          .limit(1);
+
+        return {
+          ...u,
+          sessionCount,
+          lastActive: lastActiveResult[0]?.timestamp || u.createdAt,
+        };
+      }),
+    );
+
+    return usersWithStats;
+  } catch (error) {
+    return [];
+  }
+}
+
+// Fix deleteUser function
+export async function deleteUser(formData: FormData,): Promise<{ success: boolean; error?: string; message?: string }> {
+  const userId = formData.get("userId") as string;
+
+  if (!userId) {
+    return { error: "User ID is required", success: false };
+  }
+
+  try {
+    // Get the current session
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    const loggedInUserId = session?.user?.id;
+
+    if (!loggedInUserId) {
+      return { error: "Not authenticated", success: false };
+    }
+
+    const headersList = await headers();
+    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
+    const userAgent = headersList.get("user-agent") || "unknown";
+
+    // Get user data before deletion
+    const [userData] = await db.select().from(user).where(eq(user.id, userId));
+
+    if (!userData) {
+      return { error: "User not found", success: false };
+    }
+
+    // Delete the user
+    const deletedUser = await auth.api.removeUser({
+      body: {
+        userId: userId, // required
+      },
+      // This endpoint requires session cookies.
+      headers: await headers(),
+    });
+
+    // Check if deletion was successful
+    if (!deletedUser || deletedUser.error) {
+      return {
+        error: deletedUser?.error || "Failed to delete user",
+        success: false,
+      };
+    }
+
+    // Log the deletion
+    await db.insert(auditLogs).values({
+      action: "DELETE",
+      tableName: "users",
+      timestamp: new Date(),
+      recordId: generateSecureLogId(),
+      userId: loggedInUserId,
+      details: JSON.stringify({
+        action: "User deleted",
+        deletedUserId: userId,
+        deletedUserEmail: userData.email,
+      }),
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    revalidatePath("/users");
+    return { success: true, message: "User deleted successfully" };
+  } catch (error) {
+    return { error: "Failed to delete user", success: false };
+  }
 }
 
 export async function getUserSignupAnalytics() {
@@ -54,25 +414,34 @@ export async function getUserSignupAnalytics() {
   const lastYear = currentYear - 1;
 
   try {
-    const currentYearSignups = await db.select({ count: count() })
-      .from(users)
-      .where(and(
-        gte(users.createdAt, new Date(currentYear, 0, 1)),
-        lt(users.createdAt, new Date(currentYear + 1, 0, 1))
-      ));
+    const currentYearSignups = await db
+      .select({ count: count() })
+      .from(user)
+      .where(
+        and(
+          gte(user.createdAt, new Date(currentYear, 0, 1)),
+          lt(user.createdAt, new Date(currentYear + 1, 0, 1)),
+        ),
+      );
 
-    const lastYearSignups = await db.select({ count: count() })
-      .from(users)
-      .where(and(
-        gte(users.createdAt, new Date(lastYear, 0, 1)),
-        lt(users.createdAt, new Date(currentYear, 0, 1))
-      ));
+    const lastYearSignups = await db
+      .select({ count: count() })
+      .from(user)
+      .where(
+        and(
+          gte(user.createdAt, new Date(lastYear, 0, 1)),
+          lt(user.createdAt, new Date(currentYear, 0, 1)),
+        ),
+      );
 
-    const percentageChange = lastYearSignups[0].count !== 0
-      ? ((currentYearSignups[0].count - lastYearSignups[0].count) / lastYearSignups[0].count) * 100
-      : 100; 
+    const percentageChange =
+      lastYearSignups[0].count !== 0
+        ? ((currentYearSignups[0].count - lastYearSignups[0].count) /
+            lastYearSignups[0].count) *
+          100
+        : 100;
 
-    revalidatePath('/users');
+    revalidatePath("/users");
     return {
       currentYearSignups: currentYearSignups[0].count,
       lastYearSignups: lastYearSignups[0].count,
@@ -80,7 +449,6 @@ export async function getUserSignupAnalytics() {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching user signup analytics:", error);
     return {
       currentYearSignups: 0,
       lastYearSignups: 0,
@@ -92,7 +460,9 @@ export async function getUserSignupAnalytics() {
 
 export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
   try {
-    const session = await auth(); // Get the current session
+    const session = await auth.api.getSession({
+      headers: await headers(), // you need to pass the headers object.
+    }); // Get the current session
     const userId = session?.user?.id; // Extract the user ID from the session
 
     if (!userId) {
@@ -100,102 +470,59 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
     }
 
     // Step 1: Handle image URL
-    const imageUrl = data.image ? URL.createObjectURL(data.image) : undefined;
+    // const imageUrl = data.image ? URL.createObjectURL(data.image) : undefined;
 
     // Step 2: Insert the new user into the database
-    const [user] = await db
-      .insert(users)
-      .values({
+    const newuser = await auth.api.createUser({
+      body: {
         email: data.email.toLowerCase(),
-        name: data.name,
-        surname: data.surname,
-        phone: data.phone,
-        country: data.country,
-        role: data.role,
-        image: imageUrl,
+        name: data.firstname + " " + data.surname,
+        role: data.role || "user",
         password: await bcrypt.hash("defaultPassword", 10), // Hash the default password
-      })
-      .returning();
+      },
+    });
 
     // Step 3: Generate a verification token and send a verification email
-    const verificationToken = await generateVerificationToken(data.email.toLowerCase());
+    // const verificationToken = await generateVerificationToken(data.email.toLowerCase());
     const password = "defaultPassword";
     const email = data.email.toLowerCase();
-    await sendVerificationEmailForAddedUser(
-      email,
-      verificationToken.token,
-      password
-    );
+    // await sendVerificationEmailForAddedUser(
+    //   email,
+    //   verificationToken.token,
+    //   password
+    // );
 
     // Step 4: Dynamically collect IP address and user agent
     const headersList = await headers();
-    const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
-    const userAgent = headersList.get('user-agent') || 'unknown';
+    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
+    const userAgent = headersList.get("user-agent") || "unknown";
 
     // Step 5: Log the action in audit_logs
     await db.insert(auditLogs).values({
-      action: 'CREATE',
-      tableName: 'users',
-      recordId: user.id, // Use the newly created user's ID
+      action: "CREATE",
+      tableName: "users",
+      timestamp: new Date(),
+      recordId: generateSecureLogId(), // Use the newly created user's ID
       userId: userId, // Use the logged-in user's ID
-      details: JSON.stringify({ action: 'User created', data: user }),
+      details: JSON.stringify({ action: "User created", data: user }),
       ipAddress: ipAddress, // Use dynamically collected IP address
       userAgent: userAgent, // Use dynamically collected user agent
     });
 
     // Step 6: Revalidate the users page
-    revalidatePath('/users');
+    revalidatePath("/dashboard/users");
 
     return { success: true, message: "User added successfully" };
   } catch (error) {
-    console.error("Error adding user:", error);
 
     if (error instanceof z.ZodError) {
-      return { error: error.errors.map((e) => e.message).join(", "), success: false };
+      return {
+        error: error.errors.map((e) => e.message).join(", "),
+        success: false,
+      };
     }
 
     return { error: "Failed to add user", success: false };
-  }
-}
-
-
-export async function deleteUser(formData: FormData) {
-  const userId = formData.get("userId") as string;
-  const headersList = await headers();
-    const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
-    const userAgent = headersList.get('user-agent') || 'unknown';
-
-  if (!userId) {
-    return { error: "User ID is required", success: false };
-  }
-
-  try {
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
-
-    await db.delete(users).where(eq(users.id, userId));
-
-    await db.insert(auditLogs).values({
-      action: 'DELETE',
-      tableName: 'users',
-      recordId: user.id,
-      userId: userId,
-      details: JSON.stringify({ action: 'User deleted', data: user }),
-      ipAddress: ipAddress, // Use dynamically collected IP address
-      userAgent: userAgent,
-    });
-
-  
-    await db.insert(deletedUsers).values({
-      originalUserId: userId,
-      email: user.email,
-      userData: JSON.stringify(user),
-    });
-
-    revalidatePath('/users');
-    return { success: true, message: "User deleted successfully" };
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    return { error: "Failed to delete user", success: false };
   }
 }
 
@@ -207,10 +534,12 @@ type ServerActionResponse = {
 
 export async function updateUserRole(
   userId: string,
-  newRole: string
+  newRole: "admin" | "owner",
 ): Promise<ServerActionResponse> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+      headers: await headers(), // you need to pass the headers object.
+    });
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
@@ -222,13 +551,14 @@ export async function updateUserRole(
     const userAgent = headersList.get("user-agent") || "unknown";
 
     // Update the user role in the database
-    await db.update(users).set({ role: newRole }).where(eq(users.id, userId));
+    await db.update(user).set({ role: newRole }).where(eq(user.id, userId));
 
     // Log the action in the audit logs
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
-      recordId: userId,
+      timestamp: new Date(),
+      recordId: generateSecureLogId(),
       userId: loggedInUserId,
       details: JSON.stringify({ action: "User role updated", newRole }),
       ipAddress: ipAddress,
@@ -240,20 +570,22 @@ export async function updateUserRole(
 
     return { success: true, message: "User role updated successfully" };
   } catch (error) {
-    console.error("Failed to update user role:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to update user role",
+      error:
+        error instanceof Error ? error.message : "Failed to update user role",
     };
   }
 }
 
 export async function updateUserEmail(
   userId: string,
-  newEmail: string
+  newEmail: string,
 ): Promise<ServerActionResponse> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+      headers: await headers(), // you need to pass the headers object.
+    });
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
@@ -264,15 +596,22 @@ export async function updateUserEmail(
     const ipAddress = headersList.get("x-forwarded-for") || "unknown";
     const userAgent = headersList.get("user-agent") || "unknown";
 
-    // Update the user email in the database
-    await db.update(users).set({ email: newEmail }).where(eq(users.id, userId));
+    const data = await auth.api.adminUpdateUser({
+    body: {
+        userId: userId, // required
+        data: { email: newEmail }, // required
+    },
+    // This endpoint requires session cookies.
+    headers: await headers(),
+    });
 
     // Log the action in the audit logs
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "users",
-      recordId: userId,
+      recordId: generateSecureLogId(),
       userId: loggedInUserId,
+      timestamp: new Date(),
       details: JSON.stringify({ action: "User email updated", newEmail }),
       ipAddress: ipAddress,
       userAgent: userAgent,
@@ -283,65 +622,21 @@ export async function updateUserEmail(
 
     return { success: true, message: "User email updated successfully" };
   } catch (error) {
-    console.error("Failed to update user email:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to update user email",
-    };
-  }
-}
-
-export async function updateApprovalStatus(
-  userId: string,
-  status: "PENDING" | "APPROVED" | "REJECTED"
-): Promise<ServerActionResponse> {
-  try {
-    const session = await auth();
-    const loggedInUserId = session?.user?.id;
-
-    if (!loggedInUserId) {
-      throw new Error("User not authenticated");
-    }
-
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
-
-    // Update the user approval status in the database
-    await db
-      .update(users)
-      .set({ status: status }) // Use the correct field name from your schema
-      .where(eq(users.id, userId));
-
-    // Log the action in the audit logs
-    await db.insert(auditLogs).values({
-      action: "UPDATE",
-      tableName: "users",
-      recordId: userId,
-      userId: loggedInUserId,
-      details: JSON.stringify({ action: "User approval status updated", status }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
-    });
-
-    // Revalidate the users page to reflect changes
-    revalidatePath("/users");
-
-    return { success: true, message: `User status updated to ${status}` };
-  } catch (error) {
-    console.error("Failed to update approval status:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to update approval status",
+      error:
+        error instanceof Error ? error.message : "Failed to update user email",
     };
   }
 }
 
 export async function deleteUserPermanently(
-  userId: string
+  userId: string,
 ): Promise<ServerActionResponse> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+      headers: await headers(), // you need to pass the headers object.
+    });
     const loggedInUserId = session?.user?.id;
 
     if (!loggedInUserId) {
@@ -349,8 +644,8 @@ export async function deleteUserPermanently(
     }
 
     // First get the user data to store in deleted_users table
-    const userToDelete = await db.query.users.findFirst({
-      where: eq(users.id, userId),
+    const userToDelete = await db.query.user.findFirst({
+      where: eq(user.id, userId),
     });
 
     if (!userToDelete) {
@@ -362,17 +657,18 @@ export async function deleteUserPermanently(
     const userAgent = headersList.get("user-agent") || "unknown";
 
     // Store user data in deleted_users table
-    await db.insert(deletedUsers).values({
-      originalUserId: userId,
-      email: userToDelete.email,
-      userData: JSON.stringify(userToDelete),
-    });
+    // await db.insert(deletedUsers).values({
+    //   originalUserId: userId,
+    //   email: userToDelete.email,
+    //   userData: JSON.stringify(userToDelete),
+    // });
 
     // Log the deletion
     await db.insert(auditLogs).values({
       action: "DELETE",
       tableName: "users",
-      recordId: userId,
+      recordId: generateSecureLogId(),
+      timestamp: new Date(),
       userId: loggedInUserId,
       details: JSON.stringify({ action: "User permanently deleted" }),
       ipAddress: ipAddress,
@@ -380,14 +676,13 @@ export async function deleteUserPermanently(
     });
 
     // Delete the user
-    await db.delete(users).where(eq(users.id, userId));
+    await db.delete(user).where(eq(user.id, userId));
 
     // Revalidate the users page to reflect changes
     revalidatePath("/users");
 
     return { success: true, message: "User permanently deleted" };
   } catch (error) {
-    console.error("Failed to delete user:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete user",
@@ -396,16 +691,16 @@ export async function deleteUserPermanently(
 }
 
 export type AuditLog = {
-  id: string
-  action: string
-  tableName: string
-  recordId: string
-  userId: string | null
-  timestamp: Date
-  details: any
-  ipAddress: string | null
-  userAgent: string | null
-}
+  id: number;
+  action: string;
+  tableName: string;
+  recordId: string;
+  userId: string | null;
+  timestamp: Date;
+  details: any;
+  ipAddress: string | null;
+  userAgent: string | null;
+};
 
 export async function getUserAuditLogs(userId: string): Promise<AuditLog[]> {
   try {
@@ -414,36 +709,30 @@ export async function getUserAuditLogs(userId: string): Promise<AuditLog[]> {
       .select()
       .from(auditLogs)
       .where(eq(auditLogs.recordId, userId))
-      .orderBy(desc(auditLogs.timestamp))
-
-    return logs
+      .orderBy(desc(auditLogs.timestamp));
+    revalidatePath("/dashboard");
+    return logs;
   } catch (error) {
-    console.error("Failed to fetch user audit logs:", error)
-    return []
+    return [];
   }
 }
 
 export async function getTotalUsers() {
   try {
-    const totalUsers = await db.select().from(users);
+    const totalUsers = await db.select().from(user);
     revalidatePath("/dashboard");
     return totalUsers.length;
   } catch (error) {
-    console.error("Failed to fetch total users:", error);
     return 0;
   }
 }
 
 export async function getStaffCount() {
   try {
-    const staff = await db
-      .select()
-      .from(users)
-      .where(inArray(users.role, ["ADMIN", "SUPER_ADMIN"])); 
-
+    const staff = await db.select().from(user).where(or(eq(user.role, "admin"), eq(user.role, "owner")));
+    revalidatePath("/dashboard");
     return staff.length;
   } catch (error) {
-    console.error("Failed to fetch staff count:", error);
     return 0;
   }
 }
@@ -459,10 +748,9 @@ export async function getTotalRequests() {
       .select()
       .from(serviceInquiries)
       .where(eq(serviceInquiries.read, false));
-
+    revalidatePath("/dashboard");
     return unreadContactForms.length + unreadServiceInquiries.length;
   } catch (error) {
-    console.error("Failed to fetch total requests:", error);
     return 0;
   }
 }
@@ -470,9 +758,9 @@ export async function getTotalRequests() {
 export async function getTotalProjects() {
   try {
     const totalProjects = await db.select().from(projects);
+    revalidatePath("/dashboard");
     return totalProjects.length;
   } catch (error) {
-    console.error("Failed to fetch total projects:", error);
     return 0;
   }
 }

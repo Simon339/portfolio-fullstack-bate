@@ -9,6 +9,7 @@ const Page = () => {
         <div className="text-center">
           <h1 className="text-xl font-semibold text-gray-800">Projects</h1>
           <p className="text-gray-600">Manage Your Projects</p>
+          
         </div>
       </div>
 

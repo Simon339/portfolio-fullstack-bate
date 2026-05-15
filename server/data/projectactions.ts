@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -9,11 +8,11 @@ import { z } from "zod"
 import { db } from "../db"
 import { CategoriesSchema } from "@/types/vaildations/project"
 import { auditLogs, categories, projects, techstacks, projectTechstacks } from "../schema"
-import { eq, inArray } from "drizzle-orm"
+import { eq, inArray, desc, and } from "drizzle-orm"
 import { headers } from "next/headers"
 import { auth } from "@/server/auth" 
-import jsPDF from "jspdf"
-import "jspdf-autotable"
+import { v4 as uuidv4 } from "uuid"
+import { projectsData } from "@/data"
 
 const TechstackSchema = z.object({
   name: z.string().min(1, "Techstack name is required"),
@@ -27,157 +26,233 @@ const TechstackSchema = z.object({
     .optional(),
 })
 
+// Helper function to convert File to base64 string
+async function fileToBase64(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  return `data:${file.type};base64,${buffer.toString("base64")}`
+}
+
 export async function fetchTechstacks() {
   return await db.select().from(techstacks)
 }
 
 export async function createTechstack(formData: FormData) {
-  const session = await auth() // Get the current session
-  const userId = session?.user?.id // Extract the user ID from the session
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+  const userId = session?.user?.id
 
   if (!userId) {
     throw new Error("User not authenticated")
   }
 
-  const validatedFields = TechstackSchema.parse({
-    name: formData.get("name"),
-    image: formData.get("image"),
-  })
-
-  let imageString = ""
-  if (validatedFields.image) {
-    const arrayBuffer = await validatedFields.image.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    imageString = `data:${validatedFields.image.type};base64,${buffer.toString("base64")}`
-  }
-
-  const headersList = await headers()
-  const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-  const userAgent = headersList.get("user-agent") || "unknown"
-
-  const techstack = await db
-    .insert(techstacks)
-    .values({
-      name: validatedFields.name,
-      image: imageString,
+  try {
+    const validatedFields = TechstackSchema.parse({
+      name: formData.get("name"),
+      image: formData.get("image"),
     })
-    .returning()
 
-  // Log the action in audit_logs
-  await db.insert(auditLogs).values({
-    action: "CREATE",
-    tableName: "techstacks",
-    recordId: techstack[0].id,
-    userId: userId, // Use the logged-in user's ID
-    details: JSON.stringify({ action: "Techstack created", data: techstack[0] }),
-    ipAddress: ipAddress,
-    userAgent: userAgent,
-  })
+    let imageString = ""
+    if (validatedFields.image) {
+      imageString = await fileToBase64(validatedFields.image)
+    }
 
-  revalidatePath("/techstacks")
-  return { message: "Techstack created successfully", techstack }
+    
+
+    // Generate UUID for the ID
+    const techstackId = uuidv4()
+
+    // Check if techstack with this name already exists
+    const existingTechstack = await db
+      .select()
+      .from(techstacks)
+      .where(eq(techstacks.name, validatedFields.name))
+      .then((result) => result[0])
+
+    if (existingTechstack) {
+      return { 
+        error: "Duplicate techstack", 
+        details: `A techstack named "${validatedFields.name}" already exists.`
+      }
+    }
+
+    // Insert with explicit ID and use  to get the created record
+    const [newTechstack] = await db
+      .insert(techstacks)
+      .values({
+        id: techstackId,
+        name: validatedFields.name,
+        image: imageString,
+      })
+      
+
+    // Log the action in audit_logs
+    await db.insert(auditLogs).values({
+      action: "CREATE",
+      tableName: "techstacks",
+      recordId: newTechstack.id,
+      userId: userId,
+      details: JSON.stringify({ 
+        action: "Techstack created", 
+        data: {
+          id: newTechstack.id,
+          name: newTechstack.name,
+          hasImage: !!newTechstack.image
+        } 
+      }),
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
+    })
+
+    revalidatePath("/techstacks")
+    
+    // Return only serializable data
+    return { 
+      success: true,
+      message: "Techstack created successfully", 
+      data: {
+        id: newTechstack.id,
+        name: newTechstack.name,
+        image: newTechstack.image
+      }
+    }
+  } catch (error) {
+    // Handle specific database errors
+    if (error?.code === 'ER_DUP_ENTRY' || error?.errno === 1062) {
+      return { 
+        error: "Database error",
+        details: "This techstack name might already exist or there's a database constraint issue."
+      }
+    }
+    
+    return { 
+      error: "Failed to create techstack", 
+      details: error instanceof Error ? error.message : String(error)
+    }
+  }
 }
 
 export async function editTechstack(id: string, data: FormData) {
-  const session = await auth() // Get the current session
-  const userId = session?.user?.id // Extract the user ID from the session
+  const session = await auth.api.getSession({
+      headers: await headers()
+  })
+  const userId = session?.user?.id
 
   if (!userId) {
     throw new Error("User not authenticated")
   }
 
-  if (!id) {
-    console.error("Techstack ID is required for editing")
+  try {
+
+    const name = data.get("name") as string | null
+    const image = data.get("image") as File | null
+
+    const updateData: { name?: string; image?: string } = {}
+
+    if (name) {
+      updateData.name = name
+    }
+
+    if (image) {
+      // Validate the image
+      TechstackSchema.shape.image.parse(image)
+      updateData.image = await fileToBase64(image)
+    }
+
+    // Update and return the updated record
+    const [updatedTechstack] = await db
+      .update(techstacks)
+      .set(updateData)
+      .where(eq(techstacks.id, id))
+      
+
+    // Log the action in audit_logs
+    await db.insert(auditLogs).values({
+      action: "UPDATE",
+      tableName: "techstacks",
+      recordId: id,
+      userId: userId,
+      details: JSON.stringify({ 
+        action: "Techstack updated", 
+        data: {
+          id: updatedTechstack.id,
+          name: updatedTechstack.name,
+          hasImage: !!updatedTechstack.image
+        }
+      }),
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
+    })
+
+    revalidatePath("/techstacks")
+    
+    // Return only serializable data
+    return { 
+      success: true,
+      message: "Techstack updated successfully", 
+      data: {
+        id: updatedTechstack.id,
+        name: updatedTechstack.name,
+        image: updatedTechstack.image
+      }
+    }
+  } catch (error) {
+    return { 
+      success: false,
+      error: "Failed to update techstack", 
+      details: error instanceof Error ? error.message : String(error)
+    }
   }
-
-  const existingTechstack = await db
-    .select()
-    .from(techstacks)
-    .where(eq(techstacks.id, id))
-    .then((result) => result[0])
-
-  if (!existingTechstack) {
-    console.error("Techstack not found")
-  }
-
-  const name = data.get("name") as string | null
-  const image = data.get("image") as File | null
-
-  if (!name && !image) {
-    console.error("At least one field (name or image) must be provided for update")
-  }
-
-  const headersList = await headers()
-  const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-  const userAgent = headersList.get("user-agent") || "unknown"
-
-  const updateData: { name?: string; image?: string } = {}
-
-  if (name) {
-    updateData.name = name
-  }
-
-  if (image) {
-    // Validate the image
-    TechstackSchema.shape.image.parse(image)
-
-    const arrayBuffer = await image.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    updateData.image = `data:${image.type};base64,${buffer.toString("base64")}`
-  }
-
-  const techstack = await db.update(techstacks).set(updateData).where(eq(techstacks.id, id)).returning()
-
-  // Log the action in audit_logs
-  await db.insert(auditLogs).values({
-    action: "UPDATE",
-    tableName: "techstacks",
-    recordId: id,
-    userId: userId, // Use the logged-in user's ID
-    details: JSON.stringify({ action: "Techstack updated", data: techstack[0] }),
-    ipAddress: ipAddress,
-    userAgent: userAgent,
-  })
-
-  revalidatePath("/techstacks")
-  return { message: "Techstack updated successfully", techstack }
 }
 
 export async function deleteTechstacks(ids: string[]) {
-  const session = await auth() // Get the current session
-  const userId = session?.user?.id // Extract the user ID from the session
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+  const userId = session?.user?.id
 
   if (!userId) {
     throw new Error("User not authenticated")
   }
 
-  if (!ids || ids.length === 0) {
-    console.error("At least one Techstack ID is required for deletion")
+  try {
+    const techstacksToDelete = await db.select().from(techstacks).where(inArray(techstacks.id, ids))
+
+    await db.delete(techstacks).where(inArray(techstacks.id, ids))
+
+    // Log the action in audit_logs
+    for (const techstack of techstacksToDelete) {
+      await db.insert(auditLogs).values({
+        action: "DELETE",
+        tableName: "techstacks",
+        recordId: techstack.id,
+        userId: userId, 
+        details: JSON.stringify({ 
+          action: "Techstack deleted", 
+          data: {
+            id: techstack.id,
+            name: techstack.name
+          }
+        }),
+        ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
+      })
+    }
+
+    revalidatePath("/techstacks")
+    
+    return { 
+      success: true,
+      message: "Techstacks deleted successfully" 
+    }
+  } catch (error) {
+    return { 
+      success: false,
+      error: "Failed to delete techstacks",
+      details: error instanceof Error ? error.message : String(error)
+    }
   }
-
-  const headersList = await headers()
-  const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-  const userAgent = headersList.get("user-agent") || "unknown"
-
-  const techstacksToDelete = await db.select().from(techstacks).where(inArray(techstacks.id, ids))
-
-  await db.delete(techstacks).where(inArray(techstacks.id, ids))
-
-  // Log the action in audit_logs
-  for (const techstack of techstacksToDelete) {
-    await db.insert(auditLogs).values({
-      action: "DELETE",
-      tableName: "techstacks",
-      recordId: techstack.id,
-      userId: userId, // Use the logged-in user's ID
-      details: JSON.stringify({ action: "Techstack deleted", data: techstack }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
-    })
-  }
-
-  revalidatePath("/techstacks")
-  return { message: "Techstacks deleted successfully" }
 }
 
 // Categories
@@ -185,17 +260,17 @@ export async function deleteTechstacks(ids: string[]) {
 export async function fetchCategories() {
   try {
     const categoryData = await db.select().from(categories)
-    revalidatePath("/categories") // Adjust this path as needed
     return categoryData
   } catch (error) {
-    console.error("Failed to fetch categories: ", error)
-    return []
+    throw new Error("Something went wrong!!!")
   }
 }
 
 export async function createCategory(formData: FormData) {
-  const session = await auth() // Get the current session
-  const userId = session?.user?.id // Extract the user ID from the session
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+  const userId = session?.user?.id
 
   if (!userId) {
     throw new Error("User not authenticated")
@@ -206,71 +281,75 @@ export async function createCategory(formData: FormData) {
       name: formData.get("name"),
     })
 
-    if (!validatedFields.name) {
-      console.error("Category name is required")
-    }
+    // Generate a UUID for the ID
+    const categoryId = uuidv4()
 
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
-    const category = await db
+    // Insert with explicit ID and return the created record
+    const [newCategory] = await db
       .insert(categories)
-      .values({
-        name: validatedFields.name,
+      .values({ 
+        id: categoryId,
+        name: validatedFields.name 
       })
-      .returning()
+      
 
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
       action: "CREATE",
       tableName: "categories",
-      recordId: category[0].id,
-      userId: userId, // Use the logged-in user's ID
-      details: JSON.stringify({ action: "Category created", data: category[0] }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      recordId: newCategory.id,
+      userId: userId,
+      details: JSON.stringify({ 
+        action: "Category created", 
+        data: {
+          id: newCategory.id,
+          name: newCategory.name
+        } 
+      }),
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/categories")
-    return { message: "Category created successfully", category }
+    
+    return { 
+      success: true,
+      message: "Category created successfully",
+      data: {
+        id: newCategory.id,
+        name: newCategory.name
+      }
+    }
   } catch (error) {
-    console.error("Failed to create category: ", error)
+    // Check if it's a duplicate name error
+    if (error?.code === 'ER_DUP_ENTRY' || error?.errno === 1062) {
+      return { 
+        success: false,
+        error: "Category already exists with this name",
+        details: "A category with this name already exists. Please use a different name."
+      }
+    }
+    
+    return { 
+      success: false,
+      error: "Failed to create category", 
+      details: error instanceof Error ? error.message : String(error)
+    }
   }
 }
 
 export async function editCategory(id: string, data: FormData) {
-  const session = await auth() // Get the current session
-  const userId = session?.user?.id // Extract the user ID from the session
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+  const userId = session?.user?.id
 
   if (!userId) {
     throw new Error("User not authenticated")
   }
 
   try {
-    if (!id) {
-      console.error("Category ID is required for editing")
-    }
-
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
-    const existingCategory = await db
-      .select()
-      .from(categories)
-      .where(eq(categories.id, id))
-      .then((result) => result[0])
-
-    if (!existingCategory) {
-      console.error("Category not found")
-    }
-
     const name = data.get("name") as string | null
-
-    if (!name) {
-      console.error("At least one field (name) must be provided for update")
-    }
 
     const updateData: { name?: string } = {}
 
@@ -278,45 +357,61 @@ export async function editCategory(id: string, data: FormData) {
       updateData.name = name
     }
 
-    const category = await db.update(categories).set(updateData).where(eq(categories.id, id)).returning()
+    // Update and return the updated record
+    const [updatedCategory] = await db
+      .update(categories)
+      .set(updateData)
+      .where(eq(categories.id, id))
+      
 
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
       action: "UPDATE",
       tableName: "categories",
       recordId: id,
-      userId: userId, // Use the logged-in user's ID
-      details: JSON.stringify({ action: "Category updated", data: category[0] }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      userId: userId,
+      details: JSON.stringify({ 
+        action: "Category updated", 
+        data: {
+          id: updatedCategory.id,
+          name: updatedCategory.name
+        }
+      }),
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
-    return { message: "Category updated successfully", category }
+    return { 
+      success: true,
+      message: "Category updated successfully", 
+      data: {
+        id: updatedCategory.id,
+        name: updatedCategory.name
+      }
+    }
   } catch (error) {
-    console.error("Failed to update category: ", error)
+    return { 
+      success: false,
+      error: "Failed to update category",
+      details: error instanceof Error ? error.message : String(error)
+    }
   }
 }
 
 export async function deleteCategories(ids: string[]) {
-  const session = await auth() // Get the current session
-  const userId = session?.user?.id // Extract the user ID from the session
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+  const userId = session?.user?.id
 
   if (!userId) {
     throw new Error("User not authenticated")
   }
 
-  if (!ids || ids.length === 0) {
-    console.error("At least one Category ID is required for deletion")
-  }
-
   try {
     const categoriesToDelete = await db.select().from(categories).where(inArray(categories.id, ids))
 
-    const result = await db.delete(categories).where(inArray(categories.id, ids))
-
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
+    await db.delete(categories).where(inArray(categories.id, ids))
 
     // Log the action in audit_logs
     for (const category of categoriesToDelete) {
@@ -324,10 +419,16 @@ export async function deleteCategories(ids: string[]) {
         action: "DELETE",
         tableName: "categories",
         recordId: category.id,
-        userId: userId, // Use the logged-in user's ID
-        details: JSON.stringify({ action: "Category deleted", data: category }),
-        ipAddress: ipAddress,
-        userAgent: userAgent,
+        userId: userId,
+        details: JSON.stringify({ 
+          action: "Category deleted", 
+          data: {
+            id: category.id,
+            name: category.name
+          }
+        }),
+        ipAddress: session.session.ipAddress,
+        userAgent: session.session.userAgent,
       })
     }
 
@@ -339,19 +440,20 @@ export async function deleteCategories(ids: string[]) {
       deletedCount: ids.length,
     }
   } catch (error) {
-    console.error("Failed to delete categories:", error)
     return {
       success: false,
-      message: "Failed to delete categories. Please try again.",
+      error: "Failed to delete categories",
+      details: error instanceof Error ? error.message : String(error)
     }
   }
 }
 
-
 // Create a new project
 export async function createProject(formData: FormData) {
-  const session = await auth(); // Get the current session
-  const userId = session?.user?.id; // Extract the user ID from the session
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+  const userId = session?.user?.id;
 
   if (!userId) {
     throw new Error("User not authenticated");
@@ -375,63 +477,82 @@ export async function createProject(formData: FormData) {
     // Handle image upload (convert to base64 for simplicity)
     let imageUrl = "";
     if (image) {
-      const arrayBuffer = await image.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      imageUrl = `data:${image.type};base64,${buffer.toString("base64")}`;
+      imageUrl = await fileToBase64(image);
     }
 
-    // Insert the project
+    const projectId = uuidv4();
+
+    // Insert the project and return the created record
     const [project] = await db
       .insert(projects)
       .values({
+        id: projectId,
         name,
         description,
         demo: demo || "",
         image: imageUrl,
-        categoryId: categories[0], // Use the first category ID (or handle multiple categories if needed)
-        features: JSON.stringify(features), // Add this line
+        categoryId: categories[0],
+        features: JSON.stringify(features),
       })
-      .returning();
+      ;
 
     // Insert project-techstack relationships
     const techstackRelations = techstacks.map((techstackId: string) => ({
       projectId: project.id,
       techstackId,
     }));
-    await db.insert(projectTechstacks).values(techstackRelations);
-
-    // Dynamically collect IP address and user agent
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
+    await db.insert(projectTechstacks).values(techstackRelations)
 
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
       action: "CREATE",
       tableName: "projects",
       recordId: project.id,
-      userId: userId, // Use the logged-in user's ID
+      userId: userId,
       details: JSON.stringify({
         action: "Project created",
-        data: project,
+        data: {
+          id: project.id,
+          name: project.name,
+          categoryId: project.categoryId
+        },
         techstackIds: techstacks,
-        features, // Add this line
+        features,
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     });
 
     revalidatePath("/projects");
-    return { success: true, message: "Project created successfully", project };
+    
+    // Return only serializable data
+    return { 
+      success: true, 
+      message: "Project created successfully", 
+      data: {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        demo: project.demo,
+        image: project.image,
+        categoryId: project.categoryId,
+        features: JSON.parse(project.features || "[]"),
+      }
+    };
   } catch (error) {
-    console.error("Failed to create project:", error);
-    return { success: false, error: "Failed to create project" };
+    return { 
+      success: false, 
+      error: "Failed to create project",
+      details: error instanceof Error ? error.message : String(error)
+    };
   }
 }
 
 // Edit an existing project
 export async function editProject(id: string, formData: FormData) {
-  const session = await auth()
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
   const userId = session?.user?.id
 
   if (!userId) {
@@ -458,11 +579,9 @@ export async function editProject(id: string, formData: FormData) {
 
     if (imageData instanceof File) {
       // Handle File object
-      const arrayBuffer = await imageData.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-      imageUrl = `data:${imageData.type};base64,${buffer.toString("base64")}`
-    } else if (typeof imageData === "string") {
-      // If it's already a string (URL or base64), use it directly
+      imageUrl = await fileToBase64(imageData)
+    } else if (typeof imageData === "string" && imageData.startsWith('data:')) {
+      // If it's already a base64 string, use it directly
       imageUrl = imageData
     }
 
@@ -477,7 +596,7 @@ export async function editProject(id: string, formData: FormData) {
       throw new Error("Project not found")
     }
 
-    // Create update object with only the fields that have changed
+    // Create update object
     const updateData: any = {
       name,
       description,
@@ -491,8 +610,12 @@ export async function editProject(id: string, formData: FormData) {
       updateData.image = imageUrl
     }
 
-    // Update the project
-    const [project] = await db.update(projects).set(updateData).where(eq(projects.id, id)).returning()
+    // Update the project and get the updated record
+    const [updatedProject] = await db
+      .update(projects)
+      .set(updateData)
+      .where(eq(projects.id, id))
+      
 
     // Update project-techstack relationships
     await db.delete(projectTechstacks).where(eq(projectTechstacks.projectId, id))
@@ -502,11 +625,6 @@ export async function editProject(id: string, formData: FormData) {
     }))
     await db.insert(projectTechstacks).values(techstackRelations)
 
-    // Dynamically collect IP address and user agent
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
       action: "UPDATE",
@@ -515,19 +633,42 @@ export async function editProject(id: string, formData: FormData) {
       userId: userId,
       details: JSON.stringify({
         action: "Project updated",
-        data: project,
+        data: {
+          id: updatedProject.id,
+          name: updatedProject.name,
+          categoryId: updatedProject.categoryId,
+        },
         techstackIds: techstacks,
         features,
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/projects")
-    return { success: true, message: "Project updated successfully", project }
+    
+    // Return only serializable data
+    return { 
+      success: true, 
+      message: "Project updated successfully", 
+      data: {
+        id: updatedProject.id,
+        name: updatedProject.name,
+        description: updatedProject.description,
+        demo: updatedProject.demo,
+        image: updatedProject.image,
+        categoryId: updatedProject.categoryId,
+        features: JSON.parse(updatedProject.features || "[]"),
+        createdAt: updatedProject.createdAt?.toISOString(),
+        updatedAt: updatedProject.updatedAt?.toISOString(),
+      }
+    }
   } catch (error) {
-    console.error("Failed to update project:", error)
-    return { success: false, error: "Failed to update project" }
+    return { 
+      success: false, 
+      error: "Failed to update project",
+      details: error instanceof Error ? error.message : String(error)
+    }
   }
 }
 
@@ -550,6 +691,7 @@ export async function fetchProject(pageIndex: number, rowsPerPage: number) {
           image: techstacks.image,
         },
         features: projects.features,
+        status: projects.status,
       })
       .from(projects)
       .leftJoin(categories, eq(projects.categoryId, categories.id))
@@ -603,6 +745,7 @@ export async function fetchProjectById(id: string) {
           image: techstacks.image,
         },
         features: projects.features,
+        status: projects.status,
       })
       .from(projects)
       .where(eq(projects.id, id))
@@ -624,6 +767,7 @@ export async function fetchProjectById(id: string) {
       category: { id: string; name: string } | null;
       techstacks: { id: string; name: string; image: string | null }[];
       features: any[];
+      status: string;
     } = {
       id: projectData[0].id,
       name: projectData[0].name,
@@ -637,6 +781,7 @@ export async function fetchProjectById(id: string) {
           ? JSON.parse(projectData[0].features)
           : projectData[0].features
         : [],
+      status: projectData[0].status || "Status not specified",
     };
 
     // Add unique techstacks
@@ -651,15 +796,16 @@ export async function fetchProjectById(id: string) {
     
     return { success: true, data: project };
   } catch (error) {
-    console.error("Failed to fetch project:", error); // Debug log
     return { success: false, error: "Failed to fetch project" };
   }
 }
 
 // Delete a project
 export async function deleteProject(id: string) {
-  const session = await auth(); // Get the current session
-  const userId = session?.user?.id; // Extract the user ID from the session
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+  const userId = session?.user?.id;
 
   if (!userId) {
     throw new Error("User not authenticated");
@@ -684,33 +830,38 @@ export async function deleteProject(id: string) {
     // Delete the project
     await db.delete(projects).where(eq(projects.id, id));
 
-    // Dynamically collect IP address and user agent
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
-
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
       action: "DELETE",
       tableName: "projects",
       recordId: id,
-      userId: userId, // Use the logged-in user's ID
+      userId: userId,
       details: JSON.stringify({
         action: "Project deleted",
-        data: project,
+        data: {
+          id: project.id,
+          name: project.name,
+          categoryId: project.categoryId
+        },
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     });
 
     revalidatePath("/projects");
-    return { success: true, message: "Project deleted successfully" };
+    
+    return { 
+      success: true, 
+      message: "Project deleted successfully" 
+    };
   } catch (error) {
-    console.error("Failed to delete project:", error);
-    return { success: false, error: "Failed to delete project" };
+    return { 
+      success: false, 
+      error: "Failed to delete project",
+      details: error instanceof Error ? error.message : String(error)
+    };
   }
 }
-
 
 // Type definition for the Project object
 type Project = {
@@ -728,7 +879,9 @@ type Project = {
  * Server action to export projects in different formats
  */
 export async function exportProjects(projects: Project[], format: "csv" | "json" | "pdf") {
-  const session = await auth()
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
   const userId = session?.user?.id
 
   if (!userId) {
@@ -739,10 +892,6 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
   }
 
   try {
-    // Log the export action
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
 
     // Create a timestamp for the filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
@@ -795,8 +944,8 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
         format,
         exportType,
       }),
-      ipAddress,
-      userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/dashboard/projects")
@@ -809,10 +958,10 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
       format,
     }
   } catch (error) {
-    console.error(`Error exporting projects as ${format}:`, error)
     return {
       success: false,
       error: `Failed to export projects as ${format}`,
+      details: error instanceof Error ? error.message : String(error)
     }
   }
 }
@@ -831,18 +980,6 @@ function generateCSV(projects: Project[]): string {
     "Feature Names",
     "Feature Details",
     "Demo URL",
-    "Created At",
-  ]
-
-  // Get current date for export timestamp
-  const exportDate = new Date().toISOString().split("T")[0]
-
-  // Add metadata as comments at the top of the CSV
-  const metadata = [
-    `# Projects Export`,
-    `# Generated: ${new Date().toLocaleString()}`,
-    `# Total Projects: ${projects.length}`,
-    `#`,
   ]
 
   // Convert projects to CSV rows with more detailed information
@@ -862,18 +999,15 @@ function generateCSV(projects: Project[]): string {
       featureNames,
       featureDetails,
       project.demo || "",
-      exportDate, // Use current date as a placeholder for created date
     ]
   })
 
-  // Combine metadata, headers and rows
+  // Combine headers and rows
   const csvContent = [
-    ...metadata,
     headers.join(","),
     ...rows.map((row) =>
       row
         .map((cell) =>
-          // Escape quotes and wrap in quotes if contains comma, semicolon, or quotes
           typeof cell === "string" &&
           (cell.includes(",") || cell.includes(";") || cell.includes('"') || cell.includes("\n"))
             ? `"${cell.replace(/"/g, '""')}"`
@@ -950,3 +1084,677 @@ function generatePDFData(projects: Project[]): string {
   })
 }
 
+interface SeedResult {
+  success: boolean
+  message: string
+  summary: {
+    totalProjectsInData: number
+    totalFeaturesInData: number
+    categories: {
+      total: number
+      created: number
+      skipped: number
+    }
+    techstacks: {
+      total: number
+      created: number
+      skipped: number
+    }
+    projects: {
+      total: number
+      created: number
+      skipped: number
+    }
+    features: {
+      created: number
+    }
+  }
+  details: {
+    errors: string[]
+    skippedItems: string[]
+  }
+  error?: string
+}
+
+// Enhanced tech icon mapping with ORMs and programming languages
+function getTechIconUrl(techName: string): string {
+  const techMap: Record<string, string> = {
+    // Programming Languages
+    'JavaScript': 'javascript',
+    'TypeScript': 'typescript',
+    'Python': 'python',
+    'Java': 'java',
+    'C++': 'cpp',
+    'C#': 'csharp',
+    'C': 'c',
+    'Go': 'go',
+    'Golang': 'go',
+    'Rust': 'rust',
+    'Ruby': 'ruby',
+    'PHP': 'php',
+    'Swift': 'swift',
+    'Kotlin': 'kotlin',
+    'Scala': 'scala',
+    'Dart': 'dart',
+    'Elixir': 'elixir',
+    'Clojure': 'clojure',
+    'Haskell': 'haskell',
+    'Perl': 'perl',
+    'R': 'r',
+    'MATLAB': 'matlab',
+    'Julia': 'julia',
+    'Lua': 'lua',
+    'Shell': 'bash',
+    'Bash': 'bash',
+    'PowerShell': 'powershell',
+    
+    // Frontend Frameworks & Libraries
+    'React': 'react',
+    'React.js': 'react',
+    'ReactJS': 'react',
+    'Next.js': 'nextjs',
+    'NextJS': 'nextjs',
+    'Vue.js': 'vue',
+    'VueJS': 'vue',
+    'Vue': 'vue',
+    'Angular': 'angular',
+    'AngularJS': 'angularjs',
+    'Svelte': 'svelte',
+    'SvelteKit': 'svelte',
+    'Ember.js': 'ember',
+    'jQuery': 'jquery',
+    'jQuery UI': 'jquery',
+    'Three.js': 'threejs',
+    'D3.js': 'd3',
+    'Chart.js': 'chartjs',
+    'GSAP': 'gsap',
+    
+    // Backend Frameworks
+    'Node.js': 'nodejs',
+    'NodeJS': 'nodejs',
+    'Express': 'express',
+    'Express.js': 'express',
+    'NestJS': 'nestjs',
+    'Nest.js': 'nestjs',
+    'Fastify': 'fastify',
+    'Koa': 'koa',
+    'Hapi': 'hapi',
+    'AdonisJS': 'adonisjs',
+    'Meteor': 'meteor',
+    'Sails.js': 'sails',
+    
+    // Python Frameworks
+    'Django': 'django',
+    'Flask': 'flask',
+    'FastAPI': 'fastapi',
+    'Pyramid': 'pyramid',
+    'Bottle': 'bottle',
+    'Tornado': 'tornado',
+    'Celery': 'celery',
+    
+    // Java Frameworks
+    'Spring': 'spring',
+    'Spring Boot': 'spring',
+    'Spring MVC': 'spring',
+    'Spring Security': 'spring',
+    'Hibernate': 'hibernate',
+    'Struts': 'struts',
+    'Play Framework': 'play',
+    'JUnit': 'junit',
+    'Mockito': 'mockito',
+    
+    // Ruby Frameworks
+    'Ruby on Rails': 'rails',
+    'Rails': 'rails',
+    'Sinatra': 'sinatra',
+    'Rack': 'rack',
+    
+    // PHP Frameworks
+    'Laravel': 'laravel',
+    'Symfony': 'symfony',
+    'CodeIgniter': 'codeigniter',
+    'Yii': 'yii',
+    'CakePHP': 'cakephp',
+    'WordPress': 'wordpress',
+    'Drupal': 'drupal',
+    'Joomla': 'joomla',
+    'Magento': 'magento',
+    
+    // .NET Frameworks
+    '.NET': 'dotnet',
+    '.NET Core': 'dotnet',
+    'ASP.NET': 'dotnet',
+    'ASP.NET Core': 'dotnet',
+    'Entity Framework': 'dotnet',
+    'Entity Framework Core': 'dotnet',
+    'Blazor': 'blazor',
+    'Xamarin': 'xamarin',
+    'MAUI': 'maui',
+    
+    // Mobile Frameworks
+    'React Native': 'react',
+    'Flutter': 'flutter',
+    'Ionic': 'ionic',
+    'NativeScript': 'nativescript',
+    'Cordova': 'cordova',
+    'Capacitor': 'capacitor',
+    'Expo': 'expo',
+    'Android SDK': 'android',
+    'iOS SDK': 'ios',
+    'SwiftUI': 'swift',
+    'UIKit': 'swift',
+    
+    // Databases
+    'MySQL': 'mysql',
+    'PostgreSQL': 'postgresql',
+    'Postgres': 'postgresql',
+    'MongoDB': 'mongodb',
+    'Redis': 'redis',
+    'SQLite': 'sqlite',
+    'Oracle': 'oracle',
+    'SQL Server': 'sqlserver',
+    'MariaDB': 'mariadb',
+    'Cassandra': 'cassandra',
+    'CouchDB': 'couchdb',
+    'Neo4j': 'neo4j',
+    'Elasticsearch': 'elasticsearch',
+    'Firebase': 'firebase',
+    'Firestore': 'firebase',
+    'Supabase': 'supabase',
+    'CockroachDB': 'cockroachdb',
+    'DynamoDB': 'dynamodb',
+    'CosmosDB': 'cosmosdb',
+    
+    // ORMs
+    'Prisma': 'prisma',
+    'Prisma ORM': 'prisma',
+    'Sequelize': 'sequelize',
+    'TypeORM': 'typeorm',
+    'Mongoose': 'mongoose',
+    'MikroORM': 'mikroorm',
+    'SQLAlchemy': 'sqlalchemy',
+    'Django ORM': 'django',
+    'Hibernate': 'hibernate',
+    'Eloquent': 'laravel',
+    'Doctrine': 'symfony',
+    'Active Record': 'rails',
+    'GORM': 'go',
+    'SQLx': 'rust',
+    'Diesel': 'rust',
+    'SeaORM': 'rust',
+    'Knex.js': 'knex',
+    
+    // GraphQL
+    'GraphQL': 'graphql',
+    'Apollo': 'apollo',
+    'Apollo Client': 'apollo',
+    'Apollo Server': 'apollo',
+    'Relay': 'relay',
+    'Hasura': 'hasura',
+    'GraphQL Yoga': 'graphql',
+    
+    // CSS Frameworks & Preprocessors
+    'CSS3': 'css',
+    'CSS': 'css',
+    'Sass': 'sass',
+    'SCSS': 'sass',
+    'Less': 'less',
+    'Stylus': 'stylus',
+    'Tailwind CSS': 'tailwind',
+    'Tailwind': 'tailwind',
+    'Bootstrap': 'bootstrap',
+    'Bulma': 'bulma',
+    'Material-UI': 'mui',
+    'MUI': 'mui',
+    'Chakra UI': 'chakraui',
+    'Ant Design': 'antd',
+    'Styled Components': 'styledcomponents',
+    'Emotion': 'emotion',
+    'PostCSS': 'postcss',
+    
+    // Build Tools & Bundlers
+    'Webpack': 'webpack',
+    'Vite': 'vite',
+    'Parcel': 'parcel',
+    'Rollup': 'rollup',
+    'Gulp': 'gulp',
+    'Grunt': 'grunt',
+    'Babel': 'babel',
+    'ESLint': 'eslint',
+    'Prettier': 'prettier',
+    'Jest': 'jest',
+    'Vitest': 'vitest',
+    
+    // DevOps & Cloud
+    'Docker': 'docker',
+    'Kubernetes': 'kubernetes',
+    'AWS': 'aws',
+    'Azure': 'azure',
+    'Google Cloud': 'gcp',
+    'GCP': 'gcp',
+    'Vercel': 'vercel',
+    'Netlify': 'netlify',
+    'Heroku': 'heroku',
+    'GitHub Actions': 'githubactions',
+    'GitLab CI': 'gitlab',
+    
+    // Version Control
+    'Git': 'git',
+    'GitHub': 'github',
+    'GitLab': 'gitlab',
+    
+    // Authentication
+    'Auth.js': 'auth0',
+    'AuthJS': 'auth0',
+    
+    // Design Tools
+    'Figma': 'figma',
+    'Adobe XD': 'xd',
+    'Photoshop': 'photoshop',
+    'Illustrator': 'illustrator',
+    
+    // Local Storage & State Management
+    'Hive': 'hive',
+    'Bloc': 'bloc',
+  }
+
+  // Clean and normalize tech name
+  const cleanTechName = techName.trim()
+  
+  // Direct match
+  if (techMap[cleanTechName]) {
+    return `https://skillicons.dev/icons?i=${techMap[cleanTechName]}`
+  }
+
+  // Try case-insensitive match
+  const lowerTechName = cleanTechName.toLowerCase()
+  for (const [key, value] of Object.entries(techMap)) {
+    if (key.toLowerCase() === lowerTechName) {
+      return `https://skillicons.dev/icons?i=${value}`
+    }
+  }
+
+  // Try contains match
+  for (const [key, value] of Object.entries(techMap)) {
+    if (lowerTechName.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerTechName)) {
+      return `https://skillicons.dev/icons?i=${value}`
+    }
+  }
+
+  // Fallback: use the name directly
+  const fallbackName = lowerTechName.replace(/\s+/g, '')
+  return `https://skillicons.dev/icons?i=${fallbackName}`
+}
+
+export async function autoSeedAllData(): Promise<SeedResult> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    })
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return {
+        success: false,
+        message: "User not authenticated",
+        error: "No authenticated user found",
+        summary: {
+          totalProjectsInData: projectsData.length,
+          totalFeaturesInData: projectsData.reduce((sum, project) => sum + project.features.length, 0),
+          categories: { total: 0, created: 0, skipped: 0 },
+          techstacks: { total: 0, created: 0, skipped: 0 },
+          projects: { total: 0, created: 0, skipped: 0 },
+          features: { created: 0 }
+        },
+        details: { errors: ["User not authenticated"], skippedItems: [] }
+      }
+    }
+
+    const results = {
+      categoriesCreated: 0,
+      techstacksCreated: 0,
+      projectsCreated: 0,
+      featuresCreated: 0,
+      errors: [] as string[],
+      skippedItems: [] as string[]
+    }
+
+    // Step 1: Extract unique categories from projects
+    const uniqueCategories = Array.from(new Set(projectsData.map(project => project.category)))
+    console.log(`Found ${uniqueCategories.length} unique categories:`, uniqueCategories)
+
+    // Create a map to store created category IDs
+    const categoryMap = new Map<string, string>()
+
+    // Create categories if they don't exist
+    for (const categoryName of uniqueCategories) {
+      try {
+        console.log(`Processing category: ${categoryName}`)
+        
+        // Check if category already exists
+        const existingCategory = await db
+          .select()
+          .from(categories)
+          .where(eq(categories.name, categoryName))
+          .then(result => result[0])
+
+        if (existingCategory) {
+          console.log(`Category "${categoryName}" already exists with ID: ${existingCategory.id}`)
+          categoryMap.set(categoryName, existingCategory.id)
+          results.skippedItems.push(`Category "${categoryName}" already exists`)
+        } else {
+          const categoryId = uuidv4()
+          await db
+            .insert(categories)
+            .values({
+              id: categoryId,
+              name: categoryName
+            })
+          
+          categoryMap.set(categoryName, categoryId)
+          results.categoriesCreated++
+          console.log(`Created category "${categoryName}" with ID: ${categoryId}`)
+        }
+      } catch (error) {
+        const errorMsg = `Failed to create category "${categoryName}": ${error instanceof Error ? error.message : String(error)}`
+        console.error(errorMsg)
+        results.errors.push(errorMsg)
+      }
+    }
+
+    console.log("Category Map:", Array.from(categoryMap.entries()))
+
+    // Step 2: Extract all unique tech stacks from all projects
+    const allTechStacks = projectsData.flatMap(project => project.techStack)
+    const uniqueTechStacks = Array.from(new Set(allTechStacks))
+    console.log(`Found ${uniqueTechStacks.length} unique tech stacks`)
+
+    // Create a map to store created tech stack IDs
+    const techstackMap = new Map<string, string>()
+
+    // Create tech stacks if they don't exist
+    for (const techName of uniqueTechStacks) {
+      try {
+        if (!techName || techName.trim() === "") {
+          console.log(`Skipping empty tech name`)
+          continue
+        }
+
+        console.log(`Processing tech stack: ${techName}`)
+        
+        // Check if tech stack already exists
+        const existingTechstack = await db
+          .select()
+          .from(techstacks)
+          .where(eq(techstacks.name, techName))
+          .then(result => result[0])
+
+        if (existingTechstack) {
+          console.log(`Tech stack "${techName}" already exists with ID: ${existingTechstack.id}`)
+          techstackMap.set(techName, existingTechstack.id)
+          results.skippedItems.push(`Tech stack "${techName}" already exists`)
+        } else {
+          const techstackId = uuidv4()
+          const techIconUrl = getTechIconUrl(techName)
+          
+          await db
+            .insert(techstacks)
+            .values({
+              id: techstackId,
+              name: techName,
+              image: techIconUrl
+            })
+          
+          techstackMap.set(techName, techstackId)
+          results.techstacksCreated++
+          console.log(`Created tech stack "${techName}" with ID: ${techstackId}`)
+        }
+      } catch (error) {
+        const errorMsg = `Failed to create tech stack "${techName}": ${error instanceof Error ? error.message : String(error)}`
+        console.error(errorMsg)
+        results.errors.push(errorMsg)
+      }
+    }
+
+    // Step 3: Create projects with detailed features
+    console.log(`\nStarting to create ${projectsData.length} projects...`)
+    
+    for (const projectData of projectsData) {
+      try {
+        console.log(`\nProcessing project: ${projectData.title}`)
+        
+        // Check if project already exists by name
+        const existingProject = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.name, projectData.title))
+          .then(result => result[0])
+
+        if (existingProject) {
+          console.log(`Project "${projectData.title}" already exists, skipping...`)
+          results.skippedItems.push(`Project "${projectData.title}" already exists`)
+          continue
+        }
+
+        const projectId = uuidv4()
+        const categoryId = categoryMap.get(projectData.category)
+
+        if (!categoryId) {
+          const errorMsg = `Category "${projectData.category}" not found in category map for project "${projectData.title}"`
+          console.error(errorMsg)
+          results.errors.push(errorMsg)
+          continue
+        }
+
+        console.log(`Category ID for "${projectData.category}": ${categoryId}`)
+
+        // Format features array with name and description
+        const formattedFeatures = projectData.features.map((feature: any) => ({
+          name: feature.name,
+          description: feature.description
+        }))
+
+        // Count features
+        results.featuresCreated += formattedFeatures.length
+        console.log(`Added ${formattedFeatures.length} features for project "${projectData.title}"`)
+
+        // Validate URLs
+        const demoUrl = projectData.demoUrl || ""
+        const imageUrl = projectData.image || ""
+        
+        // Then update with features separately
+        
+        // Step 3a: Insert basic project info
+        const baseProjectData = {
+          id: projectId,
+          name: projectData.title,
+          description: projectData.description,
+          demo: demoUrl,
+          image: imageUrl,
+          categoryId: categoryId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          status: "published",
+        }
+        
+        await db.insert(projects).values(baseProjectData)
+        console.log(`Successfully inserted basic project info for "${projectData.title}"`)
+        
+        // Step 3b: Update the features column separately if the column exists
+        try {
+          // Check if features column exists by attempting to update
+          await db
+            .update(projects)
+            .set({ 
+              features: JSON.stringify(formattedFeatures)
+            } as any)
+            .where(eq(projects.id, projectId))
+          console.log(`Successfully added features for project "${projectData.title}"`)
+        } catch (featuresError) {
+          // If features column doesn't exist, log warning but continue
+          console.warn(`Could not add features for project "${projectData.title}": ${featuresError instanceof Error ? featuresError.message : String(featuresError)}`)
+          results.errors.push(`Features column missing for project "${projectData.title}"`)
+        }
+
+        // Create project-techstack relationships
+        const techstackRelations = projectData.techStack
+          .filter(techName => {
+            const hasTech = techstackMap.has(techName)
+            if (!hasTech) {
+              console.warn(`Tech stack "${techName}" not found in map for project "${projectData.title}"`)
+            }
+            return hasTech
+          })
+          .map(techName => ({
+            projectId: projectId,
+            techstackId: techstackMap.get(techName)!
+          }))
+
+        if (techstackRelations.length > 0) {
+          await db.insert(projectTechstacks).values(techstackRelations)
+          console.log(`Created ${techstackRelations.length} tech stack relationships for project "${projectData.title}"`)
+        } else {
+          console.log(`No tech stack relationships created for project "${projectData.title}"`)
+        }
+
+        // Add audit log
+        try {
+          await db.insert(auditLogs).values({
+            action: "Create Project with Seeding Data/Recovery",
+            tableName: "projects",
+            recordId: projectId,
+            userId,
+            details: JSON.stringify({
+              action: `Project created with seeding data/recovery`,
+              projectName: projectData.title,
+            }),
+            ipAddress: session?.session?.ipAddress || "unknown",
+            userAgent: session?.session?.userAgent || "unknown",
+          })
+        } catch (auditError) {
+          console.warn(`Failed to create audit log for project "${projectData.title}":`, auditError)
+        }
+
+        results.projectsCreated++
+        console.log(`✅ Successfully created project "${projectData.title}"`)
+        
+      } catch (error) {
+        const errorMsg = `Failed to create project "${projectData.title}": ${error instanceof Error ? error.message : String(error)}`
+        console.error(errorMsg)
+        results.errors.push(errorMsg)
+      }
+    }
+
+    // Step 4: Revalidate paths
+    try {
+      revalidatePath("/categories")
+      revalidatePath("/techstacks")
+      revalidatePath("/projects")
+    } catch (revalidateError) {
+      console.warn("Failed to revalidate paths:", revalidateError)
+    }
+
+    console.log("\n=== SEEDING COMPLETE ===")
+    console.log(`Projects created: ${results.projectsCreated}/${projectsData.length}`)
+    console.log(`Tech stacks created: ${results.techstacksCreated}/${uniqueTechStacks.length}`)
+    console.log(`Categories created: ${results.categoriesCreated}/${uniqueCategories.length}`)
+    console.log(`Features created: ${results.featuresCreated}`)
+    console.log(`Errors: ${results.errors.length}`)
+
+    return {
+      success: results.errors.filter(e => !e.includes("Features column missing")).length === 0,
+      message: results.errors.filter(e => !e.includes("Features column missing")).length === 0 
+        ? "Auto-seeding with detailed features completed successfully"
+        : `Seeding completed with ${results.errors.length} errors`,
+      summary: {
+        totalProjectsInData: projectsData.length,
+        totalFeaturesInData: projectsData.reduce((sum, project) => sum + project.features.length, 0),
+        categories: {
+          total: uniqueCategories.length,
+          created: results.categoriesCreated,
+          skipped: uniqueCategories.length - results.categoriesCreated
+        },
+        techstacks: {
+          total: uniqueTechStacks.length,
+          created: results.techstacksCreated,
+          skipped: uniqueTechStacks.length - results.techstacksCreated
+        },
+        projects: {
+          total: projectsData.length,
+          created: results.projectsCreated,
+          skipped: projectsData.length - results.projectsCreated
+        },
+        features: {
+          created: results.featuresCreated
+        }
+      },
+      details: {
+        errors: results.errors,
+        skippedItems: results.skippedItems
+      }
+    }
+
+  } catch (error) {
+    console.error("Fatal error during seeding:", error)
+    return {
+      success: false,
+      message: "Failed to auto-seed data with descriptions",
+      error: error instanceof Error ? error.message : String(error),
+      summary: {
+        totalProjectsInData: projectsData.length,
+        totalFeaturesInData: projectsData.reduce((sum, project) => sum + project.features.length, 0),
+        categories: { total: 0, created: 0, skipped: 0 },
+        techstacks: { total: 0, created: 0, skipped: 0 },
+        projects: { total: 0, created: 0, skipped: 0 },
+        features: { created: 0 }
+      },
+      details: { errors: [error instanceof Error ? error.message : String(error)], skippedItems: [] }
+    }
+  }
+}
+
+// Function to clear all data (use with caution!)
+export async function clearAllData() {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    })
+    const userId = session?.user?.id
+
+    // Delete in correct order due to foreign key constraints
+    await db.delete(projectTechstacks)
+    await db.delete(projects)
+    await db.delete(techstacks)
+    await db.delete(categories)
+
+    if (userId) {
+      await db.insert(auditLogs).values({
+        action: "Clear All Data",
+        tableName: "multiple",
+        recordId: "all",
+        userId,
+        details: JSON.stringify({
+          action: "All data cleared from categories, techstacks, projects, and projectTechstacks"
+        }),
+        ipAddress: session?.session?.ipAddress || "unknown",
+        userAgent: session?.session?.userAgent || "unknown",
+      })
+    }
+
+    revalidatePath("/categories")
+    revalidatePath("/techstacks")
+    revalidatePath("/projects")
+
+    return {
+      success: true,
+      message: "All data cleared successfully"
+    }
+  } catch (error) {
+    console.error("Error clearing data:", error)
+    return {
+      success: false,
+      message: "Failed to clear data",
+      error: error instanceof Error ? error.message : String(error)
+    }
+  }
+}

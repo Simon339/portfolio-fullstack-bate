@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import Link from "next/link"
-import { Loader2, FacebookIcon, GithubIcon, InstagramIcon, LinkedinIcon, Eye, EyeOff, ArrowLeft } from "lucide-react"
+import Image from "next/image"
+import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState, useTransition } from "react"
 import type { z } from "zod"
@@ -13,11 +13,11 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useRouter, useSearchParams } from "next/navigation"
-import { NewPasswordAction } from "@/server/actions/reset"
 import { FormError } from "@/components/Auth/FormError"
 import { FormSuccess } from "@/components/Auth/FormSuccess"
 import { ResetPasswordSchema } from "@/types/vaildations/resetP"
 import { PasswordStrengthIndicator } from "@/components/Auth/PasswordStrengthIndicator"
+import { authClient } from "@/hooks/getcurrectuser"
 
 const NewPassword: React.FC = () => {
   const currentYear = new Date().getFullYear()
@@ -37,164 +37,193 @@ const NewPassword: React.FC = () => {
     },
   })
 
+  const password = form.watch("password")
+
   const onSubmit = (values: z.infer<typeof ResetPasswordSchema>) => {
     setError("")
     setSuccess("")
-    startTransition(() => {
-      NewPasswordAction(values, token).then((data) => {
-        setError(data?.error)
-        setSuccess(data?.success)
-        if (data?.success) {
-          router.push("/auth")
+
+    startTransition(async () => {
+      try {
+        const result = await authClient.resetPassword({
+          newPassword: values.password, 
+          token: token || "",
+        })
+
+        if (result.error) {
+          setError(result.error.message || "Failed to reset password")
+          return
         }
-      })
+
+        setSuccess("Password reset successfully!")
+        setTimeout(() => {
+          router.push("/auth")
+        }, 2000)
+        
+      } catch (err: any) {
+        setError(err.message || "An unexpected error occurred")
+      }
     })
   }
 
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword)
-  }
-
   return (
-    <section className="flex items-center justify-center min-h-screen w-full bg-gradient-to-b from-gray-100 to-white px-4 py-12">
-      <Card className="w-full max-w-md shadow-2xl bg-white rounded-xl">
-        <CardContent className="p-2">
-          <div className="mb-4 mt-2">
-            <Link
-              href="/auth"
-              className="inline-flex items-center text-sm text-gray-600 hover:text-[#000B58] transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back to login
-            </Link>
+    <section className="flex items-center justify-center min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 px-4 py-8">
+      <Card className="w-full max-w-md border border-gray-200/80 shadow-2xl rounded-3xl overflow-hidden backdrop-blur-sm bg-white/95">
+        <CardContent className="p-0">
+          {/* Header with Logo and Back Button */}
+          <div className="p-8 pb-6">
+            <div className="mb-4">
+              <Link
+                href="/auth"
+                className="inline-flex items-center text-sm text-gray-600 hover:text-[#000B58] transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to login
+              </Link>
+            </div>
+
+            <div className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center shadow-lg shadow-[#000B58]/10">
+                  <Image
+                    src="/logo.png"
+                    alt="Logo"
+                    width={38}
+                    height={38}
+                    className="rounded-lg"
+                  />
+                </div>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                Create New Password
+              </h1>
+              <p className="text-sm text-gray-600 mt-1.5">
+                Please enter and confirm your new password
+              </p>
+            </div>
           </div>
 
-          <Header />
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          {...field}
-                          disabled={isPending}
-                          className="w-full px-3 py-2 border bg-slate-50 border-gray-400 text-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={toggleShowPassword}
-                          className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <PasswordStrengthIndicator password={field.value} />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {/* Form Section */}
+          <div className="px-8 pb-8">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        New Password
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            {...field}
+                            disabled={isPending}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-[#000B58] focus:ring-1 focus:ring-[#000B58] bg-white pr-10 transition-colors"
+                            placeholder="Create a strong password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      {password && <PasswordStrengthIndicator password={password} />}
+                      <FormMessage className="text-xs mt-1.5" />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">Confirm Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          id="confirmPassword"
-                          type={showPassword ? "text" : "password"}
-                          {...field}
-                          disabled={isPending}
-                          className="w-full px-3 py-2 border bg-slate-50 border-gray-400 text-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={toggleShowPassword}
-                          className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Confirm Password
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            id="confirmPassword"
+                            type={showPassword ? "text" : "password"}
+                            {...field}
+                            disabled={isPending}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-[#000B58] focus:ring-1 focus:ring-[#000B58] bg-white pr-10 transition-colors"
+                            placeholder="Confirm your password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-xs mt-1.5" />
+                    </FormItem>
+                  )}
+                />
 
-              <FormError message={error} />
-              <FormSuccess message={success} />
-              <Button
-                disabled={isPending}
-                className="w-full bg-[#000B58] border-[#0179FE] font-semibold rounded-md py-2 text-white transition duration-200 ease-in-out hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                type="submit"
+                <FormError message={error} />
+                <FormSuccess message={success} />
+
+                <Button
+                  disabled={isPending}
+                  className="w-full bg-[#000B58] hover:bg-[#000B58]/90 text-white font-semibold h-12 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
+                  type="submit"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    "Reset Password"
+                  )}
+                </Button>
+
+                <div className="text-center pt-4">
+                  <p className="text-sm text-gray-600">
+                    Remember your password?{" "}
+                    <Link
+                      href="/auth"
+                      className="text-[#000B58] hover:text-[#000B58]/80 font-semibold transition-colors"
+                    >
+                      Sign in
+                    </Link>
+                  </p>
+                </div>
+              </form>
+            </Form>
+          </div>
+
+          {/* Footer */}
+          <footer className="px-8 py-6 text-center bg-gray-50/40 border-t border-gray-100">
+            <p className="text-xs text-gray-400">
+              &copy; {currentYear}{" "}
+              <Link
+                href="/"
+                className="text-gray-600 hover:text-gray-800 transition-colors font-semibold"
               >
-                {isPending ? (
-                  <>
-                    <Loader2 size={20} className="mr-2 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  "Create Password"
-                )}
-              </Button>
-            </form>
-          </Form>
-
-          <Footer currentYear={currentYear} />
+                Simon339 Inc.
+              </Link>
+              . All rights reserved.
+            </p>
+          </footer>
         </CardContent>
       </Card>
     </section>
   )
 }
 
-const Header: React.FC = () => (
-  <header className="p-6 bg-white rounded-t-xl">
-    <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">Create New Password</h1>
-    <p className="text-center text-gray-600 mb-6">Please enter and confirm your new password</p>
-  </header>
-)
-
-const Footer: React.FC<{ currentYear: number }> = ({ currentYear }) => (
-  <footer className="mt-8 text-center">
-    <nav className="mb-4 flex justify-center space-x-4">
-      <SocialLink href="#" icon={FacebookIcon} label="Facebook" />
-      <SocialLink href="#" icon={InstagramIcon} label="Instagram" />
-      <SocialLink href="#" icon={LinkedinIcon} label="LinkedIn" />
-      <SocialLink href="#" icon={GithubIcon} label="GitHub" />
-    </nav>
-    <p className="text-xs text-gray-500">
-      &copy; {currentYear}{" "}
-      <Link href="/" className="text-indigo-600 hover:underline">
-        Simon339 Inc.
-      </Link>{" "}
-      All rights reserved.
-    </p>
-  </footer>
-)
-
-const SocialLink: React.FC<{ href: string; icon: React.ElementType; label: string }> = ({
-  href,
-  icon: Icon,
-  label,
-}) => (
-  <Link
-    href={href}
-    className="text-gray-400 transition duration-200 ease-in-out hover:text-gray-600"
-    aria-label={label}
-  >
-    <Icon className="h-5 w-5" />
-  </Link>
-)
-
 export default NewPassword
-

@@ -3,25 +3,29 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { AlertCircle, RefreshCw, Home } from "lucide-react"
+import { AlertCircle, HelpCircle } from "lucide-react"
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
+export default function Error({ error, reset }: { error: Error & { digest?: string }, reset: () => void }) {
   const router = useRouter()
-  const [countdown, setCountdown] = useState(5)
+  const [countdown, setCountdown] = useState(30) // Increased from 5 to 30 seconds
   const [isProd, setIsProd] = useState(false)
+  const [userFriendlyMessage, setUserFriendlyMessage] = useState("")
 
   useEffect(() => {
     setIsProd(process.env.NODE_ENV === 'production')
     
+    // Generate user-friendly error message based on error type
+    if (error?.message?.includes("fetch") || error?.message?.includes("network")) {
+      setUserFriendlyMessage("We're having trouble connecting to our servers. This might be due to a network issue or temporary server maintenance.")
+    } else if (error?.message?.includes("timeout")) {
+      setUserFriendlyMessage("The request took too long to complete. Please check your internet connection and try again.")
+    } else {
+      setUserFriendlyMessage("Something unexpected happened while loading this page. Our team has been notified and we're working to fix it.")
+    }
+    
     const timer = setTimeout(() => {
       router.refresh()
-    }, 5000)
+    }, 30000) // Increased from 5000 to 10000ms
 
     const interval = setInterval(() => {
       setCountdown((prev) => (prev > 0 ? prev - 1 : 0))
@@ -31,12 +35,12 @@ export default function Error({
       clearTimeout(timer)
       clearInterval(interval)
     }
-  }, [router])
+  }, [router, error])
 
   if (!error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>An unknown error occurred</p>
+        <p>We're experiencing technical difficulties. Please try again later.</p>
       </div>
     )
   }
@@ -58,36 +62,48 @@ export default function Error({
           <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
             <AlertCircle className="h-8 w-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">Something went wrong</h1>
-          <p className="mt-1 text-gray-500 dark:text-gray-400 text-sm">The page will refresh in {countdown}</p>
+          <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
+            Technical Difficulties
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-300 text-sm max-w-sm">
+            {userFriendlyMessage}
+          </p>
+          <div className="mt-2 inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <HelpCircle className="h-3 w-3" />
+            <span>Page will refresh automatically in {countdown} seconds</span>
+          </div>
         </motion.div>
 
-        {!isProd && (
+        {/* Technical details (development only) */}
+        {!isProd && error && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="py-3 px-4 bg-gray-50 dark:bg-gray-900 rounded-lg text-left"
+            transition={{ delay: 0.4, duration: 0.4 }}
+            className="py-3 px-4 bg-gray-50 dark:bg-gray-900 rounded-lg text-left border border-gray-200 dark:border-gray-800"
           >
-            <p className="text-sm font-mono text-gray-700 dark:text-gray-300 break-words">
+            <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+              Technical Details (Development Only):
+            </h4>
+            <p className="text-xs font-mono text-gray-700 dark:text-gray-300 break-words">
               {error.message}
             </p>
             {error.digest && (
-              <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-2 break-words">
-                Error ID: {error.digest}
+              <p className="text-xs font-mono text-gray-500 dark:text-gray-500 mt-1 break-words">
+                Reference: {error.digest}
               </p>
             )}
           </motion.div>
         )}
 
-
+        {/* Countdown visualization */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.4 }}
           className="flex items-center justify-center"
         >
-          <div className="relative h-12 w-12">
+          <div className="relative h-14 w-14">
             <svg className="w-full h-full" viewBox="0 0 100 100">
               <circle
                 className="text-gray-100 dark:text-gray-800"
@@ -99,10 +115,10 @@ export default function Error({
                 cy="50"
               />
               <motion.circle
-                className="text-red-500"
+                className="text-blue-500"
                 strokeWidth="6"
                 strokeDasharray={264}
-                strokeDashoffset={264 - (264 * countdown) / 5}
+                strokeDashoffset={264 - (264 * countdown) / 10}
                 strokeLinecap="round"
                 stroke="currentColor"
                 fill="transparent"
@@ -116,44 +132,19 @@ export default function Error({
             </span>
           </div>
         </motion.div>
-
+        {/* Support contact */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.4 }}
-          className="flex gap-3 justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.4 }}
+          className="pt-4 border-t border-gray-100 dark:border-gray-800"
         >
-          <motion.button
-            onClick={() => router.push("/")}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium flex items-center gap-2 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-          >
-            <Home className="h-4 w-4" />
-            Home
-          </motion.button>
-
-          <motion.button
-            onClick={reset}
-            disabled={countdown > 0}
-            whileHover={countdown === 0 ? { scale: 1.05 } : {}}
-            whileTap={countdown === 0 ? { scale: 0.98 } : {}}
-            animate={countdown === 0 ? { 
-              boxShadow: ["0 0 0 0 rgba(59, 130, 246, 0.7)", "0 0 0 10px rgba(59, 130, 246, 0)"],
-              transition: { 
-                repeat: Infinity,
-                duration: 1.5
-              }
-            } : {}}
-            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              countdown > 0
-                ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 dark:bg-blue-400 text-white dark:text-gray-900 hover:bg-blue-700 dark:hover:bg-blue-300 focus:ring-blue-500'
-            }`}
-          >
-            <RefreshCw className="h-4 w-4" />
-            {countdown > 0 ? `Try again (${countdown})` : 'Try again'}
-          </motion.button>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            If the problem persists, please contact our support team with error reference:{" "}
+            <span className="font-mono text-gray-600 dark:text-gray-300">
+              {error.digest || "N/A"}
+            </span>
+          </p>
         </motion.div>
       </motion.div>
     </div>

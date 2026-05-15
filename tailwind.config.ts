@@ -1,8 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-require-imports */
-import { nextui } from '@nextui-org/theme';
 import type { Config } from "tailwindcss";
-
+const {heroui} = require("@heroui/react");
 
 const svgToDataUri = require("mini-svg-data-uri");
 
@@ -12,12 +9,13 @@ const {
 } = require("tailwindcss/lib/util/flattenColorPalette");
 
 const config: Config = {
-	darkMode: ["class"],
+  darkMode: ["class", "class"],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./node_modules/@nextui-org/theme/dist/components/(avatar|badge|dropdown|modal|menu|divider|popover|button|ripple|spinner).js"
+    "./node_modules/@heroui/theme/dist/components/(avatar|badge|dropdown|modal|menu|divider|popover|button|ripple|spinner).js",
+	"./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}",
   ],
 	theme: {
     	container: {
@@ -260,7 +258,7 @@ const config: Config = {
 			},
 			{ values: flattenColorPalette(theme("backgroundColor")), type: "color" }
 		);
-	}, nextui()],
+	}, heroui()],
 } satisfies Config;
 function addVariablesForColors({ addBase, theme }: any) {
 	let allColors = flattenColorPalette(theme("colors"));

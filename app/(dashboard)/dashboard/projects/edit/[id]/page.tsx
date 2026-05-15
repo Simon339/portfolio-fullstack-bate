@@ -8,8 +8,6 @@ import { useForm } from "react-hook-form"
 import type { z } from "zod"
 import { Plus, Minus, X, LinkIcon } from "lucide-react"
 import { fetchProjectById, editProject, fetchCategories, fetchTechstacks } from "@/server/data/projectactions"
-import Image from "next/image"
-
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -25,6 +23,7 @@ interface ProjectData extends z.infer<typeof ProjectSchema> {
   id: string
   category?: { id: string; name: string }
   techstacks?: Array<{ id: string; name: string; image?: string | null }>
+  status?: string
 }
 
 interface Feature {
@@ -95,6 +94,66 @@ const ProjectEditPage = () => {
         }
 
         const project = projectResult.data
+
+        // Helper function to parse features
+        const parseFeatures = (featuresValue: any): Array<{ name: string; description: string }> => {
+          let featuresArray: Array<{ name: string; description: string }> = []
+
+          try {
+            if (typeof featuresValue === 'string') {
+              const featuresStr = featuresValue.trim()
+
+              if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
+                // Parse as JSON array
+                const parsed = JSON.parse(featuresStr)
+
+                // Handle both array of strings and array of objects
+                if (Array.isArray(parsed)) {
+                  featuresArray = parsed.map(item => {
+                    if (typeof item === 'string') {
+                      return { name: item, description: '' }
+                    } else if (typeof item === 'object' && item !== null) {
+                      return {
+                        name: item.name || item.Name || 'Feature',
+                        description: item.description || item.Description || ''
+                      }
+                    }
+                    return { name: 'Feature', description: '' }
+                  })
+                }
+              } else if (featuresStr.includes(',')) {
+                // Comma-separated string
+                featuresArray = featuresStr.split(',').map(item => ({
+                  name: item.trim(),
+                  description: ''
+                }))
+              } else if (featuresStr !== '') {
+                // Single feature string
+                featuresArray = [{ name: featuresStr, description: '' }]
+              }
+            } else if (Array.isArray(featuresValue)) {
+              // Already an array
+              featuresArray = featuresValue.map(item => {
+                if (typeof item === 'string') {
+                  return { name: item, description: '' }
+                } else if (typeof item === 'object' && item !== null) {
+                  return {
+                    name: item.name || item.Name || 'Feature',
+                    description: item.description || item.Description || ''
+                  }
+                }
+                return { name: 'Feature', description: '' }
+              })
+            }
+          } catch (error) {
+            throw new Error("Something went worng")
+          }
+
+          return featuresArray
+        }
+
+        const parsedFeatures = parseFeatures(project.features)
+
         const formattedProjectData = {
           id: project.id,
           name: project.name,
@@ -103,9 +162,10 @@ const ProjectEditPage = () => {
           image: project.image || "",
           categories: project.category ? [project.category.id] : [],
           techStack: project.techstacks ? project.techstacks.map((tech) => tech.id) : [],
-          features: project.features || [],
+          features: parsedFeatures,
           category: project.category,
           techstacks: project.techstacks,
+          status: project.status || "draft",
         }
 
         setProjectData(formattedProjectData)
@@ -126,13 +186,11 @@ const ProjectEditPage = () => {
           image: formattedProjectData.image,
         })
       } catch (error) {
-        console.error("Error fetching data:", error)
         setError("Failed to load project data. Please try again.")
       } finally {
         setLoading(false)
       }
     }
-
     fetchAllData()
   }, [projectId, form])
 
@@ -219,21 +277,18 @@ const ProjectEditPage = () => {
         data.append("name", values.name)
         data.append("description", values.description)
         data.append("demo", values.demo)
+        data.append("status", values.status)
 
         // Add image if available (use the File object)
         if (imageFile) {
           data.append("image", imageFile)
         } else if (image) {
-          // If we have a string image URL but no file (like from initialData)
-          // Create a blob from the base64 string and append it
           try {
             const response = await fetch(image)
             const blob = await response.blob()
             const file = new File([blob], "image.jpg", { type: blob.type })
             data.append("image", file)
           } catch (error) {
-            console.error("Error converting image URL to file:", error)
-            // Just pass the image string if conversion fails
             data.append("image", image)
           }
         }
@@ -255,7 +310,6 @@ const ProjectEditPage = () => {
           toast.error(typeof result.error === "string" ? result.error : "There was an error updating your project")
         }
       } catch (error) {
-        console.error("Error submitting form:", error)
         toast.error("An unexpected error occurred")
       }
     })
@@ -294,7 +348,7 @@ const ProjectEditPage = () => {
       </section>
     )
   }
-  
+
   if (error) {
     return (
       <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
@@ -454,7 +508,7 @@ const ProjectEditPage = () => {
                                 className="bg-[#acc2ef]/20 text-[#685189] border border-[#acc2ef] flex items-center gap-1"
                               >
                                 {tech.image && (
-                                  <Image
+                                  <img
                                     src={tech.image || "/placeholder.svg"}
                                     alt={tech.name}
                                     width={12}
@@ -502,7 +556,7 @@ const ProjectEditPage = () => {
                               className="text-sm font-medium leading-none text-gray-700 flex items-center gap-2 cursor-pointer"
                             >
                               {tech.image && (
-                                <Image
+                                <img
                                   src={tech.image || "/placeholder.svg"}
                                   alt={tech.name}
                                   width={16}
@@ -541,10 +595,9 @@ const ProjectEditPage = () => {
                         <div className="relative bg-slate-50 rounded-lg border border-[#acc2ef]/30 p-3 overflow-hidden">
                           <div className="flex items-start gap-3">
                             <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-[#acc2ef]">
-                              <Image
+                              <img
                                 src={image || "/placeholder.svg"}
                                 alt="Project preview"
-                                fill
                                 sizes="96px"
                                 className="object-cover"
                               />
@@ -657,13 +710,23 @@ const ProjectEditPage = () => {
               )}
             />
 
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full bg-white text-[#685189] border border-[#acc2ef] hover:bg-[#acc2ef]/10 font-bold"
-            >
-              {isPending ? "Submitting..." : "Update Project"}
-            </Button>
+            <div className="flex gap-4">
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="flex-1 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold"
+              >
+                {isPending ? "Updating..." : "Update Project"}
+              </Button>
+
+              <Button
+                type="button"
+                disabled={isPending}
+                className="w-32 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold"
+              >
+                {isPending ? "Saving..." : "Save Draft"}
+              </Button>
+            </div>
           </form>
         </Form>
       </div>
