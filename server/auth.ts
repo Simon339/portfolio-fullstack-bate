@@ -492,7 +492,7 @@ export const auth = betterAuth({
     }),
   ],
 
-  trustedOrigins: ["https://m-s-portfolio.vercel.app","http://localhost:3000",],
+  trustedOrigins: ["https://m-s-portfolio.vercel.app"],
 });
 
 /*
