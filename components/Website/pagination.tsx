@@ -192,7 +192,7 @@ const Pagination = () => {
                 <Badge
                   key={category}
                   variant={selectedCategory === category ? "default" : "outline"}
-                  className={`cursor-pointer px-4 py-2 text-sm ${
+                  className={`cursor-pointer px-4 py-2 text-sm text-white ${
                     selectedCategory === category
                       ? "bg-indigo-600 hover:bg-indigo-700"
                       : "bg-[#131b41] border-indigo-900/50 hover:bg-indigo-900/30"
