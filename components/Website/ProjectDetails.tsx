@@ -30,6 +30,7 @@ type Project = {
     image: string | null
   }>
   features: ProjectFeature[]
+  
 }
 
 interface ProjectDetailsProps {
@@ -166,17 +167,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           {/* Project Image */}
           <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-800 bg-gray-900/20">
             {project.image ? (
-              <Image
+              <img
                 src={project.image}
                 alt={project.name}
-                fill
                 className="object-cover transition-transform duration-500 hover:scale-105"
               />
             ) : (
-              <Image
+              <img
                 src="/coming-soonplaceholder.png"
                 alt={project.name}
-                fill
                 className="object-cover transition-transform duration-500 hover:scale-105"
               />
             )}
@@ -210,7 +209,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                   >
                     {tech.image && (
                       <div className="w-5 h-5 relative">
-                        <Image
+                        <img
                           src={tech.image || "/placeholder.svg"}
                           alt={tech.name}
                           width={20}

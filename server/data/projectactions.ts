@@ -58,9 +58,7 @@ export async function createTechstack(formData: FormData) {
       imageString = await fileToBase64(validatedFields.image)
     }
 
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
+    
 
     // Generate UUID for the ID
     const techstackId = uuidv4()
@@ -103,8 +101,8 @@ export async function createTechstack(formData: FormData) {
           hasImage: !!newTechstack.image
         } 
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/techstacks")
@@ -146,9 +144,6 @@ export async function editTechstack(id: string, data: FormData) {
   }
 
   try {
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
 
     const name = data.get("name") as string | null
     const image = data.get("image") as File | null
@@ -186,8 +181,8 @@ export async function editTechstack(id: string, data: FormData) {
           hasImage: !!updatedTechstack.image
         }
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/techstacks")
@@ -222,10 +217,6 @@ export async function deleteTechstacks(ids: string[]) {
   }
 
   try {
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
     const techstacksToDelete = await db.select().from(techstacks).where(inArray(techstacks.id, ids))
 
     await db.delete(techstacks).where(inArray(techstacks.id, ids))
@@ -244,8 +235,8 @@ export async function deleteTechstacks(ids: string[]) {
             name: techstack.name
           }
         }),
-        ipAddress: ipAddress,
-        userAgent: userAgent,
+        ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
       })
     }
 
@@ -290,10 +281,6 @@ export async function createCategory(formData: FormData) {
       name: formData.get("name"),
     })
 
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
     // Generate a UUID for the ID
     const categoryId = uuidv4()
 
@@ -319,8 +306,8 @@ export async function createCategory(formData: FormData) {
           name: newCategory.name
         } 
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/categories")
@@ -362,10 +349,6 @@ export async function editCategory(id: string, data: FormData) {
   }
 
   try {
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
     const name = data.get("name") as string | null
 
     const updateData: { name?: string } = {}
@@ -394,8 +377,8 @@ export async function editCategory(id: string, data: FormData) {
           name: updatedCategory.name
         }
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     return { 
@@ -430,10 +413,6 @@ export async function deleteCategories(ids: string[]) {
 
     await db.delete(categories).where(inArray(categories.id, ids))
 
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
     // Log the action in audit_logs
     for (const category of categoriesToDelete) {
       await db.insert(auditLogs).values({
@@ -448,8 +427,8 @@ export async function deleteCategories(ids: string[]) {
             name: category.name
           }
         }),
-        ipAddress: ipAddress,
-        userAgent: userAgent,
+        ipAddress: session.session.ipAddress,
+        userAgent: session.session.userAgent,
       })
     }
 
@@ -522,12 +501,7 @@ export async function createProject(formData: FormData) {
       projectId: project.id,
       techstackId,
     }));
-    await db.insert(projectTechstacks).values(techstackRelations);
-
-    // Dynamically collect IP address and user agent
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
+    await db.insert(projectTechstacks).values(techstackRelations)
 
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
@@ -545,8 +519,8 @@ export async function createProject(formData: FormData) {
         techstackIds: techstacks,
         features,
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     });
 
     revalidatePath("/projects");
@@ -651,11 +625,6 @@ export async function editProject(id: string, formData: FormData) {
     }))
     await db.insert(projectTechstacks).values(techstackRelations)
 
-    // Dynamically collect IP address and user agent
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
-
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
       action: "UPDATE",
@@ -672,8 +641,8 @@ export async function editProject(id: string, formData: FormData) {
         techstackIds: techstacks,
         features,
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/projects")
@@ -722,6 +691,7 @@ export async function fetchProject(pageIndex: number, rowsPerPage: number) {
           image: techstacks.image,
         },
         features: projects.features,
+        status: projects.status,
       })
       .from(projects)
       .leftJoin(categories, eq(projects.categoryId, categories.id))
@@ -775,6 +745,7 @@ export async function fetchProjectById(id: string) {
           image: techstacks.image,
         },
         features: projects.features,
+        status: projects.status,
       })
       .from(projects)
       .where(eq(projects.id, id))
@@ -796,6 +767,7 @@ export async function fetchProjectById(id: string) {
       category: { id: string; name: string } | null;
       techstacks: { id: string; name: string; image: string | null }[];
       features: any[];
+      status: string;
     } = {
       id: projectData[0].id,
       name: projectData[0].name,
@@ -809,6 +781,7 @@ export async function fetchProjectById(id: string) {
           ? JSON.parse(projectData[0].features)
           : projectData[0].features
         : [],
+      status: projectData[0].status || "Status not specified",
     };
 
     // Add unique techstacks
@@ -857,11 +830,6 @@ export async function deleteProject(id: string) {
     // Delete the project
     await db.delete(projects).where(eq(projects.id, id));
 
-    // Dynamically collect IP address and user agent
-    const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-    const userAgent = headersList.get("user-agent") || "unknown";
-
     // Log the action in audit_logs
     await db.insert(auditLogs).values({
       action: "DELETE",
@@ -876,8 +844,8 @@ export async function deleteProject(id: string) {
           categoryId: project.categoryId
         },
       }),
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     });
 
     revalidatePath("/projects");
@@ -924,10 +892,6 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
   }
 
   try {
-    // Log the export action
-    const headersList = await headers()
-    const ipAddress = headersList.get("x-forwarded-for") || "unknown"
-    const userAgent = headersList.get("user-agent") || "unknown"
 
     // Create a timestamp for the filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
@@ -980,8 +944,8 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
         format,
         exportType,
       }),
-      ipAddress,
-      userAgent,
+      ipAddress: session.session.ipAddress,
+      userAgent: session.session.userAgent,
     })
 
     revalidatePath("/dashboard/projects")
@@ -1149,6 +1113,7 @@ interface SeedResult {
     errors: string[]
     skippedItems: string[]
   }
+  error?: string
 }
 
 // Enhanced tech icon mapping with ORMs and programming languages
@@ -1300,20 +1265,15 @@ function getTechIconUrl(techName: string): string {
     'DynamoDB': 'dynamodb',
     'CosmosDB': 'cosmosdb',
     
-    // ORMs (Object-Relational Mappers)
+    // ORMs
     'Prisma': 'prisma',
     'Prisma ORM': 'prisma',
     'Sequelize': 'sequelize',
     'TypeORM': 'typeorm',
     'Mongoose': 'mongoose',
     'MikroORM': 'mikroorm',
-    'Waterline': 'waterline',
-    'Bookshelf': 'bookshelf',
-    'Objection.js': 'objection',
-    'Knex.js': 'knex',
     'SQLAlchemy': 'sqlalchemy',
     'Django ORM': 'django',
-    'Entity Framework': 'dotnet',
     'Hibernate': 'hibernate',
     'Eloquent': 'laravel',
     'Doctrine': 'symfony',
@@ -1322,6 +1282,7 @@ function getTechIconUrl(techName: string): string {
     'SQLx': 'rust',
     'Diesel': 'rust',
     'SeaORM': 'rust',
+    'Knex.js': 'knex',
     
     // GraphQL
     'GraphQL': 'graphql',
@@ -1363,144 +1324,38 @@ function getTechIconUrl(techName: string): string {
     'Prettier': 'prettier',
     'Jest': 'jest',
     'Vitest': 'vitest',
-    'Jasmine': 'jasmine',
-    'Mocha': 'mocha',
-    'Chai': 'chai',
-    'Cypress': 'cypress',
-    'Playwright': 'playwright',
-    'Puppeteer': 'puppeteer',
-    'Selenium': 'selenium',
     
     // DevOps & Cloud
     'Docker': 'docker',
     'Kubernetes': 'kubernetes',
-    'Helm': 'helm',
-    'Terraform': 'terraform',
-    'Ansible': 'ansible',
     'AWS': 'aws',
-    'Amazon Web Services': 'aws',
     'Azure': 'azure',
     'Google Cloud': 'gcp',
     'GCP': 'gcp',
-    'Google Cloud Platform': 'gcp',
-    'Firebase': 'firebase',
     'Vercel': 'vercel',
     'Netlify': 'netlify',
     'Heroku': 'heroku',
-    'DigitalOcean': 'digitalocean',
-    'Linode': 'linode',
-    'Cloudflare': 'cloudflare',
-    'NGINX': 'nginx',
-    'Apache': 'apache',
-    'Traefik': 'traefik',
-    'Jenkins': 'jenkins',
     'GitHub Actions': 'githubactions',
     'GitLab CI': 'gitlab',
-    'CircleCI': 'circleci',
-    'Travis CI': 'travis',
     
     // Version Control
     'Git': 'git',
     'GitHub': 'github',
     'GitLab': 'gitlab',
-    'Bitbucket': 'bitbucket',
-    'SVN': 'svn',
-    'Mercurial': 'mercurial',
     
-    // Package Managers
-    'npm': 'npm',
-    'Yarn': 'yarn',
-    'pnpm': 'pnpm',
-    'pip': 'pip',
-    'pipenv': 'pip',
-    'poetry': 'poetry',
-    'Maven': 'maven',
-    'Gradle': 'gradle',
-    'Cargo': 'rust',
-    'NuGet': 'nuget',
-    'Composer': 'composer',
-    'Bundler': 'bundler',
-    
-    // IDEs & Editors
-    'VS Code': 'vscode',
-    'Visual Studio Code': 'vscode',
-    'Visual Studio': 'visualstudio',
-    'IntelliJ IDEA': 'intellij',
-    'WebStorm': 'webstorm',
-    'PyCharm': 'pycharm',
-    'Android Studio': 'androidstudio',
-    'Xcode': 'xcode',
-    'Eclipse': 'eclipse',
-    'Sublime Text': 'sublimetext',
-    'Atom': 'atom',
-    'Vim': 'vim',
-    'Neovim': 'neovim',
-    'Emacs': 'emacs',
+    // Authentication
+    'Auth.js': 'auth0',
+    'AuthJS': 'auth0',
     
     // Design Tools
     'Figma': 'figma',
     'Adobe XD': 'xd',
-    'Sketch': 'sketch',
     'Photoshop': 'photoshop',
     'Illustrator': 'illustrator',
-    'InVision': 'invision',
-    'Zeplin': 'zeplin',
     
-    // Project Management
-    'Jira': 'jira',
-    'Confluence': 'confluence',
-    'Trello': 'trello',
-    'Asana': 'asana',
-    'ClickUp': 'clickup',
-    'Notion': 'notion',
-    'Slack': 'slack',
-    'Discord': 'discord',
-    'Microsoft Teams': 'teams',
-    'Zoom': 'zoom',
-    
-    // API Tools
-    'Postman': 'postman',
-    'Insomnia': 'insomnia',
-    'Swagger': 'swagger',
-    'OpenAPI': 'openapi',
-    'REST': 'rest',
-    'SOAP': 'soap',
-    'gRPC': 'grpc',
-    
-    // Content Management
-    'Contentful': 'contentful',
-    'Sanity': 'sanity',
-    'Strapi': 'strapi',
-    'Ghost': 'ghost',
-    'Directus': 'directus',
-    
-    // Payment & E-commerce
-    'Stripe': 'stripe',
-    'PayPal': 'paypal',
-    'Square': 'square',
-    'Shopify': 'shopify',
-    'WooCommerce': 'woocommerce',
-    
-    // Authentication & Security
-    'Auth0': 'auth0',
-    'OAuth': 'oauth',
-    'JWT': 'jwt',
-    'Passport.js': 'passport',
-    'Keycloak': 'keycloak',
-    'Okta': 'okta',
-    
-    // Monitoring & Analytics
-    'Google Analytics': 'googleanalytics',
-    'GTM': 'googleanalytics',
-    'Google Tag Manager': 'googleanalytics',
-    'Sentry': 'sentry',
-    'Datadog': 'datadog',
-    'New Relic': 'newrelic',
-    'Prometheus': 'prometheus',
-    'Grafana': 'grafana',
-    'Logstash': 'logstash',
-    'Kibana': 'kibana',
-    'ELK Stack': 'elk',
+    // Local Storage & State Management
+    'Hive': 'hive',
+    'Bloc': 'bloc',
   }
 
   // Clean and normalize tech name
@@ -1526,12 +1381,6 @@ function getTechIconUrl(techName: string): string {
     }
   }
 
-  // Try removing version numbers
-  const techWithoutVersion = cleanTechName.replace(/\s*(?:v|version)?\s*\d+(\.\d+)*/, '').trim()
-  if (techMap[techWithoutVersion]) {
-    return `https://skillicons.dev/icons?i=${techMap[techWithoutVersion]}`
-  }
-
   // Fallback: use the name directly
   const fallbackName = lowerTechName.replace(/\s+/g, '')
   return `https://skillicons.dev/icons?i=${fallbackName}`
@@ -1539,6 +1388,28 @@ function getTechIconUrl(techName: string): string {
 
 export async function autoSeedAllData(): Promise<SeedResult> {
   try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    })
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return {
+        success: false,
+        message: "User not authenticated",
+        error: "No authenticated user found",
+        summary: {
+          totalProjectsInData: projectsData.length,
+          totalFeaturesInData: projectsData.reduce((sum, project) => sum + project.features.length, 0),
+          categories: { total: 0, created: 0, skipped: 0 },
+          techstacks: { total: 0, created: 0, skipped: 0 },
+          projects: { total: 0, created: 0, skipped: 0 },
+          features: { created: 0 }
+        },
+        details: { errors: ["User not authenticated"], skippedItems: [] }
+      }
+    }
+
     const results = {
       categoriesCreated: 0,
       techstacksCreated: 0,
@@ -1550,6 +1421,7 @@ export async function autoSeedAllData(): Promise<SeedResult> {
 
     // Step 1: Extract unique categories from projects
     const uniqueCategories = Array.from(new Set(projectsData.map(project => project.category)))
+    console.log(`Found ${uniqueCategories.length} unique categories:`, uniqueCategories)
 
     // Create a map to store created category IDs
     const categoryMap = new Map<string, string>()
@@ -1557,6 +1429,8 @@ export async function autoSeedAllData(): Promise<SeedResult> {
     // Create categories if they don't exist
     for (const categoryName of uniqueCategories) {
       try {
+        console.log(`Processing category: ${categoryName}`)
+        
         // Check if category already exists
         const existingCategory = await db
           .select()
@@ -1565,6 +1439,7 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           .then(result => result[0])
 
         if (existingCategory) {
+          console.log(`Category "${categoryName}" already exists with ID: ${existingCategory.id}`)
           categoryMap.set(categoryName, existingCategory.id)
           results.skippedItems.push(`Category "${categoryName}" already exists`)
         } else {
@@ -1578,16 +1453,21 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           
           categoryMap.set(categoryName, categoryId)
           results.categoriesCreated++
+          console.log(`Created category "${categoryName}" with ID: ${categoryId}`)
         }
       } catch (error) {
         const errorMsg = `Failed to create category "${categoryName}": ${error instanceof Error ? error.message : String(error)}`
+        console.error(errorMsg)
         results.errors.push(errorMsg)
       }
     }
 
+    console.log("Category Map:", Array.from(categoryMap.entries()))
+
     // Step 2: Extract all unique tech stacks from all projects
     const allTechStacks = projectsData.flatMap(project => project.techStack)
     const uniqueTechStacks = Array.from(new Set(allTechStacks))
+    console.log(`Found ${uniqueTechStacks.length} unique tech stacks`)
 
     // Create a map to store created tech stack IDs
     const techstackMap = new Map<string, string>()
@@ -1595,6 +1475,13 @@ export async function autoSeedAllData(): Promise<SeedResult> {
     // Create tech stacks if they don't exist
     for (const techName of uniqueTechStacks) {
       try {
+        if (!techName || techName.trim() === "") {
+          console.log(`Skipping empty tech name`)
+          continue
+        }
+
+        console.log(`Processing tech stack: ${techName}`)
+        
         // Check if tech stack already exists
         const existingTechstack = await db
           .select()
@@ -1603,12 +1490,11 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           .then(result => result[0])
 
         if (existingTechstack) {
+          console.log(`Tech stack "${techName}" already exists with ID: ${existingTechstack.id}`)
           techstackMap.set(techName, existingTechstack.id)
           results.skippedItems.push(`Tech stack "${techName}" already exists`)
         } else {
           const techstackId = uuidv4()
-          
-          // Use the improved tech icon URL generator
           const techIconUrl = getTechIconUrl(techName)
           
           await db
@@ -1621,17 +1507,22 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           
           techstackMap.set(techName, techstackId)
           results.techstacksCreated++
-          
+          console.log(`Created tech stack "${techName}" with ID: ${techstackId}`)
         }
       } catch (error) {
         const errorMsg = `Failed to create tech stack "${techName}": ${error instanceof Error ? error.message : String(error)}`
+        console.error(errorMsg)
         results.errors.push(errorMsg)
       }
     }
 
     // Step 3: Create projects with detailed features
+    console.log(`\nStarting to create ${projectsData.length} projects...`)
+    
     for (const projectData of projectsData) {
       try {
+        console.log(`\nProcessing project: ${projectData.title}`)
+        
         // Check if project already exists by name
         const existingProject = await db
           .select()
@@ -1640,6 +1531,7 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           .then(result => result[0])
 
         if (existingProject) {
+          console.log(`Project "${projectData.title}" already exists, skipping...`)
           results.skippedItems.push(`Project "${projectData.title}" already exists`)
           continue
         }
@@ -1648,8 +1540,13 @@ export async function autoSeedAllData(): Promise<SeedResult> {
         const categoryId = categoryMap.get(projectData.category)
 
         if (!categoryId) {
-          throw new Error(`Category "${projectData.category}" not found in category map`)
+          const errorMsg = `Category "${projectData.category}" not found in category map for project "${projectData.title}"`
+          console.error(errorMsg)
+          results.errors.push(errorMsg)
+          continue
         }
+
+        console.log(`Category ID for "${projectData.category}": ${categoryId}`)
 
         // Format features array with name and description
         const formattedFeatures = projectData.features.map((feature: any) => ({
@@ -1659,27 +1556,55 @@ export async function autoSeedAllData(): Promise<SeedResult> {
 
         // Count features
         results.featuresCreated += formattedFeatures.length
+        console.log(`Added ${formattedFeatures.length} features for project "${projectData.title}"`)
 
         // Validate URLs
         const demoUrl = projectData.demoUrl || ""
         const imageUrl = projectData.image || ""
-
-        // Insert the project
-        await db
-          .insert(projects)
-          .values({
-            id: projectId,
-            name: projectData.title,
-            description: projectData.description,
-            demo: demoUrl,
-            image: imageUrl,
-            categoryId: categoryId,
-            features: JSON.stringify(formattedFeatures)
-          })
+        
+        // Then update with features separately
+        
+        // Step 3a: Insert basic project info
+        const baseProjectData = {
+          id: projectId,
+          name: projectData.title,
+          description: projectData.description,
+          demo: demoUrl,
+          image: imageUrl,
+          categoryId: categoryId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          status: "published",
+        }
+        
+        await db.insert(projects).values(baseProjectData)
+        console.log(`Successfully inserted basic project info for "${projectData.title}"`)
+        
+        // Step 3b: Update the features column separately if the column exists
+        try {
+          // Check if features column exists by attempting to update
+          await db
+            .update(projects)
+            .set({ 
+              features: JSON.stringify(formattedFeatures)
+            } as any)
+            .where(eq(projects.id, projectId))
+          console.log(`Successfully added features for project "${projectData.title}"`)
+        } catch (featuresError) {
+          // If features column doesn't exist, log warning but continue
+          console.warn(`Could not add features for project "${projectData.title}": ${featuresError instanceof Error ? featuresError.message : String(featuresError)}`)
+          results.errors.push(`Features column missing for project "${projectData.title}"`)
+        }
 
         // Create project-techstack relationships
         const techstackRelations = projectData.techStack
-          .filter(techName => techstackMap.has(techName))
+          .filter(techName => {
+            const hasTech = techstackMap.has(techName)
+            if (!hasTech) {
+              console.warn(`Tech stack "${techName}" not found in map for project "${projectData.title}"`)
+            }
+            return hasTech
+          })
           .map(techName => ({
             projectId: projectId,
             techstackId: techstackMap.get(techName)!
@@ -1687,23 +1612,60 @@ export async function autoSeedAllData(): Promise<SeedResult> {
 
         if (techstackRelations.length > 0) {
           await db.insert(projectTechstacks).values(techstackRelations)
+          console.log(`Created ${techstackRelations.length} tech stack relationships for project "${projectData.title}"`)
+        } else {
+          console.log(`No tech stack relationships created for project "${projectData.title}"`)
+        }
+
+        // Add audit log
+        try {
+          await db.insert(auditLogs).values({
+            action: "Create Project with Seeding Data/Recovery",
+            tableName: "projects",
+            recordId: projectId,
+            userId,
+            details: JSON.stringify({
+              action: `Project created with seeding data/recovery`,
+              projectName: projectData.title,
+            }),
+            ipAddress: session?.session?.ipAddress || "unknown",
+            userAgent: session?.session?.userAgent || "unknown",
+          })
+        } catch (auditError) {
+          console.warn(`Failed to create audit log for project "${projectData.title}":`, auditError)
         }
 
         results.projectsCreated++
+        console.log(`✅ Successfully created project "${projectData.title}"`)
+        
       } catch (error) {
         const errorMsg = `Failed to create project "${projectData.title}": ${error instanceof Error ? error.message : String(error)}`
+        console.error(errorMsg)
         results.errors.push(errorMsg)
       }
     }
 
     // Step 4: Revalidate paths
-    revalidatePath("/categories")
-    revalidatePath("/techstacks")
-    revalidatePath("/projects")
+    try {
+      revalidatePath("/categories")
+      revalidatePath("/techstacks")
+      revalidatePath("/projects")
+    } catch (revalidateError) {
+      console.warn("Failed to revalidate paths:", revalidateError)
+    }
+
+    console.log("\n=== SEEDING COMPLETE ===")
+    console.log(`Projects created: ${results.projectsCreated}/${projectsData.length}`)
+    console.log(`Tech stacks created: ${results.techstacksCreated}/${uniqueTechStacks.length}`)
+    console.log(`Categories created: ${results.categoriesCreated}/${uniqueCategories.length}`)
+    console.log(`Features created: ${results.featuresCreated}`)
+    console.log(`Errors: ${results.errors.length}`)
 
     return {
-      success: true,
-      message: "Auto-seeding with detailed features completed successfully",
+      success: results.errors.filter(e => !e.includes("Features column missing")).length === 0,
+      message: results.errors.filter(e => !e.includes("Features column missing")).length === 0 
+        ? "Auto-seeding with detailed features completed successfully"
+        : `Seeding completed with ${results.errors.length} errors`,
       summary: {
         totalProjectsInData: projectsData.length,
         totalFeaturesInData: projectsData.reduce((sum, project) => sum + project.features.length, 0),
@@ -1733,40 +1695,20 @@ export async function autoSeedAllData(): Promise<SeedResult> {
     }
 
   } catch (error) {
+    console.error("Fatal error during seeding:", error)
     return {
       success: false,
       message: "Failed to auto-seed data with descriptions",
-      error: error instanceof Error ? error.message : String(error)
-    }
-  }
-}
-
-// Function to check if data already exists
-export async function checkExistingData() {
-  try {
-    const [categoryCount, techstackCount, projectCount] = await Promise.all([
-      db.select().from(categories).then(result => result.length),
-      db.select().from(techstacks).then(result => result.length),
-      db.select().from(projects).then(result => result.length)
-    ])
-
-    return {
-      success: true,
-      categories: categoryCount,
-      techstacks: techstackCount,
-      projects: projectCount,
-      total: categoryCount + techstackCount + projectCount,
-      hasData: categoryCount > 0 || techstackCount > 0 || projectCount > 0
-    }
-  } catch (error) {
-    return {
-      success: false,
-      categories: 0,
-      techstacks: 0,
-      projects: 0,
-      total: 0,
-      hasData: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      summary: {
+        totalProjectsInData: projectsData.length,
+        totalFeaturesInData: projectsData.reduce((sum, project) => sum + project.features.length, 0),
+        categories: { total: 0, created: 0, skipped: 0 },
+        techstacks: { total: 0, created: 0, skipped: 0 },
+        projects: { total: 0, created: 0, skipped: 0 },
+        features: { created: 0 }
+      },
+      details: { errors: [error instanceof Error ? error.message : String(error)], skippedItems: [] }
     }
   }
 }
@@ -1774,11 +1716,30 @@ export async function checkExistingData() {
 // Function to clear all data (use with caution!)
 export async function clearAllData() {
   try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    })
+    const userId = session?.user?.id
+
     // Delete in correct order due to foreign key constraints
     await db.delete(projectTechstacks)
     await db.delete(projects)
     await db.delete(techstacks)
     await db.delete(categories)
+
+    if (userId) {
+      await db.insert(auditLogs).values({
+        action: "Clear All Data",
+        tableName: "multiple",
+        recordId: "all",
+        userId,
+        details: JSON.stringify({
+          action: "All data cleared from categories, techstacks, projects, and projectTechstacks"
+        }),
+        ipAddress: session?.session?.ipAddress || "unknown",
+        userAgent: session?.session?.userAgent || "unknown",
+      })
+    }
 
     revalidatePath("/categories")
     revalidatePath("/techstacks")
@@ -1789,6 +1750,7 @@ export async function clearAllData() {
       message: "All data cleared successfully"
     }
   } catch (error) {
+    console.error("Error clearing data:", error)
     return {
       success: false,
       message: "Failed to clear data",

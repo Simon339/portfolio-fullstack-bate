@@ -412,7 +412,7 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
                               className="bg-[#acc2ef]/20 text-[#685189] border border-[#acc2ef] flex items-center gap-1"
                             >
                               {tech.image && (
-                                <Image
+                                <img
                                   src={tech.image || "/placeholder.svg"}
                                   alt={tech.name}
                                   width={12}
@@ -460,7 +460,7 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
                             className="text-sm font-medium leading-none text-gray-700  flex items-center gap-2 cursor-pointer"
                           >
                             {tech.image && (
-                              <Image
+                              <img
                                 src={tech.image || "/placeholder.svg"}
                                 alt={tech.name}
                                 width={16}
@@ -499,10 +499,9 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
                       <div className="relative bg-slate-50 rounded-lg border border-[#acc2ef]/30 p-3 overflow-hidden">
                         <div className="flex items-start gap-3">
                           <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-[#acc2ef]">
-                            <Image
+                            <img
                               src={image || "/placeholder.svg"}
                               alt="Project preview"
-                              fill
                               sizes="96px"
                               className="object-cover"
                             />
@@ -615,13 +614,23 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
             )}
           />
 
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="w-full bg-white text-[#685189] border border-[#acc2ef] hover:bg-[#acc2ef]/10 font-bold"
-          >
-            {isPending ? "Submitting..." : isEditing ? "Update Project" : "Create Project"}
-          </Button>
+            <div className="flex gap-4">
+           <Button
+              type="submit"
+              disabled={isPending}
+              className="flex-1 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold"
+            >
+              {isPending ? "Submitting..." : isEditing ? "Update Project" : "Create Project"}
+            </Button>
+          
+            <Button
+              type="button"
+              disabled={isPending}
+              className="w-32 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold"
+            >
+              {isPending ? "Saving..." : "Save Draft"}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

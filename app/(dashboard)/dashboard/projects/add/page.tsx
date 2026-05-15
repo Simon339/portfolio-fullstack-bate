@@ -1,22 +1,22 @@
 "use client"
 
-import {  autoSeedAllData, checkExistingData, clearAllData  } from "@/server/data/projectactions"
+import { autoSeedAllData, clearAllData } from "@/server/data/projectactions"
 import { useState } from "react"
 import ProjectForm from '@/components/Dashboard/forms/ProjectForm'
 
 const page = () => {
-    return (
-        <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
-            <div className="border-b border-[#acc2ef] mb-6 py-4">
-                <div className="text-center">
-                    <h1 className="text-xl font-semibold text-gray-800">Create New Project</h1>
-                </div>
-                <AutoSeedButton />
-            </div>
+  return (
+    <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
+      <div className="border-b border-[#acc2ef] mb-6 py-4">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold text-gray-800">Create New Project</h1>
+        </div>
+        {/* <AutoSeedButton /> */}
+      </div>
 
-            <ProjectForm />
-        </section>
-    )
+      <ProjectForm />
+    </section>
+  )
 }
 
 
@@ -31,21 +31,11 @@ export function AutoSeedButton() {
   const handleAutoSeed = async () => {
     setLoading(true)
     setStatus({ type: "idle", message: "Starting auto-seeding process..." })
-    
+
     try {
-      // First check if there's existing data
-      const existingData = await checkExistingData()
-      
-      if (existingData.hasData) {
-        if (!confirm(`Found existing data: ${existingData.projects} projects, ${existingData.categories} categories, ${existingData.techstacks} tech stacks. Do you want to proceed? This might create duplicates.`)) {
-          setLoading(false)
-          setStatus({ type: "info", message: "Auto-seeding cancelled by user" })
-          return
-        }
-      }
-      
+
       const result = await autoSeedAllData()
-      
+
       if (result.success) {
         setStatus({
           type: "success",
@@ -74,13 +64,13 @@ export function AutoSeedButton() {
     if (!confirm("Are you sure you want to clear ALL data? This action cannot be undone.")) {
       return
     }
-    
+
     setLoading(true)
     setStatus({ type: "idle", message: "Clearing all data..." })
-    
+
     try {
       const result = await clearAllData()
-      
+
       if (result.success) {
         setStatus({
           type: "success",
@@ -115,7 +105,7 @@ export function AutoSeedButton() {
           >
             {loading ? "Processing..." : "Auto-Seed All Projects"}
           </button>
-          
+
           <button
             onClick={handleClearAll}
             disabled={loading}
@@ -124,15 +114,14 @@ export function AutoSeedButton() {
             Clear All Data
           </button>
         </div>
-        
+
         {status.message && (
-          <div className={`p-3 rounded ${
-            status.type === "success" ? "bg-green-50 text-green-800 border border-green-200" :
-            status.type === "error" ? "bg-red-50 text-red-800 border border-red-200" :
-            "bg-blue-50 text-blue-800 border border-blue-200"
-          }`}>
+          <div className={`p-3 rounded ${status.type === "success" ? "bg-green-50 text-green-800 border border-green-200" :
+              status.type === "error" ? "bg-red-50 text-red-800 border border-red-200" :
+                "bg-blue-50 text-blue-800 border border-blue-200"
+            }`}>
             <p className="font-medium">{status.message}</p>
-            
+
             {status.details && (
               <div className="mt-2 text-sm">
                 {typeof status.details === "string" ? (

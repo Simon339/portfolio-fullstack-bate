@@ -8,8 +8,6 @@ import { useForm } from "react-hook-form"
 import type { z } from "zod"
 import { Plus, Minus, X, LinkIcon } from "lucide-react"
 import { fetchProjectById, editProject, fetchCategories, fetchTechstacks } from "@/server/data/projectactions"
-import Image from "next/image"
-
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -25,7 +23,7 @@ interface ProjectData extends z.infer<typeof ProjectSchema> {
   id: string
   category?: { id: string; name: string }
   techstacks?: Array<{ id: string; name: string; image?: string | null }>
-
+  status?: string
 }
 
 interface Feature {
@@ -77,41 +75,65 @@ const ProjectEditPage = () => {
 
   useEffect(() => {
     const fetchAllData = async () => {
-  if (!projectId || typeof projectId !== "string") {
-    notFound()
-    return
-  }
+      if (!projectId || typeof projectId !== "string") {
+        notFound()
+        return
+      }
 
-  setLoading(true)
-  try {
-    const [projectResult, categoriesData, techstacksData] = await Promise.all([
-      fetchProjectById(projectId),
-      fetchCategories(),
-      fetchTechstacks(),
-    ])
-
-    if (!projectResult.success || !projectResult.data) {
-      setError("Failed to load project data")
-      return
-    }
-
-    const project = projectResult.data
-    
-    // Helper function to parse features
-    const parseFeatures = (featuresValue: any): Array<{ name: string; description: string }> => {
-      let featuresArray: Array<{ name: string; description: string }> = []
-      
+      setLoading(true)
       try {
-        if (typeof featuresValue === 'string') {
-          const featuresStr = featuresValue.trim()
-          
-          if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
-            // Parse as JSON array
-            const parsed = JSON.parse(featuresStr)
-            
-            // Handle both array of strings and array of objects
-            if (Array.isArray(parsed)) {
-              featuresArray = parsed.map(item => {
+        const [projectResult, categoriesData, techstacksData] = await Promise.all([
+          fetchProjectById(projectId),
+          fetchCategories(),
+          fetchTechstacks(),
+        ])
+
+        if (!projectResult.success || !projectResult.data) {
+          setError("Failed to load project data")
+          return
+        }
+
+        const project = projectResult.data
+
+        // Helper function to parse features
+        const parseFeatures = (featuresValue: any): Array<{ name: string; description: string }> => {
+          let featuresArray: Array<{ name: string; description: string }> = []
+
+          try {
+            if (typeof featuresValue === 'string') {
+              const featuresStr = featuresValue.trim()
+
+              if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
+                // Parse as JSON array
+                const parsed = JSON.parse(featuresStr)
+
+                // Handle both array of strings and array of objects
+                if (Array.isArray(parsed)) {
+                  featuresArray = parsed.map(item => {
+                    if (typeof item === 'string') {
+                      return { name: item, description: '' }
+                    } else if (typeof item === 'object' && item !== null) {
+                      return {
+                        name: item.name || item.Name || 'Feature',
+                        description: item.description || item.Description || ''
+                      }
+                    }
+                    return { name: 'Feature', description: '' }
+                  })
+                }
+              } else if (featuresStr.includes(',')) {
+                // Comma-separated string
+                featuresArray = featuresStr.split(',').map(item => ({
+                  name: item.trim(),
+                  description: ''
+                }))
+              } else if (featuresStr !== '') {
+                // Single feature string
+                featuresArray = [{ name: featuresStr, description: '' }]
+              }
+            } else if (Array.isArray(featuresValue)) {
+              // Already an array
+              featuresArray = featuresValue.map(item => {
                 if (typeof item === 'string') {
                   return { name: item, description: '' }
                 } else if (typeof item === 'object' && item !== null) {
@@ -123,75 +145,52 @@ const ProjectEditPage = () => {
                 return { name: 'Feature', description: '' }
               })
             }
-          } else if (featuresStr.includes(',')) {
-            // Comma-separated string
-            featuresArray = featuresStr.split(',').map(item => ({
-              name: item.trim(),
-              description: ''
-            }))
-          } else if (featuresStr !== '') {
-            // Single feature string
-            featuresArray = [{ name: featuresStr, description: '' }]
+          } catch (error) {
+            throw new Error("Something went worng")
           }
-        } else if (Array.isArray(featuresValue)) {
-          // Already an array
-          featuresArray = featuresValue.map(item => {
-            if (typeof item === 'string') {
-              return { name: item, description: '' }
-            } else if (typeof item === 'object' && item !== null) {
-              return {
-                name: item.name || item.Name || 'Feature',
-                description: item.description || item.Description || ''
-              }
-            }
-            return { name: 'Feature', description: '' }
-          })
+
+          return featuresArray
         }
+
+        const parsedFeatures = parseFeatures(project.features)
+
+        const formattedProjectData = {
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          demo: project.demo,
+          image: project.image || "",
+          categories: project.category ? [project.category.id] : [],
+          techStack: project.techstacks ? project.techstacks.map((tech) => tech.id) : [],
+          features: parsedFeatures,
+          category: project.category,
+          techstacks: project.techstacks,
+          status: project.status || "draft",
+        }
+
+        setProjectData(formattedProjectData)
+        setImage(formattedProjectData.image)
+        setFeatures(formattedProjectData.features || [])
+        setSelectedCategories(formattedProjectData.categories || [])
+        setSelectedTechstacks(formattedProjectData.techStack || [])
+        setCategories(categoriesData)
+        setTechstacks(techstacksData)
+
+        form.reset({
+          name: formattedProjectData.name,
+          description: formattedProjectData.description,
+          demo: formattedProjectData.demo,
+          features: formattedProjectData.features,
+          techStack: formattedProjectData.techStack,
+          categories: formattedProjectData.categories,
+          image: formattedProjectData.image,
+        })
       } catch (error) {
-        throw new Error("Something went worng")
+        setError("Failed to load project data. Please try again.")
+      } finally {
+        setLoading(false)
       }
-      
-      return featuresArray
     }
-    
-    const parsedFeatures = parseFeatures(project.features)
-
-    const formattedProjectData = {
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      demo: project.demo,
-      image: project.image || "",
-      categories: project.category ? [project.category.id] : [],
-      techStack: project.techstacks ? project.techstacks.map((tech) => tech.id) : [],
-      features: parsedFeatures,
-      category: project.category,
-      techstacks: project.techstacks,
-    }
-
-    setProjectData(formattedProjectData)
-    setImage(formattedProjectData.image)
-    setFeatures(formattedProjectData.features || [])
-    setSelectedCategories(formattedProjectData.categories || [])
-    setSelectedTechstacks(formattedProjectData.techStack || [])
-    setCategories(categoriesData)
-    setTechstacks(techstacksData)
-
-    form.reset({
-      name: formattedProjectData.name,
-      description: formattedProjectData.description,
-      demo: formattedProjectData.demo,
-      features: formattedProjectData.features,
-      techStack: formattedProjectData.techStack,
-      categories: formattedProjectData.categories,
-      image: formattedProjectData.image,
-    })
-  } catch (error) {
-    setError("Failed to load project data. Please try again.")
-  } finally {
-    setLoading(false)
-  }
-}
     fetchAllData()
   }, [projectId, form])
 
@@ -278,6 +277,7 @@ const ProjectEditPage = () => {
         data.append("name", values.name)
         data.append("description", values.description)
         data.append("demo", values.demo)
+        data.append("status", values.status)
 
         // Add image if available (use the File object)
         if (imageFile) {
@@ -348,7 +348,7 @@ const ProjectEditPage = () => {
       </section>
     )
   }
-  
+
   if (error) {
     return (
       <section className="rounded-xl bg-gray-50 shadow-md px-4 overflow-hidden min-h-screen flex flex-col">
@@ -508,7 +508,7 @@ const ProjectEditPage = () => {
                                 className="bg-[#acc2ef]/20 text-[#685189] border border-[#acc2ef] flex items-center gap-1"
                               >
                                 {tech.image && (
-                                  <Image
+                                  <img
                                     src={tech.image || "/placeholder.svg"}
                                     alt={tech.name}
                                     width={12}
@@ -556,7 +556,7 @@ const ProjectEditPage = () => {
                               className="text-sm font-medium leading-none text-gray-700 flex items-center gap-2 cursor-pointer"
                             >
                               {tech.image && (
-                                <Image
+                                <img
                                   src={tech.image || "/placeholder.svg"}
                                   alt={tech.name}
                                   width={16}
@@ -595,10 +595,9 @@ const ProjectEditPage = () => {
                         <div className="relative bg-slate-50 rounded-lg border border-[#acc2ef]/30 p-3 overflow-hidden">
                           <div className="flex items-start gap-3">
                             <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-[#acc2ef]">
-                              <Image
+                              <img
                                 src={image || "/placeholder.svg"}
                                 alt="Project preview"
-                                fill
                                 sizes="96px"
                                 className="object-cover"
                               />
@@ -711,13 +710,23 @@ const ProjectEditPage = () => {
               )}
             />
 
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full bg-white text-[#685189] border border-[#acc2ef] hover:bg-[#acc2ef]/10 font-bold"
-            >
-              {isPending ? "Submitting..." : "Update Project"}
-            </Button>
+            <div className="flex gap-4">
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="flex-1 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold"
+              >
+                {isPending ? "Updating..." : "Update Project"}
+              </Button>
+
+              <Button
+                type="button"
+                disabled={isPending}
+                className="w-32 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold"
+              >
+                {isPending ? "Saving..." : "Save Draft"}
+              </Button>
+            </div>
           </form>
         </Form>
       </div>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { ArrowLeft, Edit, ExternalLink, Globe, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -31,7 +30,8 @@ interface ProjectDetailsProps {
       name: string
       image: string
     }>
-    features: any // Changed from Array<{ name: string; description: string }>
+    features: any
+    status: string
   }
 }
 
@@ -45,15 +45,15 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
   // Helper function to parse features
   const parseFeatures = (featuresValue: any): Array<{ name: string; description: string }> => {
     let featuresArray: Array<{ name: string; description: string }> = []
-    
+
     try {
       if (typeof featuresValue === 'string') {
         const featuresStr = featuresValue.trim()
-        
+
         if (featuresStr.startsWith('[') && featuresStr.endsWith(']')) {
           // Parse as JSON array
           const parsed = JSON.parse(featuresStr)
-          
+
           // Handle both array of strings and array of objects
           if (Array.isArray(parsed)) {
             featuresArray = parsed.map(item => {
@@ -94,7 +94,7 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
       }
     } catch (error) {
     }
-    
+
     return featuresArray
   }
 
@@ -179,11 +179,28 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
               <div>
                 <h1 className="text-2xl font-medium text-gray-900 mb-2">{project.name}</h1>
+                <div className="flex flex-wrap gap-2">
                 {project.category?.name && (
                   <Badge variant="outline" className="bg-[#acc2ef]/10 border-[#acc2ef] text-gray-700">
                     {project.category.name}
                   </Badge>
                 )}
+
+                {project.status && (
+                  <Badge
+                    variant="outline"
+                    className={
+                      project.status.toLowerCase() === "published"
+                        ? "bg-green-100 text-green-700 border-green-200"
+                        : project.status.toLowerCase() === "draft"
+                          ? "bg-blue-100 text-blue-700 border-blue-200"
+                          : "bg-gray-100 text-gray-700 border-gray-200"
+                    }
+                  >
+                    {project.status}
+                  </Badge>
+                )}
+                </div>
               </div>
 
               {project.demo && (
@@ -207,7 +224,7 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
             <div className="grid md:grid-cols-[280px_1fr] gap-8">
               <div className="space-y-6">
                 <div className="rounded-lg overflow-hidden border border-[#acc2ef]/30 bg-white">
-                  <Image
+                  <img
                     src={project.image || "/coming-soonplaceholder.png"}
                     alt={project.name || "Project Image"}
                     width={280}
@@ -226,12 +243,12 @@ const ProjectDetailsClient = ({ project }: ProjectDetailsProps) => {
                           className="flex items-center gap-2 bg-gray-50 border border-[#acc2ef]/30 px-3 py-1.5 rounded-md"
                         >
                           {tech.image && (
-                            <Image
+                            <img
                               src={tech.image || "/placeholder.svg?height=16&width=16"}
                               alt={tech.name || "Tech Image"}
                               width={16}
                               height={16}
-                              className="rounded-sm"
+                              className="rounded-sm object-cover"
                             />
                           )}
                           <span className="text-sm text-gray-700">{tech.name}</span>

@@ -17,7 +17,7 @@ export default function page() {
       </div>
 
       <Pagination />
-      <section className='mb-2'>
+      <section className='mb-2 mt-1'>
         <div className="flex flex-col items-center mb-2">
           <h2 className="text-3xl font-bold text-white">My clients Says</h2>
           <div className="w-12 h-1 bg-white/20 mx-auto mb-3"></div>

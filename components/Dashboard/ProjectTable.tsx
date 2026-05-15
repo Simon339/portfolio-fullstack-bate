@@ -48,6 +48,7 @@ export type Project = {
   description: string
   demo: string
   features: Array<{ name: string; description: string }>
+  status: string
 }
 
 interface FetchProjectResponse {
@@ -335,70 +336,38 @@ const ProjectTable = () => {
       },
     },
     {
-  accessorKey: "features",
-  header: "Features",
-  cell: ({ row }) => {
-    const featuresValue = row.getValue("features")
-    
-    let features = []
-    
-    try {
-      if (typeof featuresValue === 'string') {
-        // Try to parse as JSON first
-        if (featuresValue.startsWith('[') && featuresValue.endsWith(']')) {
-          features = JSON.parse(featuresValue)
-        } else if (featuresValue.includes(',')) {
-          // If it's a comma-separated string, split it
-          features = featuresValue.split(',').map(item => ({
-            name: item.trim(),
-            description: ''
-          }))
-        } else if (featuresValue.trim() !== '') {
-          // Single feature string
-          features = [{ name: featuresValue.trim(), description: '' }]
-        }
-      } else if (Array.isArray(featuresValue)) {
-        // Already an array
-        features = featuresValue
-      }
-    } catch (error) {
-      console.error('Error parsing features:', error)
-    }
-    
-    if (!features || features.length === 0) {
-      return <span className="text-muted-foreground text-xs">No features</span>
-    }
-
-    // Ensure each feature has the expected structure
-    const safeFeatures = features.map((feature: any) => {
-      if (typeof feature === 'string') {
-        return { name: feature, description: '' }
-      }
-      return {
-        name: feature?.name || 'Feature',
-        description: feature?.description || ''
-      }
-    })
-
-    const displayFeatures = safeFeatures.slice(0, 3)
-    const remainingCount = Math.max(0, safeFeatures.length - 3)
-
-    return (
-      <div className="flex flex-col gap-1 max-w-[200px]">
-        {displayFeatures.map((feature: { name: any }, index: Key | null | undefined) => (
-          <span
-            key={index}
-            className="inline-flex items-center rounded-full bg-muted/60 px-1.5 py-0.5 text-xs font-medium truncate"
-            title={feature.name}
+      accessorKey: "status",
+      header: ({ column }) => (
+        <div className="flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
           >
-            {feature.name}
-          </span>
-        ))}
-        {remainingCount > 0 && <span className="text-xs text-muted-foreground">+{remainingCount} more</span>}
-      </div>
-    )
-  },
-},
+            <span>Status</span>
+            <ArrowUpDown className="ml-1 size-4" />
+          </Button>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        const isPublished = status?.toLowerCase() === "published" || status?.toLowerCase() === "publied";
+        const isDraft = status?.toLowerCase() === "draft";
+
+        return (
+          <div className="capitalize">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPublished
+                ? "bg-green-100 text-green-700"
+                : isDraft
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-gray-100 text-gray-700"
+              }`}>
+              {status}
+            </span>
+          </div>
+        )
+      }
+    },
     {
       id: "actions",
       header: "Actions",
@@ -486,7 +455,7 @@ const ProjectTable = () => {
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-between mb-4">
-        <div className="relative w-72">
+        <div className="relative w-full pr-1">
           <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search projects..."

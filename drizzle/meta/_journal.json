@@ -15,6 +15,13 @@
       "when": 1778436076824,
       "tag": "0001_groovy_xavin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778808860723,
+      "tag": "0002_loud_purifiers",
+      "breakpoints": true
     }
   ]
 }

@@ -58,6 +58,7 @@ const Signinform = ({ setActiveTab }: SigninformProps) => {
           duration: 3000,
         })
         router.push("/dashboard")
+        router.refresh()
         form.reset()
       } else {
         toast.error("Invalid email or password. Please try again.")

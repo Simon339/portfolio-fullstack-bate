@@ -17,6 +17,7 @@ import {
 
 // User role enum
 export const userRoleEnum = pgEnum('role', ['user', 'admin', 'owner']);
+export const ProjectEnum = pgEnum('status', ['draft', 'published',]);
 
 // User table
 export const user = pgTable('user', {
@@ -228,6 +229,7 @@ export const projects = pgTable('projects', {
   image: text('image'),
   features: json('features'),
   categoryId: varchar('category_id', { length: 255 }),
+  status: ProjectEnum('status').default('draft').notNull(),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull(),
 }, (table) => ({
