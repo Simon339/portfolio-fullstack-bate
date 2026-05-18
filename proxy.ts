@@ -2,7 +2,7 @@ import { auth } from "@/server/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 // Define route arrays
-const publicRoutes = ["/","/auth","/verify-email","/reset","/new-password","/contact","/faq","/about","/my-journey","/projects","/services","/coming-soon","/feedback", "/terms", "/privacy", "/businesscard"];
+const publicRoutes = ["/","/auth","/verify-email","/reset","/new-password","/contact","/faq","/about","/my-journey","/projects","/services","/coming-soon","/feedback", "/terms", "/privacy", "/businesscard", "/404"];
 
 const authRoutes = ["/auth", "/two-factor", "/verify-email", "/reset", "/new-password", "/accountdeleted"];
 const apiAuthPrefix = "/api/auth";
@@ -42,7 +42,6 @@ export async function proxy(request: NextRequest) {
 
   // Handle protected routes
   if (!isLoggedIn) {
-    // Don't add next parameter if it's the default redirect or if it's an auth route
     const loginUrl = new URL("/auth", request.url);
     const callbackUrl = pathname + search;
     
@@ -53,7 +52,7 @@ export async function proxy(request: NextRequest) {
     
     return NextResponse.redirect(loginUrl);
   }
-
+  
   // User is logged in, add user info to headers
   const headers = new Headers(request.headers);
 

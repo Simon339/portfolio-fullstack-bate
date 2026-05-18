@@ -55,7 +55,6 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-   
   }
   * {
     @apply border-border scroll-smooth p-0 m-0 font-[Helvetica];
@@ -75,146 +74,149 @@
 }
 
 @keyframes electric {
-    0%, 100% {
-      opacity: 0;
-      transform: translate(0, 0) scale(1);
-      filter: blur(0);
-    }
-    5% {
-      opacity: 0.9;
-      transform: translate(1px, -1px) scale(1.01);
-      filter: blur(0.5px);
-      text-shadow: 
-        0 0 5px #1E90FF,
-        0 0 10px #1E90FF,
-        0 0 15px #1E90FF;
-    }
-    6% {
-      opacity: 0;
-    }
-    15% {
-      opacity: 0.8;
-      transform: translate(-2px, 1px) scale(1.02);
-      filter: blur(0.3px);
-      text-shadow: 
-        0 0 8px #1E90FF,
-        0 0 12px #1E90FF;
-    }
-    16% {
-      opacity: 0;
-    }
-    48% {
-      opacity: 0;
-    }
-    49% {
-      opacity: 1;
-      transform: translate(2px, 2px) scale(1.03);
-      filter: blur(0.7px);
-      text-shadow: 
-        0 0 10px #1E90FF,
-        0 0 20px #1E90FF,
-        0 0 30px #1E90FF;
-    }
-    50% {
-      opacity: 0;
-    }
-    85% {
-      opacity: 0;
-    }
-    86% {
-      opacity: 0.7;
-      transform: translate(-3px, 0) scale(1.01);
-      filter: blur(0.4px);
-      text-shadow: 
-        0 0 6px #1E90FF,
-        0 0 12px #1E90FF;
-    }
-    87% {
-      opacity: 0;
-    }
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+    filter: blur(0);
   }
-
-  @keyframes electric2 {
-    0%, 100% {
-      opacity: 0;
-      transform: translate(0, 0);
-    }
-    8% {
-      opacity: 0.6;
-      transform: translate(3px, -2px);
-      filter: blur(0.6px);
-      text-shadow: 
-        0 0 4px cyan,
-        0 0 8px cyan;
-    }
-    9% {
-      opacity: 0;
-    }
-    32% {
-      opacity: 0.4;
-      transform: translate(-1px, 3px);
-      filter: blur(0.2px);
-      text-shadow: 
-        0 0 3px cyan,
-        0 0 6px cyan;
-    }
-    33% {
-      opacity: 0;
-    }
-    67% {
-      opacity: 0.8;
-      transform: translate(2px, 1px);
-      filter: blur(0.8px);
-      text-shadow: 
-        0 0 7px cyan,
-        0 0 14px cyan;
-    }
-    68% {
-      opacity: 0;
-    }
+  5% {
+    opacity: 0.9;
+    transform: translate(1px, -1px) scale(1.01);
+    filter: blur(0.5px);
+    text-shadow:
+      0 0 5px #1e90ff,
+      0 0 10px #1e90ff,
+      0 0 15px #1e90ff;
   }
-
-  @keyframes electric3 {
-    0%, 100% {
-      opacity: 0;
-      transform: translate(0, 0);
-    }
-    12% {
-      opacity: 0.5;
-      transform: translate(-2px, 2px);
-      filter: blur(0.4px);
-      text-shadow: 
-        0 0 6px white,
-        0 0 12px white;
-    }
-    13% {
-      opacity: 0;
-    }
-    42% {
-      opacity: 0.9;
-      transform: translate(1px, -1px);
-      filter: blur(1px);
-      text-shadow: 
-        0 0 8px white,
-        0 0 16px white;
-    }
-    43% {
-      opacity: 0;
-    }
-    78% {
-      opacity: 0.3;
-      transform: translate(-3px, -2px);
-      filter: blur(0.3px);
-      text-shadow: 
-        0 0 3px white,
-        0 0 6px white;
-    }
-    79% {
-      opacity: 0;
-    }
+  6% {
+    opacity: 0;
   }
+  15% {
+    opacity: 0.8;
+    transform: translate(-2px, 1px) scale(1.02);
+    filter: blur(0.3px);
+    text-shadow:
+      0 0 8px #1e90ff,
+      0 0 12px #1e90ff;
+  }
+  16% {
+    opacity: 0;
+  }
+  48% {
+    opacity: 0;
+  }
+  49% {
+    opacity: 1;
+    transform: translate(2px, 2px) scale(1.03);
+    filter: blur(0.7px);
+    text-shadow:
+      0 0 10px #1e90ff,
+      0 0 20px #1e90ff,
+      0 0 30px #1e90ff;
+  }
+  50% {
+    opacity: 0;
+  }
+  85% {
+    opacity: 0;
+  }
+  86% {
+    opacity: 0.7;
+    transform: translate(-3px, 0) scale(1.01);
+    filter: blur(0.4px);
+    text-shadow:
+      0 0 6px #1e90ff,
+      0 0 12px #1e90ff;
+  }
+  87% {
+    opacity: 0;
+  }
+}
 
-  @keyframes progressAnimation {
+@keyframes electric2 {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  8% {
+    opacity: 0.6;
+    transform: translate(3px, -2px);
+    filter: blur(0.6px);
+    text-shadow:
+      0 0 4px cyan,
+      0 0 8px cyan;
+  }
+  9% {
+    opacity: 0;
+  }
+  32% {
+    opacity: 0.4;
+    transform: translate(-1px, 3px);
+    filter: blur(0.2px);
+    text-shadow:
+      0 0 3px cyan,
+      0 0 6px cyan;
+  }
+  33% {
+    opacity: 0;
+  }
+  67% {
+    opacity: 0.8;
+    transform: translate(2px, 1px);
+    filter: blur(0.8px);
+    text-shadow:
+      0 0 7px cyan,
+      0 0 14px cyan;
+  }
+  68% {
+    opacity: 0;
+  }
+}
+
+@keyframes electric3 {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  12% {
+    opacity: 0.5;
+    transform: translate(-2px, 2px);
+    filter: blur(0.4px);
+    text-shadow:
+      0 0 6px white,
+      0 0 12px white;
+  }
+  13% {
+    opacity: 0;
+  }
+  42% {
+    opacity: 0.9;
+    transform: translate(1px, -1px);
+    filter: blur(1px);
+    text-shadow:
+      0 0 8px white,
+      0 0 16px white;
+  }
+  43% {
+    opacity: 0;
+  }
+  78% {
+    opacity: 0.3;
+    transform: translate(-3px, -2px);
+    filter: blur(0.3px);
+    text-shadow:
+      0 0 3px white,
+      0 0 6px white;
+  }
+  79% {
+    opacity: 0;
+  }
+}
+
+@keyframes progressAnimation {
   from {
     width: 0;
   }
@@ -405,7 +407,6 @@
   font-size: medium;
 }
 
-
 .work_filters {
   display: flex;
   justify-content: center;
@@ -436,7 +437,6 @@
   border: 1px solid #685189;
   padding: 1rem;
   border-radius: 1rem;
-  
 }
 
 .work_img {
@@ -586,7 +586,7 @@
   border-radius: 0.75rem;
   padding: 1.5rem;
   z-index: 1;
-} 
+}
 
 .contact_form-area-div {
   position: relative;
@@ -919,7 +919,6 @@
   }
 }
 
-
 .preloader {
   position: fixed;
   z-index: 10;
@@ -1015,7 +1014,6 @@
   }
 }
 
-
 .checkmark {
   --primary-color: #1677ff;
   --secondary-color: #fff;
@@ -1030,9 +1028,9 @@
   --checkmark-size: 1.2;
 }
 
-.checkmark, 
-.checkmark *, 
-.checkmark *::before, 
+.checkmark,
+.checkmark *,
+.checkmark *::before,
 .checkmark *::after {
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
@@ -1046,7 +1044,8 @@
   height: var(--checkbox-diameter);
   border-radius: var(--checkbox-border-radius);
   background: var(--secondary-color);
-  border: var(--checkbox-border-width) var(--checkbox-border-style) var(--checkbox-border-color);
+  border: var(--checkbox-border-width) var(--checkbox-border-style)
+    var(--checkbox-border-color);
   -webkit-transition: all 0.3s;
   -o-transition: all 0.3s;
   transition: all 0.3s;
@@ -1061,7 +1060,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  -webkit-box-shadow: 0 0 0 calc(var(--checkbox-diameter) / 2.5) var(--primary-color);
+  -webkit-box-shadow: 0 0 0 calc(var(--checkbox-diameter) / 2.5)
+    var(--primary-color);
   box-shadow: 0 0 0 calc(var(--checkbox-diameter) / 2.5) var(--primary-color);
   border-radius: inherit;
   opacity: 0;
@@ -1083,9 +1083,15 @@
   -ms-transform: translate(-50%, -50%) rotate(45deg) scale(0);
   transform: translate(-50%, -50%) rotate(45deg) scale(0);
   opacity: 0;
-  -webkit-transition: all 0.1s cubic-bezier(0.71, -0.46, 0.88, 0.6),opacity 0.1s;
-  -o-transition: all 0.1s cubic-bezier(0.71, -0.46, 0.88, 0.6),opacity 0.1s;
-  transition: all 0.1s cubic-bezier(0.71, -0.46, 0.88, 0.6),opacity 0.1s;
+  -webkit-transition:
+    all 0.1s cubic-bezier(0.71, -0.46, 0.88, 0.6),
+    opacity 0.1s;
+  -o-transition:
+    all 0.1s cubic-bezier(0.71, -0.46, 0.88, 0.6),
+    opacity 0.1s;
+  transition:
+    all 0.1s cubic-bezier(0.71, -0.46, 0.88, 0.6),
+    opacity 0.1s;
 }
 
 /* actions */
@@ -1101,8 +1107,10 @@
 
 .checkmark:checked::before {
   opacity: 1;
-  -webkit-transform: translate(-50%, -50%) rotate(45deg) scale(var(--checkmark-size));
-  -ms-transform: translate(-50%, -50%) rotate(45deg) scale(var(--checkmark-size));
+  -webkit-transform: translate(-50%, -50%) rotate(45deg)
+    scale(var(--checkmark-size));
+  -ms-transform: translate(-50%, -50%) rotate(45deg)
+    scale(var(--checkmark-size));
   transform: translate(-50%, -50%) rotate(45deg) scale(var(--checkmark-size));
   -webkit-transition: all 0.2s cubic-bezier(0.12, 0.4, 0.29, 1.46) 0.1s;
   -o-transition: all 0.2s cubic-bezier(0.12, 0.4, 0.29, 1.46) 0.1s;
@@ -1116,4 +1124,121 @@
   box-shadow: none;
   transition: none;
   opacity: 1;
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-blob {
+  animation: blob 7s infinite;
+}
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+.contact-link {
+  transition: all 0.3s ease;
+}
+.contact-link:hover {
+  transform: translateY(-2px);
+}
+.card-flip-container {
+  perspective: 1500px;
+}
+.card-flip-inner {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.card-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+.card-front,
+.card-back {
+  backface-visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.card-back {
+  transform: rotateY(180deg);
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-card,
+  .print-card * {
+    visibility: visible;
+  }
+  .print-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .card-flip-container {
+    perspective: none;
+  }
+  .card-flip-inner {
+    transform: none !important;
+  }
+  .card-back {
+    display: block;
+    position: relative;
+    transform: none;
+    page-break-before: always;
+  }
 }

@@ -98,30 +98,30 @@ const Signupform = ({ setActiveTab }: SignupformProps) => {
     setIsLoading(true)
 
     try {
-      // const { data, error } = await authClient.signUp.email({
-      //   email: value.email,
-      //   password: value.password,
-      //   name: value.name,
-      //   image: `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(value.name)}` 
-      // })
+      const { data, error } = await authClient.signUp.email({
+        email: value.email,
+        password: value.password,
+        name: value.name,
+        image: `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(value.name)}` 
+      })
 
-      // if (error) {
-      //   toast.error(error.message ||  "An unexpected error occurred. Please try again.")
-      // } else if (data) {
-      //   form.reset()
-      //   toast.success("Account created successfully! Please verify your email.")
-      //   setTimeout(() => {
-      //     setActiveTab?.("signin")
-      //   }, 3000)
-      // }
+      if (error) {
+        toast.error(error.message ||  "An unexpected error occurred. Please try again.")
+      } else if (data) {
+        form.reset()
+        toast.success("Account created successfully! Please verify your email.")
+        setTimeout(() => {
+          setActiveTab?.("signin")
+        }, 3000)
+      }
 
       form.reset()
-      toast.info("Feature Not Available", {
-        description: "Please Contact the Admin to Create Account for yourself.",
-      })
-      setTimeout(() => {
-        setActiveTab?.("signin")
-      }, 3000)
+      // toast.info("Feature Not Available", {
+      //   description: "Please Contact the Admin to Create Account for yourself.",
+      // })
+      // setTimeout(() => {
+      //   setActiveTab?.("signin")
+      // }, 3000)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again."
       toast.error(errorMessage)

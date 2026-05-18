@@ -15,6 +15,7 @@ export const SkillsCard = () => {
         { name: "CSS", level: 85 },
         { name: "JavaScript", level: 75 },
         { name: "Bootstrap", level: 70 },
+        { name: "PHP", level: 75}
       ],
     },
     {
@@ -22,6 +23,7 @@ export const SkillsCard = () => {
       skills: [
         { name: "Dart", level: 65 },
         { name: "React Native", level: 40 },
+        { name: "Expo Framework", level: 60 },
       ],
     },
     {
@@ -41,6 +43,7 @@ export const SkillsCard = () => {
         { name: "GitHub", level: 70 },
         { name: "Huawei 5G", level: 45 },
         { name: "Postman", level: 60 },
+        {name: "Docker", level: 60}
       ],
     },
     {
@@ -51,6 +54,14 @@ export const SkillsCard = () => {
         { name: "Node.js", level: 70 },
         { name: "Api Development", level: 65 },
         { name: "MongoDB", level: 60 },
+        { name: "Django", level: 55 },
+      ],
+    },
+    {
+      title: "ORMs",
+      skills: [
+        { name: "Drizzle ORM", level: 95 },
+        { name: "Prism", level: 80 },
         { name: "Django", level: 55 },
       ],
     },
