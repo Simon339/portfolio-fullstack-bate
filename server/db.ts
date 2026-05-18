@@ -7,10 +7,8 @@ const client = new Client({
 // Test connection
 client.connect()
   .then(() => {
-   
   })
   .catch(err => {
-    
   });
 
 export const db = drizzle(process.env.DATABASE_URL!);

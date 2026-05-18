@@ -12,7 +12,7 @@ export default function page() {
         </h1>
         <div className="w-12 h-1 items-center justify-center bg-white/20 mx-auto mb-3"></div>
         <span className="text-muted-foreground text-center max-w-md">
-          A small Selection of {' '}Recent Projects
+         Explore my collection of projects showcasing various technologies and solutions
         </span>
       </div>
 

@@ -1034,13 +1034,20 @@ export const projectsNav = [
 export const educationData = [
   {
     id: 1,
+    title: "Related Education",
+    subtitle: "NQF4 Wholesale & Retail Supervision",
+    date: "Present",
+    category: "education",
+  },
+  {
+    id: 2,
     title: "Vaal University of Technology",
     subtitle: "Diploma in Financial Information Systems",
     date: "Present",
     category: "education",
   },
   {
-    id: 2,
+    id: 3,
     title: "VUT NEMISA",
     subtitle: "Mobile Digital Literacy",
     date: "2022",
@@ -1048,14 +1055,14 @@ export const educationData = [
     category: "education",
   },
   {
-    id: 3,
+    id: 4,
     title: "Thabo-Ntsako Secondary School",
     subtitle: "Grade 12",
     date: "2020",
     category: "education",
   },
   {
-    id: 4,
+    id: 5,
     title: "Micro Tech Computer Trainning Campus",
     subtitle: "Diploma Microsoft Office & Office Administration",
     date: "2018",
@@ -1063,7 +1070,15 @@ export const educationData = [
     category: "education",
   },
   {
-    id: 5,
+    id: 6,
+    title: "FNB App of the year & IT Varsity",
+    subtitle: "Full Stack Development",
+    date: "2025",
+    description: "6876B101E47E7",
+    category: "online certificate",
+  },
+  {
+    id: 7,
     title: "Cognitive Class.ai",
     subtitle: "Building Clould Native and Multicloud Applications",
     date: "2024",
@@ -1071,7 +1086,7 @@ export const educationData = [
     category: "online certificate",
   },
   {
-    id: 6,
+    id: 8,
     title: "Cognitive Class.ai",
     subtitle: "SQL and Relation Databases 101",
     date: "2023",
@@ -1079,7 +1094,7 @@ export const educationData = [
     category: "online certificate",
   },
   {
-    id: 7,
+    id: 9,
     title: "Cognitive Class.ai",
     subtitle: "Data Science 101",
     date: "2023",
@@ -1087,7 +1102,7 @@ export const educationData = [
     category: "online certificate",
   },
   {
-    id: 8,
+    id: 10,
     title: "Cognitive Class.ai",
     subtitle: "Data Science Tools",
     date: "2023",
@@ -1095,7 +1110,7 @@ export const educationData = [
     category: "online certificate",
   },
   {
-    id: 9,
+    id: 11,
     title: "HUAWEI",
     subtitle: "5G Basics: What its all about",
     date: "2023",
@@ -1103,7 +1118,7 @@ export const educationData = [
     category: "online certificate",
   },
   {
-    id: 10,
+    id: 12,
     title: "MTN App of the year & IT Varsity",
     subtitle: "MTN Business App Academy",
     date: "2022",
