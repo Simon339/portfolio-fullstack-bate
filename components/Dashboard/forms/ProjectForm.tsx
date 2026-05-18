@@ -24,6 +24,7 @@ import { ProjectSchema } from "@/types/vaildations/project"
 interface ProjectData extends z.infer<typeof ProjectSchema> {
   id?: string
   techStackDetails?: Array<{ id: string; name: string; image?: string | null }>
+  status?: string
 }
 
 interface AddProjectFormProps {
@@ -59,6 +60,7 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
   const [techstacks, setTechstacks] = useState<Techstacks[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
+  const [submitStatus, setSubmitStatus] = useState<"published" | "draft">("published")
 
   const form = useForm<z.infer<typeof ProjectSchema>>({
     resolver: zodResolver(ProjectSchema),
@@ -164,8 +166,8 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
     return true;
   };
   
-  const onSubmit = async (values: z.infer<typeof ProjectSchema>) => {
-    console.log("Form submitted with values:", values);
+  const onSubmit = async (values: z.infer<typeof ProjectSchema>, status: "published" | "draft" = "published") => {
+    console.log("Form submitted with values:", values, "status:", status);
   
     if (!validateForm()) {
       return;
@@ -180,13 +182,13 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
         if (values.demo) {
           data.append("demo", values.demo);
         }
+        data.append("status", status);
   
         // Add image if available (use the File object)
         if (imageFile) {
           data.append("image", imageFile);
-        } else if (image) {
-          // If we have a string image URL but no file (like from initialData)
-          // Create a blob from the base64 string and append it
+        } else if (image && image.startsWith('data:')) {
+          // If it's a base64 string, convert to blob
           try {
             const response = await fetch(image);
             const blob = await response.blob();
@@ -194,7 +196,6 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
             data.append("image", file);
           } catch (error) {
             console.error("Error converting image URL to file:", error);
-            // Just pass the image string if conversion fails
             data.append("image", image);
           }
         }
@@ -211,13 +212,13 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
           const result = await editProject(initialData.id, data);
   
           if (result.success) {
-            toast.success("Project updated successfully");
+            toast.success(status === "published" ? "Project published successfully" : "Project saved as draft");
             router.push(`/dashboard/projects`);
           } else {
             toast.error(
               typeof result.error === "string"
                 ? result.error
-                : "There was an error updating your project"
+                : `There was an error ${status === "published" ? "publishing" : "saving"} your project`
             );
           }
         } else {
@@ -225,10 +226,10 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
           const result = await createProject(data);
   
           if (result.success) {
-            toast.success("Project created successfully");
+            toast.success(status === "published" ? "Project created and published" : "Project saved as draft");
             form.reset();
             setImage(undefined);
-            setImageFile(null); // Reset the File object
+            setImageFile(null);
             setFeatures([]);
             setSelectedCategories([]);
             setSelectedTechstacks([]);
@@ -237,7 +238,7 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
             toast.error(
               typeof result.error === "string"
                 ? result.error
-                : "There was an error creating your project"
+                : `There was an error ${status === "published" ? "creating" : "saving"} your project`
             );
           }
         }
@@ -246,6 +247,14 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
         toast.error("An unexpected error occurred");
       }
     });
+  };
+
+  const handleSaveDraft = () => {
+    form.handleSubmit((values) => onSubmit(values, "draft"))();
+  };
+
+  const handlePublish = () => {
+    form.handleSubmit((values) => onSubmit(values, "published"))();
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,7 +287,7 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
   return (
     <div className="w-full font-medium p-6 bg-white/50 backdrop-blur-sm border border-gray-100">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handlePublish)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
@@ -614,18 +623,19 @@ const ProjectForm = ({ initialData, isEditing = false }: AddProjectFormProps) =>
             )}
           />
 
-            <div className="flex gap-4">
-           <Button
+          <div className="flex gap-4">
+            <Button
               type="submit"
               disabled={isPending}
               className="flex-1 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold"
             >
-              {isPending ? "Submitting..." : isEditing ? "Update Project" : "Create Project"}
+              {isPending ? "Publishing..." : isEditing ? "Update Project" : "Create Project"}
             </Button>
           
             <Button
               type="button"
               disabled={isPending}
+              onClick={handleSaveDraft}
               className="w-32 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold"
             >
               {isPending ? "Saving..." : "Save Draft"}
