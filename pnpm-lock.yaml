@@ -149,6 +149,9 @@ importers:
       better-auth:
         specifier: ^1.6.11
         version: 1.6.11(drizzle-kit@0.30.6)(drizzle-orm@0.45.2(@libsql/client@0.17.3)(@neondatabase/serverless@0.10.4)(@types/pg@8.20.0)(@upstash/redis@1.38.0)(gel@2.2.0)(kysely@0.28.17)(mysql2@3.22.3(@types/node@20.19.41))(pg@8.20.0))(mysql2@3.22.3(@types/node@20.19.41))(next@16.2.6(@babel/core@7.29.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(pg@8.20.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

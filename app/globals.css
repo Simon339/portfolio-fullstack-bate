@@ -1126,79 +1126,64 @@
   opacity: 1;
 }
 
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
 @keyframes shimmer {
   0% {
-    transform: translateX(-100%);
+    background-position: -200% 0;
   }
   100% {
-    transform: translateX(100%);
+    background-position: 200% 0;
   }
 }
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  50% {
+    transform: translateY(-5px);
   }
 }
-.animate-blob {
-  animation: blob 7s infinite;
+
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-.btn-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-.btn-shimmer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
+
+.shimmer-text {
   background: linear-gradient(
     90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
+    #d4a574 0%,
+    #f5d0a9 25%,
+    #d4a574 50%,
+    #f5d0a9 75%,
+    #d4a574 100%
   );
-  animation: shimmer 2s infinite;
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
 }
-.contact-link {
-  transition: all 0.3s ease;
-}
-.contact-link:hover {
-  transform: translateY(-2px);
-}
+
 .card-flip-container {
-  perspective: 1500px;
+  perspective: 2000px;
 }
+
 .card-flip-inner {
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
 }
+
 .card-flip-inner.is-flipped {
   transform: rotateY(180deg);
 }
+
 .card-front,
 .card-back {
   backface-visibility: hidden;
@@ -1208,9 +1193,39 @@
   width: 100%;
   height: 100%;
 }
+
 .card-back {
   transform: rotateY(180deg);
 }
+
+.glass-effect {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  backdrop-filter: blur(10px);
+}
+
+.border-glow {
+  position: relative;
+}
+
+.border-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 165, 116, 0.3),
+    rgba(212, 165, 116, 0.1),
+    rgba(212, 165, 116, 0.3)
+  );
+  border-radius: inherit;
+  z-index: -1;
+  animation: glow 3s ease-in-out infinite;
+}
+
 @media print {
   body * {
     visibility: hidden;
@@ -1228,17 +1243,5 @@
   }
   .no-print {
     display: none !important;
-  }
-  .card-flip-container {
-    perspective: none;
-  }
-  .card-flip-inner {
-    transform: none !important;
-  }
-  .card-back {
-    display: block;
-    position: relative;
-    transform: none;
-    page-break-before: always;
   }
 }
