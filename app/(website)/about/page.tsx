@@ -22,10 +22,9 @@ export default function About() {
           <div className="flex justify-center lg:justify-end">
             {profile.map((item) => (
               <div key={item.id} className="relative w-80 h-80 overflow-hidden rounded-2xl border-4 border-[#685189]">
-                <Image
+                <img
                   src={item.img || "/placeholder.png"}
                   alt="Profile"
-                  fill
                   className="object-cover about_img"
                   sizes="(max-width: 768px) 100vw, 320px"
                 />
