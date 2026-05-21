@@ -3,24 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Mail,
-  MapPin,
-  Phone,
-  Github,
-  Linkedin,
-  Twitter,
-  Globe,
-  ArrowRight,
-  QrCode,
-  Share2,
-  Download,
-  Code2,
-  Sparkles,
-  Cpu,
-  ServerCog,
-  Headset,
-} from "lucide-react"
+import { Mail, MapPin, Phone, Github, Linkedin, Twitter, Globe, ArrowRight, QrCode, Share2, Download, Code2, Sparkles, Cpu, ServerCog, Headset } from "lucide-react"
 
 const BusinessCardPage = () => {
   const [isFlipped, setIsFlipped] = useState(false)
@@ -409,4 +392,4 @@ const BusinessCardPage = () => {
   )
 }
 
-export default BusinessCardPage
+export default BusinessCardPage;
