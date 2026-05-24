@@ -124,14 +124,6 @@ const UserModal = () => {
                             )} />
                         </div>
 
-                        <button
-        onClick={handleGenerate}
-        disabled={isLoading}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-      >
-        {isLoading ? "Generating 10 Users..." : "Auto-Generate 10 Users"}
-      </button>
-      
                         <DialogFooter>
                             <Button disabled={isLoading} className="form-btn text-white bg-gray-700 hover:bg-gray-800 border border-[#acc2ef]">
                                 {isLoading ? (<><Loader2 size={20} className="animate-spin" /> &nbsp; Loading...</>) : "Add User"}
@@ -145,3 +137,13 @@ const UserModal = () => {
 };
 
 export default UserModal;
+
+/*
+ <button
+        onClick={handleGenerate}
+        disabled={isLoading}
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+      >
+        {isLoading ? "Generating 10 Users..." : "Auto-Generate 10 Users"}
+      </button>
+      */

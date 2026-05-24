@@ -2,31 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
-import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from "react"
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  type SortingState,
-  type VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table"
-import {
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Edit,
-  Eye,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react"
+import { useState, useEffect } from "react"
+import { type ColumnDef, type ColumnFiltersState, type SortingState, type VisibilityState, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table"
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, Eye, Plus, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -127,7 +105,6 @@ const ProjectTable = () => {
         toast.error(result.error || "Failed to delete project")
       }
     } catch (error) {
-      console.error("Error during deletion:", error)
       toast.error("An error occurred while deleting the project")
     } finally {
       setDeleteModalOpen(false)
@@ -495,7 +472,7 @@ const ProjectTable = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="bg-gray-50 hover:bg-primary/90 hover:text-white font-medium rounded-full border border-[#acc2ef]"
+              className="text-gray-600 bg-transparent border border-[#acc2ef] rounded-full hover:border-blue-500 hover:animate-pulse hover:opacity-95"
             >
               <Plus className="h-4 w-4 mr-1" />
             </Button>

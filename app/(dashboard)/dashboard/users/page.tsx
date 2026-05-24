@@ -7,22 +7,21 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Users, Plus, Loader2, Eye, Trash2, Ban, UserCheck, UserCog, LogOut, MoreHorizontal, CheckCircle, UserMinus } from 'lucide-react'
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { Loader2, Eye, Trash2, Ban, UserCog, LogOut, MoreHorizontal, CheckCircle, UserMinus } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
-import {  getbyUserDetails } from '@/server/data/alldata'
+import { getbyUserDetails } from '@/server/data/alldata'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { DataTable } from '@/components/Dashboard/UsersCard'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input'
-import UserModal from '@/components/Dashboard/modals/User'
-import { usePathname, useRouter } from "next/navigation";
-import {deleteUser, banUser, impersonateUser, stopImpersonating, unbanUser } from '@/server/actions/user'
+import { useRouter } from "next/navigation";
+import { deleteUser, banUser, impersonateUser, stopImpersonating, unbanUser } from '@/server/actions/user'
 
 interface User {
   id: string
@@ -47,7 +46,8 @@ const Page = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -69,7 +69,6 @@ const Page = () => {
 
       setUsers(transformedData)
     } catch (err) {
-      console.error('Error fetching users:', err)
       setError('Failed to fetch users')
       toast.error('Failed to load users')
     } finally {
@@ -79,26 +78,48 @@ const Page = () => {
 
   const handleDelete = async (selectedUsers: User[]) => {
     setIsDeleting(true)
+
     try {
       for (const user of selectedUsers) {
         const formData = new FormData()
-        formData.append('userId', user.id)
+        formData.append("userId", user.id)
+
         const result = await deleteUser(formData)
 
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to delete user')
+        // Handle failed response
+        if (!result?.success) {
+          toast.error(result?.error)
         }
       }
 
       setUsers((prevUsers) =>
-        prevUsers.filter((u) => !selectedUsers.find((s) => s.id === u.id))
+        prevUsers.filter(
+          (u) => !selectedUsers.find((s) => s.id === u.id)
+        )
       )
+
       toast.success(`${selectedUsers.length} user(s) deleted successfully`)
     } catch (error) {
-      console.error('Error deleting users:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to delete users')
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete users"
+      )
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleSingleDeleteClick = (user: User) => {
+    setUserToDelete(user)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmSingleDelete = async () => {
+    if (userToDelete) {
+      await handleDelete([userToDelete])
+      setIsDeleteDialogOpen(false)
+      setUserToDelete(null)
     }
   }
 
@@ -233,27 +254,30 @@ const Page = () => {
             <DropdownMenuContent align="end" className="w-[200px]">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              
+
               <DropdownMenuItem asChild>
                 <Link href={`/dashboard/users/${user.id}`} className="cursor-pointer flex items-center gap-2">
                   <Eye className="size-4" />
                   <span>View User</span>
                 </Link>
               </DropdownMenuItem>
-              
+
               <ImpersonateDialog userId={user.id} userName={user.name} />
-              
+
               {user.banned ? (
                 <UnbanDialog userId={user.id} userName={user.name} />
               ) : (
                 <BanDialog userId={user.id} userName={user.name} />
               )}
-              
+
               <DropdownMenuSeparator />
-              
-              <DropdownMenuItem 
+
+              <DropdownMenuItem
                 className="cursor-pointer flex items-center gap-2 text-red-600 focus:text-red-600"
-                onClick={() => handleDelete([{ ...user, isSelected: true }])}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  handleSingleDeleteClick(user)
+                }}
               >
                 <Trash2 className="size-4" />
                 <span>Delete User</span>
@@ -291,28 +315,18 @@ const Page = () => {
 
   return (
     <TooltipProvider>
-      <div className="mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-blue-100 rounded-xl">
-              <Users className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-              <p className="text-sm text-gray-600 mt-0.5">
-                {users.length} users{' '}
-                {users.filter((u) => u.banned).length > 0 && (
-                  <span className="text-red-600">
-                    • {users.filter((u) => u.banned).length} banned
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <UserModal />
+      <div className="mx-auto p-4 space-y-6">
+        <div className="border-b border-[#acc2ef] mb-6 py-4">
+          <div className="text-center">
+            <h1 className="text-xl font-semibold text-gray-800">Users</h1>
+            <p className="text-gray-600">
+              Manage All Your {users.length} Users
+              {users.filter((u) => u.banned).length > 0 && (
+                <span className="text-red-600">
+                  • {users.filter((u) => u.banned).length} banned
+                </span>
+              )}
+            </p>
           </div>
         </div>
 
@@ -324,6 +338,39 @@ const Page = () => {
           onDelete={handleDelete}
           isDeleting={isDeleting}
         />
+
+        {/* Single Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Delete User</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete {userToDelete?.name}? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex gap-3 justify-end mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false)
+                  setUserToDelete(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmSingleDelete}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? "Deleting..." : "Confirm Delete"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   )
@@ -337,7 +384,7 @@ const BanSchema = z.object({
 const BanDialog = ({ userId, userName }: { userId: string; userName: string }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
+
   const form = useForm<z.infer<typeof BanSchema>>({
     resolver: zodResolver(BanSchema),
     defaultValues: {
@@ -377,7 +424,7 @@ const BanDialog = ({ userId, userName }: { userId: string; userName: string }) =
       setIsSubmitting(false)
     }
   }
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -418,8 +465,8 @@ const BanDialog = ({ userId, userName }: { userId: string; userName: string }) =
                 <FormItem>
                   <FormLabel>Ban Duration:</FormLabel>
                   <FormControl>
-                    <select 
-                      {...field} 
+                    <select
+                      {...field}
                       className="w-full p-2 rounded border border-gray-300 bg-white"
                     >
                       <option value="1day">1 Day</option>
@@ -456,7 +503,7 @@ const BanDialog = ({ userId, userName }: { userId: string; userName: string }) =
   )
 }
 
-const UnbanDialog = ({ userId, userName, }: { userId: string; userName: string; }) => {
+const UnbanDialog = ({ userId, userName }: { userId: string; userName: string }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -472,7 +519,7 @@ const UnbanDialog = ({ userId, userName, }: { userId: string; userName: string; 
       setIsSubmitting(false)
     }
   }
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -488,7 +535,7 @@ const UnbanDialog = ({ userId, userName, }: { userId: string; userName: string; 
             Are you sure you want to unban {userName}?
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex gap-3 justify-end mt-4">
           <Button
             type="button"
@@ -516,16 +563,16 @@ const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: str
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
   const router = useRouter();
-  
+
   // Check if currently impersonating
   useEffect(() => {
     const checkImpersonation = () => {
       const impersonating = sessionStorage.getItem('isImpersonating') === 'true'
       setIsImpersonating(impersonating)
     }
-    
+
     checkImpersonation()
-    
+
     // Listen for storage changes
     window.addEventListener('storage', checkImpersonation)
     return () => window.removeEventListener('storage', checkImpersonation)
@@ -535,24 +582,23 @@ const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: str
     setIsSubmitting(true)
     try {
       const result = await impersonateUser(userId);
-            
+
       if (result.error) {
-         throw new Error(result.error || 'Failed to impersonate user')
+        throw new Error(result.error || 'Failed to impersonate user')
       }
-      
+
       toast.success(`Now impersonating ${userName}`)
-      
+
       // Store impersonation state
       sessionStorage.setItem('isImpersonating', 'true')
       sessionStorage.setItem('impersonatedUserId', userId)
-      
+
       // Close dialog
       setIsOpen(false)
-    
+
       router.refresh()
-      
+
     } catch (error) {
-      console.error('Impersonation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to impersonate user')
     } finally {
       setIsSubmitting(false)
@@ -563,26 +609,24 @@ const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: str
     setIsSubmitting(true)
     try {
       const result = await stopImpersonating();
-      
-            if (result.error) {
-              throw new Error(result.error || 'Failed to stop impersonation')
-            }
-      
-      
+
+      if (result.error) {
+        throw new Error(result.error || 'Failed to stop impersonation')
+      }
+
       // Clear impersonation state
       sessionStorage.removeItem('isImpersonating')
       sessionStorage.removeItem('impersonatedUserId')
-      
+
       toast.success('Stopped impersonating user')
-      
+
       // Close dialog
       setIsOpen(false)
-      
+
       // Redirect to users page
       router.refresh()
-      
+
     } catch (error) {
-      console.error('Stop impersonation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to stop impersonation')
     } finally {
       setIsSubmitting(false)
@@ -593,7 +637,7 @@ const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: str
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer flex items-center gap-2">
-          {isImpersonating ?<UserMinus className='size-4' /> : <UserCog className="size-4" />}
+          {isImpersonating ? <UserMinus className='size-4' /> : <UserCog className="size-4" />}
           <span>{isImpersonating ? 'Stop Impersonating' : 'Impersonate User'}</span>
         </DropdownMenuItem>
       </DialogTrigger>
@@ -603,17 +647,17 @@ const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: str
             {isImpersonating ? 'Stop Impersonating' : 'Impersonate User'}
           </DialogTitle>
           <DialogDescription>
-            {isImpersonating 
+            {isImpersonating
               ? `Are you sure you want to stop impersonating and return to your admin account?`
               : `Are you sure you want to start impersonating ${userName}?`
             }
             {isImpersonating
               ? ''
-              :  <span className="text-xs italic font-medium text-amber-800">  Warning: This action will be audited</span>
+              : <span className="text-xs italic font-medium text-amber-800">  Warning: This action will be audited</span>
             }
           </DialogDescription>
         </DialogHeader>
-        
+
         {isImpersonating && (
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
             <p className="text-xs text-yellow-600 text-center">
@@ -621,7 +665,7 @@ const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: str
             </p>
           </div>
         )}
-        
+
         <div className="flex gap-3 justify-end mt-4">
           <Button
             type="button"
@@ -634,8 +678,8 @@ const ImpersonateDialog = ({ userId, userName }: { userId: string; userName: str
             type="button"
             onClick={isImpersonating ? handleStopImpersonating : handleImpersonate}
             disabled={isSubmitting}
-            className={isImpersonating 
-              ? 'bg-yellow-600 hover:bg-yellow-700' 
+            className={isImpersonating
+              ? 'bg-yellow-600 hover:bg-yellow-700'
               : 'bg-purple hover:bg-purple/30'
             }
           >

@@ -41,7 +41,6 @@ const Categories = () => {
         const fetchedtCategories = await fetchCategories();
         setCategories(fetchedtCategories.map(c => ({ ...c, isSelected: false })));
       } catch (error) {
-        console.error("Error fetching Catergories:", error);
         toast.error("Failed to load Catergories");
       } finally {
         setLoading(false);
@@ -90,7 +89,6 @@ const Categories = () => {
       throw new Error(result.message)
     }
   } catch (error) {
-    console.error("Error deleting categories:", error)
       toast.error("Error", {
         description: "There was an error deleting the categories. Please try again.",
       });
@@ -106,13 +104,12 @@ const Categories = () => {
       if (result) {
         setCategories(prev =>
           prev.map(cat =>
-            cat.id === id ? { ...cat, ...result.category } : cat
+            cat.id === id ? { ...cat, ...result.data } : cat
           )
         );
         toast.success("Category updated successfully");
       }
     } catch (error) {
-      console.error("Error updating Category:", error);
       toast.error("Failed to update Category");
     }
   };

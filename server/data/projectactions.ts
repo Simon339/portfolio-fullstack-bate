@@ -256,7 +256,6 @@ export async function deleteTechstacks(ids: string[]) {
 }
 
 // Categories
-
 export async function fetchCategories() {
   try {
     const categoryData = await db.select().from(categories)
@@ -863,22 +862,21 @@ export async function deleteProject(id: string) {
   }
 }
 
-// Type definition for the Project object
-type Project = {
+// Add this type definition at the top of projectactions.ts
+type ProjectForExport = {
   id: string
   name: string
-  image?: string
-  category: { id: string; name: string }
-  techstacks: Array<{ id: string; name: string; image?: string }>
+  image?: string | null
+  category: { id: string; name: string } | null
+  techstacks: Array<{ id: string; name: string; image?: string | null }>
   description: string
-  features: Array<{ name: string; description: string }>
-  demo?: string
+  features: any[] | string | null
+  demo: string
+  status: "draft" | "published"
 }
 
-/**
- * Server action to export projects in different formats
- */
-export async function exportProjects(projects: Project[], format: "csv" | "json" | "pdf") {
+// Update the exportProjects function
+export async function exportProjects(projects: ProjectForExport[], format: "csv" | "json" | "pdf") {
   const session = await auth.api.getSession({
     headers: await headers()
   })
@@ -892,6 +890,21 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
   }
 
   try {
+    // Normalize the projects data to ensure consistent structure
+    const normalizedProjects = projects.map(project => ({
+      id: project.id,
+      name: project.name,
+      image: project.image || null,
+      category: project.category?.name || "Uncategorized",
+      categoryId: project.category?.id || "",
+      techstacks: project.techstacks || [],
+      description: project.description || "",
+      features: typeof project.features === 'string' 
+        ? JSON.parse(project.features) 
+        : (project.features || []),
+      demo: project.demo || "",
+      status: project.status || "draft"
+    }))
 
     // Create a timestamp for the filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
@@ -900,32 +913,31 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
     let filename: string
 
     // Determine if this is a selected export or all projects
-    const exportType = projects.length === 1 ? "single" : projects.length < 10 ? "selected" : "all"
+    const exportType = normalizedProjects.length === 1 ? "single" : normalizedProjects.length < 10 ? "selected" : "all"
 
     switch (format) {
       case "csv":
-        data = generateCSV(projects)
-        contentType = "text/csv"
+        data = generateCSV(normalizedProjects)
+        contentType = "text/csv;charset=utf-8"
         filename =
           exportType === "single"
-            ? `project-${projects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.csv`
+            ? `project-${normalizedProjects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.csv`
             : `projects-${exportType}-${timestamp}.csv`
         break
       case "json":
-        data = generateJSON(projects)
+        data = generateJSON(normalizedProjects)
         contentType = "application/json"
         filename =
           exportType === "single"
-            ? `project-${projects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.json`
+            ? `project-${normalizedProjects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.json`
             : `projects-${exportType}-${timestamp}.json`
         break
       case "pdf":
-        // For PDF, we'll return the formatted data that the client will use to generate the PDF
-        data = generatePDFData(projects)
+        data = generatePDFData(normalizedProjects)
         contentType = "application/json"
         filename =
           exportType === "single"
-            ? `project-${projects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.pdf`
+            ? `project-${normalizedProjects[0].name.toLowerCase().replace(/\s+/g, "-")}-${timestamp}.pdf`
             : `projects-${exportType}-${timestamp}.pdf`
         break
       default:
@@ -937,15 +949,16 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
       action: "EXPORT",
       tableName: "projects",
       recordId: "multiple",
-      userId,
+      userId: userId,
       details: JSON.stringify({
         action: `Projects exported as ${format}`,
-        count: projects.length,
+        count: normalizedProjects.length,
         format,
         exportType,
       }),
       ipAddress: session.session.ipAddress,
       userAgent: session.session.userAgent,
+      timestamp: new Date(),
     })
 
     revalidatePath("/dashboard/projects")
@@ -958,6 +971,7 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
       format,
     }
   } catch (error) {
+    console.error("Export error:", error)
     return {
       success: false,
       error: `Failed to export projects as ${format}`,
@@ -966,11 +980,8 @@ export async function exportProjects(projects: Project[], format: "csv" | "json"
   }
 }
 
-/**
- * Generate CSV data from projects with improved formatting
- */
-function generateCSV(projects: Project[]): string {
-  // Define CSV headers with more detailed information
+// Generate CSV data from projects
+function generateCSV(projects: any[]): string {
   const headers = [
     "ID",
     "Project Name",
@@ -980,39 +991,41 @@ function generateCSV(projects: Project[]): string {
     "Feature Names",
     "Feature Details",
     "Demo URL",
+    "Status"
   ]
 
-  // Convert projects to CSV rows with more detailed information
   const rows = projects.map((project) => {
-    const techStacks = project.techstacks.map((tech) => tech.name).join("; ")
-    const featureNames = project.features.map((feature) => feature.name).join("; ")
-    const featureDetails = project.features
-      .map((feature) => `${feature.name}: ${feature.description || "No description"}`)
+    const techStacks = project.techstacks?.map((tech: any) => tech.name).join("; ") || ""
+    const features = Array.isArray(project.features) ? project.features : []
+    const featureNames = features.map((feature: any) => feature.name).join("; ")
+    const featureDetails = features
+      .map((feature: any) => `${feature.name}: ${feature.description || "No description"}`)
       .join(" | ")
 
     return [
       project.id,
       project.name,
-      project.category?.name || "Uncategorized",
-      project.description,
+      project.category,
+      project.description?.replace(/,/g, " ") || "",
       techStacks,
       featureNames,
       featureDetails,
       project.demo || "",
+      project.status || "draft"
     ]
   })
 
-  // Combine headers and rows
   const csvContent = [
     headers.join(","),
     ...rows.map((row) =>
       row
-        .map((cell) =>
-          typeof cell === "string" &&
-          (cell.includes(",") || cell.includes(";") || cell.includes('"') || cell.includes("\n"))
-            ? `"${cell.replace(/"/g, '""')}"`
-            : cell,
-        )
+        .map((cell) => {
+          const cellStr = String(cell || "")
+          if (cellStr.includes(",") || cellStr.includes(";") || cellStr.includes('"') || cellStr.includes("\n")) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        })
         .join(","),
     ),
   ].join("\n")
@@ -1020,21 +1033,19 @@ function generateCSV(projects: Project[]): string {
   return csvContent
 }
 
-/**
- * Generate JSON data from projects
- */
-function generateJSON(projects: Project[]): string {
-  // Format projects for export with more detailed information
+// Generate JSON data from projects
+function generateJSON(projects: any[]): string {
   const formattedProjects = projects.map((project) => ({
     id: project.id,
     name: project.name,
-    category: project.category?.name || "Uncategorized",
+    category: project.category,
+    status: project.status,
     description: project.description,
-    technologies: project.techstacks.map((tech) => ({
+    technologies: project.techstacks?.map((tech: any) => ({
       name: tech.name,
       id: tech.id,
-    })),
-    features: project.features.map((feature) => ({
+    })) || [],
+    features: (Array.isArray(project.features) ? project.features : []).map((feature: any) => ({
       name: feature.name,
       description: feature.description || "",
     })),
@@ -1042,7 +1053,6 @@ function generateJSON(projects: Project[]): string {
     exportDate: new Date().toISOString(),
   }))
 
-  // Add metadata to the JSON
   const jsonData = {
     metadata: {
       title: "Projects Export",
@@ -1056,23 +1066,21 @@ function generateJSON(projects: Project[]): string {
   return JSON.stringify(jsonData, null, 2)
 }
 
-/**
- * Generate data for PDF creation on the client
- */
-function generatePDFData(projects: Project[]): string {
-  // Format projects for PDF generation on the client
+// Generate data for PDF creation on the client
+function generatePDFData(projects: any[]): string {
   const formattedProjects = projects.map((project) => ({
     id: project.id,
     name: project.name,
-    category: project.category?.name || "Uncategorized",
+    category: project.category,
     description: project.description,
-    techStacks: project.techstacks.map((tech) => tech.name),
-    features: project.features.map((feature) => ({
+    techStacks: project.techstacks?.map((tech: any) => tech.name) || [],
+    features: (Array.isArray(project.features) ? project.features : []).map((feature: any) => ({
       name: feature.name,
       description: feature.description || "",
     })),
     demoUrl: project.demo || null,
     image: project.image || null,
+    status: project.status || "draft",
   }))
 
   return JSON.stringify({
@@ -1421,7 +1429,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
 
     // Step 1: Extract unique categories from projects
     const uniqueCategories = Array.from(new Set(projectsData.map(project => project.category)))
-    console.log(`Found ${uniqueCategories.length} unique categories:`, uniqueCategories)
 
     // Create a map to store created category IDs
     const categoryMap = new Map<string, string>()
@@ -1429,7 +1436,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
     // Create categories if they don't exist
     for (const categoryName of uniqueCategories) {
       try {
-        console.log(`Processing category: ${categoryName}`)
         
         // Check if category already exists
         const existingCategory = await db
@@ -1439,7 +1445,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           .then(result => result[0])
 
         if (existingCategory) {
-          console.log(`Category "${categoryName}" already exists with ID: ${existingCategory.id}`)
           categoryMap.set(categoryName, existingCategory.id)
           results.skippedItems.push(`Category "${categoryName}" already exists`)
         } else {
@@ -1453,21 +1458,17 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           
           categoryMap.set(categoryName, categoryId)
           results.categoriesCreated++
-          console.log(`Created category "${categoryName}" with ID: ${categoryId}`)
         }
       } catch (error) {
         const errorMsg = `Failed to create category "${categoryName}": ${error instanceof Error ? error.message : String(error)}`
-        console.error(errorMsg)
         results.errors.push(errorMsg)
       }
     }
 
-    console.log("Category Map:", Array.from(categoryMap.entries()))
 
     // Step 2: Extract all unique tech stacks from all projects
     const allTechStacks = projectsData.flatMap(project => project.techStack)
     const uniqueTechStacks = Array.from(new Set(allTechStacks))
-    console.log(`Found ${uniqueTechStacks.length} unique tech stacks`)
 
     // Create a map to store created tech stack IDs
     const techstackMap = new Map<string, string>()
@@ -1476,11 +1477,9 @@ export async function autoSeedAllData(): Promise<SeedResult> {
     for (const techName of uniqueTechStacks) {
       try {
         if (!techName || techName.trim() === "") {
-          console.log(`Skipping empty tech name`)
           continue
         }
 
-        console.log(`Processing tech stack: ${techName}`)
         
         // Check if tech stack already exists
         const existingTechstack = await db
@@ -1490,7 +1489,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           .then(result => result[0])
 
         if (existingTechstack) {
-          console.log(`Tech stack "${techName}" already exists with ID: ${existingTechstack.id}`)
           techstackMap.set(techName, existingTechstack.id)
           results.skippedItems.push(`Tech stack "${techName}" already exists`)
         } else {
@@ -1507,21 +1505,16 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           
           techstackMap.set(techName, techstackId)
           results.techstacksCreated++
-          console.log(`Created tech stack "${techName}" with ID: ${techstackId}`)
         }
       } catch (error) {
         const errorMsg = `Failed to create tech stack "${techName}": ${error instanceof Error ? error.message : String(error)}`
-        console.error(errorMsg)
+        
         results.errors.push(errorMsg)
       }
     }
-
-    // Step 3: Create projects with detailed features
-    console.log(`\nStarting to create ${projectsData.length} projects...`)
     
     for (const projectData of projectsData) {
       try {
-        console.log(`\nProcessing project: ${projectData.title}`)
         
         // Check if project already exists by name
         const existingProject = await db
@@ -1531,7 +1524,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           .then(result => result[0])
 
         if (existingProject) {
-          console.log(`Project "${projectData.title}" already exists, skipping...`)
           results.skippedItems.push(`Project "${projectData.title}" already exists`)
           continue
         }
@@ -1541,12 +1533,10 @@ export async function autoSeedAllData(): Promise<SeedResult> {
 
         if (!categoryId) {
           const errorMsg = `Category "${projectData.category}" not found in category map for project "${projectData.title}"`
-          console.error(errorMsg)
+          
           results.errors.push(errorMsg)
           continue
         }
-
-        console.log(`Category ID for "${projectData.category}": ${categoryId}`)
 
         // Format features array with name and description
         const formattedFeatures = projectData.features.map((feature: any) => ({
@@ -1556,8 +1546,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
 
         // Count features
         results.featuresCreated += formattedFeatures.length
-        console.log(`Added ${formattedFeatures.length} features for project "${projectData.title}"`)
-
         // Validate URLs
         const demoUrl = projectData.demoUrl || ""
         const imageUrl = projectData.image || ""
@@ -1578,7 +1566,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
         }
         
         await db.insert(projects).values(baseProjectData)
-        console.log(`Successfully inserted basic project info for "${projectData.title}"`)
         
         // Step 3b: Update the features column separately if the column exists
         try {
@@ -1589,10 +1576,7 @@ export async function autoSeedAllData(): Promise<SeedResult> {
               features: JSON.stringify(formattedFeatures)
             } as any)
             .where(eq(projects.id, projectId))
-          console.log(`Successfully added features for project "${projectData.title}"`)
         } catch (featuresError) {
-          // If features column doesn't exist, log warning but continue
-          console.warn(`Could not add features for project "${projectData.title}": ${featuresError instanceof Error ? featuresError.message : String(featuresError)}`)
           results.errors.push(`Features column missing for project "${projectData.title}"`)
         }
 
@@ -1601,10 +1585,9 @@ export async function autoSeedAllData(): Promise<SeedResult> {
           .filter(techName => {
             const hasTech = techstackMap.has(techName)
             if (!hasTech) {
-              console.warn(`Tech stack "${techName}" not found in map for project "${projectData.title}"`)
-            }
+              results.errors.push(`Tech stack "${techName}" not found in tech stack map for project "${projectData.title}"`)
             return hasTech
-          })
+          }})
           .map(techName => ({
             projectId: projectId,
             techstackId: techstackMap.get(techName)!
@@ -1612,9 +1595,7 @@ export async function autoSeedAllData(): Promise<SeedResult> {
 
         if (techstackRelations.length > 0) {
           await db.insert(projectTechstacks).values(techstackRelations)
-          console.log(`Created ${techstackRelations.length} tech stack relationships for project "${projectData.title}"`)
         } else {
-          console.log(`No tech stack relationships created for project "${projectData.title}"`)
         }
 
         // Add audit log
@@ -1632,15 +1613,13 @@ export async function autoSeedAllData(): Promise<SeedResult> {
             userAgent: session?.session?.userAgent || "unknown",
           })
         } catch (auditError) {
-          console.warn(`Failed to create audit log for project "${projectData.title}":`, auditError)
         }
 
         results.projectsCreated++
-        console.log(`✅ Successfully created project "${projectData.title}"`)
         
       } catch (error) {
         const errorMsg = `Failed to create project "${projectData.title}": ${error instanceof Error ? error.message : String(error)}`
-        console.error(errorMsg)
+        
         results.errors.push(errorMsg)
       }
     }
@@ -1651,15 +1630,7 @@ export async function autoSeedAllData(): Promise<SeedResult> {
       revalidatePath("/techstacks")
       revalidatePath("/projects")
     } catch (revalidateError) {
-      console.warn("Failed to revalidate paths:", revalidateError)
     }
-
-    console.log("\n=== SEEDING COMPLETE ===")
-    console.log(`Projects created: ${results.projectsCreated}/${projectsData.length}`)
-    console.log(`Tech stacks created: ${results.techstacksCreated}/${uniqueTechStacks.length}`)
-    console.log(`Categories created: ${results.categoriesCreated}/${uniqueCategories.length}`)
-    console.log(`Features created: ${results.featuresCreated}`)
-    console.log(`Errors: ${results.errors.length}`)
 
     return {
       success: results.errors.filter(e => !e.includes("Features column missing")).length === 0,
@@ -1695,7 +1666,6 @@ export async function autoSeedAllData(): Promise<SeedResult> {
     }
 
   } catch (error) {
-    console.error("Fatal error during seeding:", error)
     return {
       success: false,
       message: "Failed to auto-seed data with descriptions",
@@ -1750,7 +1720,6 @@ export async function clearAllData() {
       message: "All data cleared successfully"
     }
   } catch (error) {
-    console.error("Error clearing data:", error)
     return {
       success: false,
       message: "Failed to clear data",

@@ -6,7 +6,6 @@ import { auditLogs, user } from "../schema"
 import { db } from "../db"
 import { desc, eq, like, sql, and, isNull, isNotNull, gte, lt } from "drizzle-orm"
 
-// Add proper error handling to all functions
 export async function fetchLogs(page = 1, userFilter = "", actionFilter = "all", logsPerPage = 10) {
   try {
     // Build conditions array
@@ -38,7 +37,7 @@ export async function fetchLogs(page = 1, userFilter = "", actionFilter = "all",
     let logsQuery = db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp))
     
     if (conditions.length > 0) {
-      logsQuery = logsQuery.where(...conditions)
+      logsQuery = logsQuery.where(and(...conditions)) // Fixed: added 'and'
     }
     
     logsQuery = logsQuery.limit(logsPerPage).offset(offset)
@@ -123,7 +122,7 @@ export async function exportLogs(format: "json" | "csv", userFilter = "", action
     }
 
     if (actionFilter !== "all") {
-      conditions.push(eq(auditLogs.action, actionFilter))
+      conditions.push(eq(auditLogs.action, actionFilter.toUpperCase())) // Fixed: toUpperCase
     }
 
     // Build query with filters
@@ -139,7 +138,7 @@ export async function exportLogs(format: "json" | "csv", userFilter = "", action
     // Transform logs to match the expected format
     const formattedLogs = logs.map((log) => ({
       id: log.id,
-      timestamp: log.timestamp.toISOString(),
+      timestamp: log.timestamp instanceof Date ? log.timestamp.toISOString() : new Date(log.timestamp).toISOString(),
       userId: log.userId || "N/A",
       action: log.action || "N/A",
       details: log.details ? JSON.stringify(log.details) : "N/A",
@@ -171,7 +170,6 @@ export async function exportLogs(format: "json" | "csv", userFilter = "", action
   }
 }
 
-// NEW: Get a single log entry by ID
 export async function getLogEntry(id: string) {
   try {
     const result = await db
@@ -269,7 +267,7 @@ export async function getTrafficStats() {
     const actionVisitsResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(auditLogs)
-      .where(sql`${auditLogs.action} IN ('CREATE', 'UPDATE', 'DELETE', 'LOGIN')`)
+      .where(sql`${auditLogs.action} IN ('CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'OTHER_ACTIONS')`)
 
     const actionVisits = actionVisitsResult[0]?.count || 0
 
@@ -307,7 +305,6 @@ export async function getTrafficStats() {
       breakdown,
     }
   } catch (error) {
-    // Return default values instead of throwing
     return {
       totalVisits: 0,
       percentChange: 0,
@@ -368,7 +365,6 @@ export async function getYearlyAuditLogAnalytics() {
       isPositiveChange,
     }
   } catch (error) {
-    // Return default values instead of throwing
     return {
       success: false,
       currentYearLogs: 0,
@@ -409,6 +405,33 @@ export async function getUserActivities() {
     }))
   } catch (error) {
     return [] // Return empty array instead of throwing
+  }
+}
+
+
+// Check if audit logs table exists and has data
+export async function checkAuditLogsTable() {
+  try {
+    // Check if table exists and has any data
+    const result = await db.select({ count: sql<number>`count(*)` }).from(auditLogs);
+    const count = Number(result[0]?.count) || 0;
+    
+    // Get a sample log if exists
+    const sample = await db.select().from(auditLogs).limit(1);
+    
+    return { 
+      exists: true, 
+      count,
+      hasData: count > 0,
+      sample: sample[0] || null 
+    };
+  } catch (error) {
+    return { 
+      exists: false, 
+      count: 0,
+      hasData: false,
+      error: error instanceof Error ? error.message : "Unknown error" 
+    };
   }
 }
 
