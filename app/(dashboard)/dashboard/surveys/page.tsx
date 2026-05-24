@@ -70,12 +70,7 @@ const Ratings = () => {
         <header className="border-b border-[#acc2ef] px-6 py-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#acc2ef] bg-gray-50 text-gray-700"
-                aria-hidden="true"
-              >
-                <MessageSquareText className="h-5 w-5" />
-              </div>
+             
               <div className="flex flex-col">
                 <h1 className="text-xl font-semibold text-gray-700 text-balance">
                   Customer Reviews

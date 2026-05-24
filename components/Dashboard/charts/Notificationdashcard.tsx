@@ -11,7 +11,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronRight, MoreHorizontal, Bell, CheckCircle, Mail, MessageSquare, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 
 interface Notification {
   id: string;

@@ -318,64 +318,76 @@ export async function stopImpersonating(): Promise<ServerActionResponse> {
 
 // DeleteUser function
 export async function deleteUser(formData: FormData,): Promise<{ success: boolean; error?: string; message?: string }> {
-  const userId = formData.get("userId") as string;
+   const userId = formData.get("userId") as string
 
   if (!userId) {
-    return { error: "User ID is required", success: false };
+    return {
+      success: false,
+      error: "User ID is required",
+    }
   }
 
   try {
-    // Get the current session
+    // Get session
     const session = await auth.api.getSession({
       headers: await headers(),
-    });
+    })
 
-    const loggedInUserId = session?.user?.id;
+    const loggedInUserId = session?.user?.id
 
     if (!loggedInUserId) {
-      return { error: "Not authenticated", success: false };
+      return {
+        success: false,
+        error: "Not authenticated",
+      }
     }
 
-    // Check if user has permission to issue
+    // Permission check
     const permissionCheck = await auth.api.userHasPermission({
       body: {
-        userId: userId,
+        userId: loggedInUserId,
         permissions: {
           project: ["delete"],
         },
       },
-    });
+    })
 
-    // Check permission first before proceeding with other operations
     if (!permissionCheck.success) {
-      return { error: "You don't have permission to delete", success: false };
+      return {
+        success: false,
+        error: "You don't have permission to delete users",
+      }
     }
 
-    // Get user data before deletion
-    const [userData] = await db.select().from(user).where(eq(user.id, userId));
+    // Find user
+    const [userData] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, userId))
 
     if (!userData) {
-      return { error: "User not found", success: false };
+      return {
+        success: false,
+        error: "User not found",
+      }
     }
 
-    // Delete the user
+    // Delete user
     const deletedUser = await auth.api.removeUser({
       body: {
-        userId: userId, // required
+        userId,
       },
-      // This endpoint requires session cookies.
       headers: await headers(),
-    });
+    })
 
-    // Check if deletion was successful
-    if (!deletedUser || deletedUser.error) {
+    if (!deletedUser?.success) {
       return {
-        error: deletedUser?.error || "Failed to delete user",
         success: false,
-      };
+        error: "Failed to delete user",
+      }
     }
 
-    // Log the deletion
+    // Audit log
     await db.insert(auditLogs).values({
       action: "DELETE",
       tableName: "users",
@@ -389,11 +401,20 @@ export async function deleteUser(formData: FormData,): Promise<{ success: boolea
       }),
       ipAddress: session?.session?.ipAddress || "unknown",
       userAgent: session?.session?.userAgent || "unknown",
-    });
+    })
 
-    return { success: true, message: "User deleted successfully" };
+    return {
+      success: true,
+      message: "User deleted successfully",
+    }
   } catch (error) {
-    return { error: "Failed to delete user", success: false };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to delete user",
+    }
   }
 }
 
@@ -432,9 +453,11 @@ export async function addUser(data: z.infer<typeof AddNewUserSchema>) {
       body: {
         email: data.email.toLowerCase(),
         name: data.firstname + " " + data.surname,
-        image: `https://api.dicebear.com/6.x/initials/svg?seed=${data.firstname + " " + data.surname || "user"}`,
         role: data.role || "user",
-        password: await bcrypt.hash("defaultPassword", 10), // Hash the default password
+        password: await bcrypt.hash("defaultPassword", 10),
+        data: {
+          image: `https://api.dicebear.com/6.x/initials/svg?seed=${data.firstname + " " + data.surname || "user"}`,
+        }
       },
     });
 
@@ -1114,9 +1137,9 @@ export async function autoGenerateUsers() {
       "user",
       "admin",
       "user",
-      "manager",
+      "owner",
       "user",
-    ]; // 7 users, 2 admins, 1 manager
+    ]; // 7 users, 2 admins, 1 owner
 
     const generatedUsers = [];
 
@@ -1125,7 +1148,7 @@ export async function autoGenerateUsers() {
       const firstname = firstNames[i % firstNames.length];
       const surname = lastNames[i % lastNames.length];
       const email = `${firstname.toLowerCase()}.${surname.toLowerCase()}${i > 0 ? i : ""}@example.com`;
-      const role = roles[i % roles.length] as "user" | "admin" | "manager";
+      const role = roles[i % roles.length] as "user" | "admin" | "owner";
       const defaultPassword = "defaultPassword";
 
       // Create user using your existing auth.api.createUser
@@ -1133,9 +1156,11 @@ export async function autoGenerateUsers() {
         body: {
           email: email.toLowerCase(),
           name: `${firstname} ${surname}`,
-          image: `https://api.dicebear.com/6.x/initials/svg?seed=${firstname}%20${surname}`,
-          role: role,
+          role: role || "user",
           password: await bcrypt.hash(defaultPassword, 10),
+          data: {
+           image: `https://api.dicebear.com/6.x/initials/svg?seed=${firstname + " " + surname }`,
+          }
         },
       });
 

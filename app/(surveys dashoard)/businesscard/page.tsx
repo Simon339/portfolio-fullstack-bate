@@ -1,6 +1,5 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Mail, MapPin, Phone, Github, Linkedin, Twitter, Globe, ArrowRight, QrCode, Share2, Download, Code2, Sparkles, Cpu, ServerCog, Headset } from "lucide-react"
