@@ -59,7 +59,7 @@ export default function TrafficStats() {
 
   if (error) {
     return (
-      <Card className="relative overflow-hidden bg-gray-50 text-gray-900 border-[#acc2ef] shadow-md w-full">
+      <Card className="relative overflow-hidden bg-white text-gray-900 border-[#acc2ef] shadow-md w-full">
         <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
@@ -87,7 +87,7 @@ export default function TrafficStats() {
   }
 
   return (
-    <Card className="relative overflow-hidden bg-gray-50 text-gray-900 border-[#acc2ef] shadow-md w-full group">
+    <Card className="relative overflow-hidden bg-white text-gray-900 border-[#acc2ef] shadow-md w-full group">
       <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-10 transition-opacity duration-500 group-hover:opacity-20" style={{ background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3), transparent)' }} aria-hidden="true" />
       <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
       <CardHeader className="pb-4 relative">
