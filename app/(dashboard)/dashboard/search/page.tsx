@@ -89,6 +89,14 @@ export default function SearchPage() {
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 via-white to-[#acc2ef]/10">
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(172,194,239,0.13) 1px, transparent 1px), linear-gradient(90deg, rgba(172,194,239,0.13) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
       <div className="mx-auto px-2 py-8 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
@@ -97,24 +105,37 @@ export default function SearchPage() {
         </div>
 
         {/* Search Form */}
-        <form onSubmit={handleSearch} className="relative group">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#1E56A0]/10 via-[#acc2ef]/20 to-[#1E56A0]/10 opacity-0 blur-lg group-focus-within:opacity-100 transition-opacity duration-500" />
-
-          <div className="relative flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-[#1E56A0]" />
-              <Input
-                type="search"
-                placeholder="Search for anything..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 text-base bg-white border-[#acc2ef] rounded-xl shadow-sm focus:shadow-lg focus:shadow-[#1E56A0]/10 transition-all duration-300"
-              />
-            </div>
-            <Button type="submit"  size="lg" className="h-12 px-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
-              <Search className="w-4 h-4 mr-2" />
-              Search
-            </Button>
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Search for anything…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="
+                pl-10 h-11 text-sm bg-white
+                border border-gray-200 rounded-xl
+                shadow-sm
+                focus-visible:ring-2 focus-visible:ring-[#1E56A0]/30
+                focus-visible:border-[#1E56A0]/60
+                placeholder:text-gray-300
+                transition-all duration-200
+              "
+            />
+          </div>
+          <Button
+            type="submit"
+            className="
+              h-11 px-5 rounded-xl text-sm font-medium
+              bg-[#1E56A0] hover:bg-[#174a8c]
+              shadow-md shadow-[#1E56A0]/20
+              hover:shadow-lg hover:shadow-[#1E56A0]/30
+              transition-all duration-200
+            "
+          >
+            Search
+          </Button>
           </div>
         </form>
 
