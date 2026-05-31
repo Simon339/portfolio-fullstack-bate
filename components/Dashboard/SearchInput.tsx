@@ -33,7 +33,7 @@ export default function SearchInput() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (query.trim()) {
-      router.push(`/search?q=${encodeURIComponent(query.trim())}`)
+      router.push(`/dashboard/search?q=${encodeURIComponent(query.trim())}`)
     }
   }
 
