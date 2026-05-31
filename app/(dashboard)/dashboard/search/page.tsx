@@ -5,37 +5,46 @@ import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { searchAll, type SearchResult } from "@/server/actions/search"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CalendarIcon, Cpu, FolderOpen, Mail, Search, Logs, Users, ArrowRight, X, Sparkles } from "lucide-react"
+import { CalendarIcon, Cpu, FolderOpen, Mail, Search, Logs, Users, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 const typeIcons = {
-  projects: FolderOpen,
-  technologies: Cpu,
-  mails: Mail,
+  project: FolderOpen,
+  techstack: Cpu,
+  inquiry: Mail,
   user: Users,
+  category: FolderOpen,
+  contact: Mail,
 }
 
 const typeLabels = {
-  projects: "Project",
-  technologies: "Technology",
-  mails: "Inquiry",
+  project: "Project",
+  techstack: "Technology",
+  inquiry: "Inquiry",
   user: "User",
+  category: "Category",
+  contact: "Contact",
 }
 
 const typeColors: Record<string, string> = {
-  projects:     "bg-violet-50 text-violet-700 border-violet-200",
-  technologies: "bg-sky-50 text-sky-700 border-sky-200",
-  mails:        "bg-amber-50 text-amber-700 border-amber-200",
-  user:         "bg-emerald-50 text-emerald-700 border-emerald-200",
+  project: "bg-violet-50 text-violet-700 border-violet-200",
+  techstack: "bg-sky-50 text-sky-700 border-sky-200",
+  inquiry: "bg-amber-50 text-amber-700 border-amber-200",
+  user: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  category: "bg-purple-50 text-purple-700 border-purple-200",
+  contact: "bg-orange-50 text-orange-700 border-orange-200",
 }
 
+
 const typeAccents: Record<string, string> = {
-  projects:     "from-violet-500/10",
-  technologies: "from-sky-500/10",
-  mails:        "from-amber-500/10",
-  user:         "from-emerald-500/10",
+  project: "from-violet-500/10",
+  techstack: "from-sky-500/10",
+  inquiry: "from-amber-500/10",
+  user: "from-emerald-500/10",
+  category: "from-purple-500/10",
+  contact: "from-orange-500/10",
 }
 
 export default function SearchPage() {
@@ -108,12 +117,15 @@ export default function SearchPage() {
       : results.filter((result) => result.type === activeTab)
 
   const tabs = [
-    { id: "all",          label: "All",          icon: Logs },
-    { id: "projects",     label: "Projects",     icon: FolderOpen },
-    { id: "technologies", label: "Technologies", icon: Cpu        },
-    { id: "mails",        label: "Inquiries",    icon: Mail       },
-    { id: "user",         label: "Users",        icon: Users      },
+    { id: "all", label: "All", icon: Logs },
+    { id: "project", label: "Projects", icon: FolderOpen },
+    { id: "techstack", label: "Technologies", icon: Cpu },
+    { id: "inquiry", label: "Inquiries", icon: Mail },
+    { id: "user", label: "Users", icon: Users },
+    { id: "category", label: "Categories", icon: FolderOpen },
+    { id: "contact", label: "Contacts", icon: Mail },
   ]
+
 
   const getResultCount = (tabId: string) => {
     if (tabId === "all") return results.length
@@ -139,7 +151,7 @@ export default function SearchPage() {
         {/*  Search form with clear button  */}
         <form onSubmit={handleSearch} className="flex gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600 pointer-events-none" />
             <Input
               ref={inputRef}
               type="search"
@@ -156,15 +168,6 @@ export default function SearchPage() {
                 transition-all duration-200
               `}
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="h-3.5 w-3.5 text-gray-400" />
-              </button>
-            )}
           </div>
           <Button
             type="submit"
@@ -270,14 +273,14 @@ export default function SearchPage() {
               ))}
             </div>
 
-          /* Empty state with better UX */
+            /* Empty state with better UX */
           ) : filteredResults.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center py-16 md:py-24 gap-4 animate-in fade-in zoom-in duration-500">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 border border-[#acc2ef] shadow-sm flex items-center justify-center">
                 {query ? (
                   <Search className="w-8 h-8 text-gray-300" />
                 ) : (
-                  <Sparkles className="w-8 h-8 text-gray-300" />
+                  <Search  className="w-8 h-8 text-gray-300" />
                 )}
               </div>
               <div className="text-center space-y-1">
@@ -300,7 +303,7 @@ export default function SearchPage() {
               </div>
             </div>
 
-          /* Results list with staggered animation */
+            /* Results list with staggered animation */
           ) : (
             <ul className="space-y-2">
               {filteredResults.map((result, index) => {
@@ -369,7 +372,7 @@ export default function SearchPage() {
 
                         {/* Date with better formatting */}
                         {result.createdAt && (
-                          <div className="hidden md:flex items-center gap-1 text-[11px] text-gray-300 shrink-0">
+                          <div className="hidden md:flex items-center gap-1 text-[11px] text-gray-400 group-hover:text-gray-500 transition-colors shrink-0">
                             <CalendarIcon className="h-3 w-3" />
                             <span className="font-mono">
                               {result.createdAt.toLocaleDateString("en-US", {
@@ -396,16 +399,6 @@ export default function SearchPage() {
             </ul>
           )}
         </div>
-
-        {/* Keyboard shortcuts hint */}
-        {results.length === 0 && !loading && !query && (
-          <div className="text-center pt-8 animate-in fade-in duration-700">
-            <p className="text-xs text-gray-400">
-              Press <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-mono">⌘</kbd> + 
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-mono mx-0.5">K</kbd> to search anytime
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )
