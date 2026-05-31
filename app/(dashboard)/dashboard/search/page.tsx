@@ -5,8 +5,7 @@ import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { searchAll, type SearchResult } from "@/server/actions/search"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, Cpu, FolderOpen, Mail, Search, Sparkles, Users, ArrowRight, X } from "lucide-react"
+import { CalendarIcon, Cpu, FolderOpen, Mail, Search, Logs, Users, ArrowRight, X, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -78,7 +77,7 @@ export default function SearchPage() {
       const searchResults = await searchAll(searchTerm)
       setResults(searchResults)
     } catch (error) {
-      console.error("Search failed:", error)
+      throw "Something went wrong while searching. Please try again later."
     } finally {
       setLoading(false)
     }
@@ -109,7 +108,7 @@ export default function SearchPage() {
       : results.filter((result) => result.type === activeTab)
 
   const tabs = [
-    { id: "all",          label: "All",          icon: Sparkles  },
+    { id: "all",          label: "All",          icon: Logs },
     { id: "projects",     label: "Projects",     icon: FolderOpen },
     { id: "technologies", label: "Technologies", icon: Cpu        },
     { id: "mails",        label: "Inquiries",    icon: Mail       },
@@ -123,14 +122,11 @@ export default function SearchPage() {
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-[#f8f9fc] to-[#f0f2f5]">
-      <div className="relative mx-auto px-4 py-8 md:py-12 space-y-6 md:space-y-8 max-w-4xl">
+      <div className="relative mx-auto px-4 py-8 md:py-12 space-y-6 md:space-y-8">
 
-        {/* ── Header with animation ── */}
+        {/*  Header with animation  */}
         <header className="space-y-2 text-center animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="inline-flex items-center justify-center gap-2">
-            <div className="p-2 rounded-2xl bg-gradient-to-br from-[#1E56A0]/10 to-[#1E56A0]/5">
-              <Sparkles className="w-5 h-5 text-[#1E56A0]" />
-            </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
               Search
             </h1>
@@ -140,7 +136,7 @@ export default function SearchPage() {
           </p>
         </header>
 
-        {/* ── Search form with clear button ── */}
+        {/*  Search form with clear button  */}
         <form onSubmit={handleSearch} className="flex gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -152,10 +148,10 @@ export default function SearchPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`
                 pl-10 pr-10 h-12 text-sm bg-white/80 backdrop-blur-sm
-                border border-gray-200 rounded-xl
+                border border-[#acc2ef] rounded-xl
                 shadow-sm hover:shadow-md
                 focus-visible:ring-2 focus-visible:ring-[#1E56A0]/30
-                focus-visible:border-[#1E56A0]/60
+                focus-visible:border-[#acc2ef]/60
                 placeholder:text-gray-300
                 transition-all duration-200
               `}
@@ -183,17 +179,17 @@ export default function SearchPage() {
             "
           >
             {loading ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-[#acc2ef]/30 border-t-[#acc2ef] rounded-full animate-spin" />
             ) : (
               "Search"
             )}
           </Button>
         </form>
 
-        {/* ── Tabs with better UX ── */}
+        {/*  Tabs with better UX  */}
         {results.length > 0 && (
           <div className="animate-in fade-in slide-in-from-top-2 duration-300 delay-200">
-            <div className="flex items-center gap-1 border-b border-gray-200 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-1 border-b border-[#acc2ef] overflow-x-auto scrollbar-hide">
               {tabs.map((tab) => {
                 const Icon = tab.icon
                 const count = getResultCount(tab.id)
@@ -235,7 +231,7 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* ── Results area ── */}
+        {/*  Results area  */}
         <div className="space-y-3">
 
           {/* Status line with animation */}
@@ -262,7 +258,7 @@ export default function SearchPage() {
           {loading ? (
             <div className="space-y-2 animate-in fade-in duration-300">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="p-4 rounded-xl border border-gray-100 bg-white animate-pulse">
+                <div key={i} className="p-4 rounded-xl border border-[#acc2ef] bg-white animate-pulse">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-gray-200" />
                     <div className="flex-1 space-y-2">
@@ -277,7 +273,7 @@ export default function SearchPage() {
           /* Empty state with better UX */
           ) : filteredResults.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center py-16 md:py-24 gap-4 animate-in fade-in zoom-in duration-500">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 border border-gray-200 shadow-sm flex items-center justify-center">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 border border-[#acc2ef] shadow-sm flex items-center justify-center">
                 {query ? (
                   <Search className="w-8 h-8 text-gray-300" />
                 ) : (
@@ -309,7 +305,7 @@ export default function SearchPage() {
             <ul className="space-y-2">
               {filteredResults.map((result, index) => {
                 const TypeIcon = (typeIcons as Record<string, any>)[result.type] || FolderOpen
-                const colorClass = typeColors[result.type] ?? "bg-gray-50 text-gray-600 border-gray-200"
+                const colorClass = typeColors[result.type] ?? "bg-gray-50 text-gray-600 border-[#acc2ef]"
                 const accentClass = typeAccents[result.type] ?? "from-gray-500/5"
 
                 return (
@@ -322,8 +318,8 @@ export default function SearchPage() {
                       <div
                         className={`
                           relative flex items-center gap-4 p-4
-                          rounded-xl border border-gray-100 bg-white/80 backdrop-blur-sm
-                          hover:border-gray-200
+                          rounded-xl border border-[#acc2ef] bg-white/80 backdrop-blur-sm
+                          hover:border-[#acc2ef]
                           hover:bg-gradient-to-r ${accentClass} hover:to-transparent
                           hover:shadow-lg hover:shadow-gray-100/50
                           transition-all duration-300
