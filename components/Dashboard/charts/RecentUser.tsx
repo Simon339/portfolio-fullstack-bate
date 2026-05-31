@@ -14,7 +14,7 @@ interface User {
   name: string;
   email: string;
   image: string | null;
-  role: "user" | "owner" | "admin" | null;
+  role?: "user" | "owner" | "admin" | "user";
   banned: boolean | null;
   twoFactorEnabled: boolean | null;
   emailVerified: Date | null;
@@ -77,7 +77,7 @@ const RecentUsers = () => {
 
   if (error) {
     return (
-      <Card className="relative overflow-hidden bg-gray-50 text-gray-900 border-[#acc2ef] shadow-md w-full">
+      <Card className="relative overflow-hidden bg-white text-gray-900 border-[#acc2ef] shadow-md w-full">
         <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
@@ -102,7 +102,7 @@ const RecentUsers = () => {
   }
 
   return (
-    <Card className="relative overflow-hidden bg-gray-50 text-gray-900 border-[#acc2ef] shadow-md w-full group">
+    <Card className="relative overflow-hidden bg-white text-gray-900 border-[#acc2ef] shadow-md w-full group">
       <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-10 transition-opacity duration-500 group-hover:opacity-20" style={{ background: 'radial-gradient(circle, rgba(34, 197, 94, 0.3), transparent)' }} aria-hidden="true" />
       <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
       <CardHeader className="pb-4 relative">
